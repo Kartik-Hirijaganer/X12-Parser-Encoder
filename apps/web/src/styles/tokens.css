@@ -1,0 +1,18 @@
+:root {
+  --font-sans: "Inter", "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", monospace;
+
+  --color-ink: #18212b;
+  --color-muted: #60707f;
+  --color-surface: #f4f6f2;
+  --color-panel: #ffffff;
+  --color-border: #d7ddd4;
+  --color-primary: #0f766e;
+  --color-primary-strong: #115e59;
+  --color-primary-soft: #def7f2;
+  --color-warning: #b45309;
+  --color-warning-soft: #fff7ed;
+  --color-ok: #166534;
+  --color-ok-soft: #dcfce7;
+  --shadow-panel: 0 18px 45px rgba(24, 33, 43, 0.08);
+}

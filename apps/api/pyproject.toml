@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "eligibility-workbench-api"
+version = "0.1.0"
+description = "FastAPI scaffold for the X12 eligibility workbench."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "X12-Parser-Encoder contributors" }]
+dependencies = [
+  "fastapi>=0.115,<1.0",
+  "openpyxl>=3.1,<4.0",
+  "pydantic-settings>=2.6,<3.0",
+  "python-multipart>=0.0.12,<1.0",
+  "uvicorn[standard]>=0.32,<1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.27,<1.0",
+  "mypy>=1.11,<2.0",
+  "pytest>=8.3,<9.0",
+  "ruff>=0.8.0,<1.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+src = ["app", "tests"]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+packages = ["app"]
+warn_unused_configs = true
