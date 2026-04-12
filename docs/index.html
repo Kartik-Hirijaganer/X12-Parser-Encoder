@@ -582,7 +582,7 @@
 
   <rect x="720" y="480" width="210" height="65" class="svg-box-red" rx="6"/>
   <text x="825" y="502" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">metadata/ (LOCAL ONLY)</text>
-  <text x="825" y="519" text-anchor="middle" class="svg-text svg-text-xs" fill="#991b1b">full_text.txt (PROPRIETARY)</text>
+  <text x="825" y="519" text-anchor="middle" class="svg-text svg-text-xs" fill="#991b1b">full_text.txt (local-only reference)</text>
   <text x="825" y="533" text-anchor="middle" class="svg-text svg-text-xs" fill="#991b1b">NEVER published in repo</text>
 </svg>
 <div class="diagram-caption">Figure 1 &mdash; System Architecture: Monorepo with reusable library + deployable web application</div>
@@ -1941,7 +1941,7 @@ result = <span class="type">x12_edi_tools</span>.<span class="function">validate
     <p style="font-size:0.85rem;color:#475569;">New payers = new directory under <code>payers/</code>. New transactions = new segment models + register in SEGMENT_REGISTRY.</p>
   </div>
   <div class="card">
-    <div class="card-header">No Secrets, No Proprietary Content</div>
+    <div class="card-header">No Secrets, No Published Reference Content</div>
     <p style="font-size:0.85rem;color:#475569;">No API keys, no SFTP credentials. <code>metadata/</code> gitignored. All fixtures synthetic. Rules are original abstractions.</p>
   </div>
 </div>

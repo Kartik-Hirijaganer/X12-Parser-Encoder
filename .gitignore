@@ -205,3 +205,11 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Monorepo local-only and frontend artifacts
+metadata/
+node_modules/
+apps/web/node_modules/
+apps/web/dist/
+apps/web/coverage/
+*.tsbuildinfo
