@@ -1,0 +1,1975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>X12 EDI Parser &amp; Encoder &mdash; Technical Documentation</title>
+  <style>
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; font-size: 16px; }
+    body {
+      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color: #1e293b; background: #f8fafc; line-height: 1.7;
+    }
+    a { color: #2563eb; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code, pre { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; }
+    img, svg { max-width: 100%; }
+
+    /* ===== LAYOUT ===== */
+    .page-wrapper { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 280px; min-width: 280px; background: #0f172a; color: #cbd5e1;
+      position: sticky; top: 0; height: 100vh; overflow-y: auto;
+      padding: 1.5rem 0; z-index: 100;
+    }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    .sidebar-logo {
+      padding: 0 1.5rem 1.5rem; border-bottom: 1px solid #1e293b;
+      margin-bottom: 1rem;
+    }
+    .sidebar-logo h2 { color: #f1f5f9; font-size: 1.1rem; font-weight: 700; }
+    .sidebar-logo .version { color: #64748b; font-size: 0.75rem; margin-top: 0.25rem; }
+    .sidebar nav { padding: 0 0.75rem; }
+    .sidebar nav a {
+      display: block; padding: 0.4rem 0.75rem; color: #94a3b8; font-size: 0.85rem;
+      border-radius: 6px; transition: all 0.15s;
+    }
+    .sidebar nav a:hover { background: #1e293b; color: #e2e8f0; text-decoration: none; }
+    .sidebar nav .section-title {
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
+      color: #475569; padding: 1rem 0.75rem 0.3rem; font-weight: 600;
+    }
+
+    .main-content {
+      flex: 1; max-width: 1100px; padding: 2.5rem 3rem 4rem;
+    }
+
+    /* ===== TYPOGRAPHY ===== */
+    h1 { font-size: 2.2rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem; }
+    h2 {
+      font-size: 1.6rem; font-weight: 700; color: #0f172a; margin-top: 3rem; margin-bottom: 1rem;
+      padding-bottom: 0.5rem; border-bottom: 2px solid #e2e8f0;
+    }
+    h3 { font-size: 1.2rem; font-weight: 600; color: #1e293b; margin-top: 2rem; margin-bottom: 0.75rem; }
+    h4 { font-size: 1rem; font-weight: 600; color: #334155; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+    p { margin-bottom: 1rem; }
+    .subtitle { font-size: 1.1rem; color: #64748b; margin-bottom: 2rem; }
+
+    /* ===== BADGES ===== */
+    .badge {
+      display: inline-block; padding: 0.2rem 0.6rem; border-radius: 9999px;
+      font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .badge-blue { background: #dbeafe; color: #1e40af; }
+    .badge-green { background: #dcfce7; color: #166534; }
+    .badge-amber { background: #fef3c7; color: #92400e; }
+    .badge-red { background: #fee2e2; color: #991b1b; }
+    .badge-purple { background: #f3e8ff; color: #6b21a8; }
+    .badge-gray { background: #f1f5f9; color: #475569; }
+
+    /* ===== CARDS ===== */
+    .card {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+      padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; }
+    .card-header { font-weight: 600; font-size: 1rem; margin-bottom: 0.5rem; color: #0f172a; }
+    .card-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
+
+    /* ===== TABLES ===== */
+    table {
+      width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem;
+      font-size: 0.88rem;
+    }
+    th {
+      background: #f1f5f9; color: #334155; font-weight: 600; text-align: left;
+      padding: 0.6rem 0.8rem; border-bottom: 2px solid #e2e8f0;
+    }
+    td {
+      padding: 0.55rem 0.8rem; border-bottom: 1px solid #f1f5f9; vertical-align: top;
+    }
+    tr:hover td { background: #f8fafc; }
+    .table-wrapper { overflow-x: auto; }
+
+    /* ===== CODE BLOCKS ===== */
+    pre {
+      background: #0f172a; color: #e2e8f0; padding: 1.25rem 1.5rem;
+      border-radius: 10px; overflow-x: auto; margin: 1rem 0 1.5rem;
+      font-size: 0.82rem; line-height: 1.6;
+    }
+    pre .comment { color: #64748b; }
+    pre .keyword { color: #c084fc; }
+    pre .string { color: #86efac; }
+    pre .type { color: #7dd3fc; }
+    pre .number { color: #fbbf24; }
+    pre .function { color: #f9a8d4; }
+    code:not(pre code) {
+      background: #f1f5f9; color: #be185d; padding: 0.15rem 0.4rem;
+      border-radius: 4px; font-size: 0.85em;
+    }
+
+    /* ===== DIAGRAM CONTAINERS ===== */
+    .diagram-container {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+      padding: 2rem; margin: 1.5rem 0; overflow-x: auto;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .diagram-container svg { display: block; margin: 0 auto; }
+    .diagram-caption {
+      text-align: center; font-size: 0.8rem; color: #64748b;
+      margin-top: 1rem; font-style: italic;
+    }
+
+    /* ===== API ENDPOINT BLOCKS ===== */
+    .endpoint {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+      margin: 1.5rem 0; overflow: hidden;
+    }
+    .endpoint-header {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 1rem 1.25rem; border-bottom: 1px solid #f1f5f9;
+    }
+    .method {
+      display: inline-block; padding: 0.25rem 0.6rem; border-radius: 6px;
+      font-size: 0.75rem; font-weight: 700; font-family: monospace;
+    }
+    .method-post { background: #dbeafe; color: #1d4ed8; }
+    .method-get { background: #dcfce7; color: #166534; }
+    .method-delete { background: #fee2e2; color: #991b1b; }
+    .endpoint-path { font-family: monospace; font-weight: 600; font-size: 0.95rem; color: #0f172a; }
+    .endpoint-desc { color: #64748b; font-size: 0.85rem; margin-left: auto; }
+    .endpoint-body { padding: 1.25rem; }
+    .endpoint-body h4 { margin-top: 0.75rem; }
+    .endpoint-body h4:first-child { margin-top: 0; }
+
+    /* ===== PHASE TIMELINE ===== */
+    .phase-item {
+      display: flex; gap: 1.25rem; margin-bottom: 1.5rem;
+    }
+    .phase-marker {
+      width: 48px; height: 48px; min-width: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 1.1rem; color: #fff;
+    }
+    .phase-body { flex: 1; }
+    .phase-title { font-weight: 700; font-size: 1.05rem; color: #0f172a; }
+    .phase-meta { font-size: 0.82rem; color: #64748b; margin-top: 0.2rem; }
+
+    /* ===== ALERTS ===== */
+    .alert {
+      padding: 1rem 1.25rem; border-radius: 10px; margin: 1rem 0;
+      font-size: 0.9rem; display: flex; gap: 0.75rem; align-items: flex-start;
+    }
+    .alert-icon { font-size: 1.2rem; line-height: 1; margin-top: 0.1rem; }
+    .alert-info { background: #eff6ff; border-left: 4px solid #3b82f6; color: #1e40af; }
+    .alert-warning { background: #fffbeb; border-left: 4px solid #f59e0b; color: #92400e; }
+    .alert-danger { background: #fef2f2; border-left: 4px solid #ef4444; color: #991b1b; }
+    .alert-success { background: #f0fdf4; border-left: 4px solid #22c55e; color: #166534; }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 900px) {
+      .page-wrapper { flex-direction: column; }
+      .sidebar { width: 100%; height: auto; position: relative; }
+      .main-content { padding: 1.5rem; }
+      .card-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ===== SVG STYLES ===== */
+    .svg-box { fill: #fff; stroke: #cbd5e1; stroke-width: 1.5; rx: 8; }
+    .svg-box-primary { fill: #eff6ff; stroke: #93c5fd; }
+    .svg-box-green { fill: #f0fdf4; stroke: #86efac; }
+    .svg-box-amber { fill: #fffbeb; stroke: #fcd34d; }
+    .svg-box-red { fill: #fef2f2; stroke: #fca5a5; }
+    .svg-box-purple { fill: #faf5ff; stroke: #c4b5fd; }
+    .svg-box-dark { fill: #1e293b; stroke: #334155; }
+    .svg-text { font-family: 'Inter', system-ui, sans-serif; fill: #1e293b; }
+    .svg-text-sm { font-size: 11px; }
+    .svg-text-xs { font-size: 9px; }
+    .svg-text-label { font-size: 10px; fill: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+    .svg-text-white { fill: #f1f5f9; }
+    .svg-text-bold { font-weight: 700; }
+    .svg-arrow { stroke: #94a3b8; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead); }
+    .svg-arrow-bold { stroke: #3b82f6; stroke-width: 2; }
+    .svg-line { stroke: #e2e8f0; stroke-width: 1; }
+    .svg-line-dashed { stroke: #cbd5e1; stroke-width: 1; stroke-dasharray: 4 3; }
+
+    /* ===== TOC within sections ===== */
+    .mini-toc { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem 1.25rem; margin: 1rem 0; }
+    .mini-toc ul { list-style: none; columns: 2; gap: 1rem; }
+    .mini-toc li { font-size: 0.85rem; padding: 0.15rem 0; }
+    .mini-toc li::before { content: ""; display: inline-block; width: 6px; height: 6px; background: #3b82f6; border-radius: 50%; margin-right: 0.5rem; vertical-align: middle; }
+
+    /* ===== HERO ===== */
+    .hero {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #f1f5f9; padding: 3rem 2.5rem; border-radius: 16px;
+      margin-bottom: 2.5rem;
+    }
+    .hero h1 { color: #f1f5f9; font-size: 2.4rem; }
+    .hero .subtitle { color: #94a3b8; }
+    .hero-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
+    .hero-badge {
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
+      color: #cbd5e1; padding: 0.3rem 0.7rem; border-radius: 6px; font-size: 0.75rem;
+    }
+
+    /* ===== WORKFLOW STEPS ===== */
+    .workflow-steps { display: flex; gap: 0; align-items: stretch; margin: 1.5rem 0; flex-wrap: wrap; }
+    .workflow-step {
+      flex: 1; min-width: 160px; background: #fff; border: 1px solid #e2e8f0;
+      padding: 1rem; text-align: center; position: relative;
+    }
+    .workflow-step:first-child { border-radius: 10px 0 0 10px; }
+    .workflow-step:last-child { border-radius: 0 10px 10px 0; }
+    .workflow-step-num {
+      width: 28px; height: 28px; background: #3b82f6; color: #fff; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 700; margin-bottom: 0.4rem;
+    }
+    .workflow-step-title { font-weight: 600; font-size: 0.85rem; color: #0f172a; }
+    .workflow-step-desc { font-size: 0.75rem; color: #64748b; margin-top: 0.2rem; }
+
+    /* ===== STAT BOXES ===== */
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin: 1rem 0; }
+    .stat-box {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+      padding: 1rem; text-align: center;
+    }
+    .stat-value { font-size: 1.8rem; font-weight: 800; color: #0f172a; }
+    .stat-label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+  </style>
+</head>
+<body>
+<div class="page-wrapper">
+
+<!-- ===== SIDEBAR NAVIGATION ===== -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <h2>X12 EDI Tools</h2>
+    <div class="version">Implementation Plan v2 &bull; MIT License</div>
+  </div>
+  <nav>
+    <div class="section-title">Overview</div>
+    <a href="#overview">Project Overview</a>
+    <a href="#tech-stack">Tech Stack</a>
+    <a href="#deliverables">Deliverables</a>
+    <a href="#assumptions">Assumptions</a>
+
+    <div class="section-title">Architecture</div>
+    <a href="#system-architecture">System Architecture</a>
+    <a href="#parser-pipeline">Parser Pipeline</a>
+    <a href="#encoder-architecture">Encoder Architecture</a>
+    <a href="#validator-architecture">Validator Architecture</a>
+    <a href="#web-request-flow">Web Request Flow</a>
+    <a href="#deployment-architecture">Deployment Architecture</a>
+    <a href="#security-boundaries">Security &amp; PHI Boundaries</a>
+
+    <div class="section-title">Data Models</div>
+    <a href="#data-model-erd">Model Hierarchy (ERD)</a>
+    <a href="#segment-models">Segment Models</a>
+    <a href="#loop-models">Loop Models</a>
+    <a href="#transaction-models">Transaction Models</a>
+    <a href="#enums">Enums &amp; Constants</a>
+
+    <div class="section-title">API Reference</div>
+    <a href="#api-overview">API Overview</a>
+    <a href="#api-convert">POST /convert</a>
+    <a href="#api-generate">POST /generate</a>
+    <a href="#api-validate">POST /validate</a>
+    <a href="#api-parse">POST /parse</a>
+    <a href="#api-export">POST /export/xlsx</a>
+    <a href="#api-pipeline">POST /pipeline</a>
+    <a href="#api-templates">GET /templates</a>
+    <a href="#api-profiles">GET /profiles</a>
+    <a href="#api-health">GET /health</a>
+
+    <div class="section-title">Library API</div>
+    <a href="#lib-convenience">Convenience API</a>
+    <a href="#lib-granular">Granular API</a>
+    <a href="#lib-config">SubmitterConfig</a>
+
+    <div class="section-title">Workflows</div>
+    <a href="#workflow-generate">Generate 270</a>
+    <a href="#workflow-validate">Validate 270</a>
+    <a href="#workflow-parse">Parse 271</a>
+
+    <div class="section-title">Configuration</div>
+    <a href="#config-system">Configuration System</a>
+    <a href="#payer-profiles">Payer Profiles</a>
+    <a href="#dc-medicaid">DC Medicaid Profile</a>
+
+    <div class="section-title">Implementation</div>
+    <a href="#delivery-strategy">Delivery Strategy</a>
+    <a href="#phases">Phase Roadmap</a>
+    <a href="#design-philosophy">Design Philosophy</a>
+    <a href="#monorepo">Monorepo Structure</a>
+    <a href="#testing">Testing Strategy</a>
+    <a href="#cicd">CI/CD Pipeline</a>
+    <a href="#oss">Open Source</a>
+  </nav>
+</aside>
+
+<!-- ===== MAIN CONTENT ===== -->
+<main class="main-content">
+
+<!-- ===== SHARED SVG DEFS ===== -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrowhead-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#3b82f6"/>
+    </marker>
+  </defs>
+</svg>
+
+<!-- ===== HERO SECTION ===== -->
+<section class="hero" id="overview">
+  <h1>X12 EDI Parser &amp; Encoder</h1>
+  <p class="subtitle">A production-grade Python library and web application for parsing, encoding, and validating X12 270/271 eligibility transactions &mdash; built for DC Medicaid (Gainwell Technologies).</p>
+  <div class="hero-badges">
+    <span class="hero-badge">Python 3.12</span>
+    <span class="hero-badge">Pydantic v2</span>
+    <span class="hero-badge">FastAPI</span>
+    <span class="hero-badge">React + TypeScript</span>
+    <span class="hero-badge">Tailwind CSS v4</span>
+    <span class="hero-badge">Docker</span>
+    <span class="hero-badge">Cloud Run</span>
+    <span class="hero-badge">005010X279A1</span>
+  </div>
+</section>
+
+<!-- ===== PROJECT OVERVIEW ===== -->
+<div class="stat-grid">
+  <div class="stat-box">
+    <div class="stat-value">8</div>
+    <div class="stat-label">Dev Phases</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-value">~156</div>
+    <div class="stat-label">Planned Files</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-value">5</div>
+    <div class="stat-label">SNIP Levels</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-value">9</div>
+    <div class="stat-label">API Endpoints</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-value">6</div>
+    <div class="stat-label">UI Screens</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-value">0</div>
+    <div class="stat-label">Databases</div>
+  </div>
+</div>
+
+<h3>Problem</h3>
+<p>A non-technical colleague in DC home healthcare needs to perform bulk Medicaid eligibility checks (270/271 transactions) against Gainwell Technologies' DC MMIS system. Currently this is manual and error-prone. There is no lightweight, open-source, Python-native tool for constructing and parsing X12 270/271 eligibility transactions that complies with the DC Medicaid Companion Guide (v1.4, January 2026, 005010X279A1).</p>
+
+<h3>Solution: Two Deliverables</h3>
+<div class="card-grid">
+  <div class="card">
+    <div class="card-icon">&#x1F4E6;</div>
+    <div class="card-header">x12-edi-tools <span class="badge badge-blue">PyPI Library</span></div>
+    <p style="font-size:0.9rem;color:#475569;">A pip-installable Python library for parsing, encoding, and validating X12 transactions. Generic X12-first, with the first production-ready profile pack for 270/271 005010X279A1 (DC Medicaid / Gainwell).</p>
+    <code>pip install x12-edi-tools</code>
+  </div>
+  <div class="card">
+    <div class="card-icon">&#x1F310;</div>
+    <div class="card-header">Eligibility Workbench <span class="badge badge-green">Web App</span></div>
+    <p style="font-size:0.9rem;color:#475569;">A stateless web application (FastAPI + React) wrapping the library with a drag-and-drop UI for non-technical users doing bulk eligibility workflows. No database, no session storage.</p>
+    <code>docker compose up</code>
+  </div>
+</div>
+
+<!-- ===== TECH STACK ===== -->
+<h2 id="tech-stack">Tech Stack</h2>
+
+<table>
+  <thead>
+    <tr><th>Layer</th><th>Choice</th><th>Rationale</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><span class="badge badge-blue">Runtime</span></td><td>Python 3.12 (support 3.11&ndash;3.13)</td><td>Stable dev target, broad CI compatibility</td></tr>
+    <tr><td><span class="badge badge-blue">Modeling</span></td><td>Pydantic v2 + dataclasses</td><td>Strong validation, typed X12 models</td></tr>
+    <tr><td><span class="badge badge-green">API</span></td><td>FastAPI + Uvicorn</td><td>Clean request/response contracts</td></tr>
+    <tr><td><span class="badge badge-green">API Deps</span></td><td>pydantic-settings, python-multipart, openpyxl</td><td>Config, file uploads, Excel generation</td></tr>
+    <tr><td><span class="badge badge-purple">Frontend</span></td><td>React + TypeScript + Vite</td><td>Interactive eligibility dashboard</td></tr>
+    <tr><td><span class="badge badge-purple">Styling</span></td><td>Tailwind CSS v4</td><td>Token-driven design system</td></tr>
+    <tr><td><span class="badge badge-purple">Routing</span></td><td>React Router v7</td><td>Client-side navigation, data via Router state</td></tr>
+    <tr><td><span class="badge badge-amber">Testing</span></td><td>pytest, httpx, Vitest, Playwright, Hypothesis</td><td>Fast feedback + high-signal regression</td></tr>
+    <tr><td><span class="badge badge-amber">Quality</span></td><td>Ruff, mypy (strict), pytest-cov, detect-secrets</td><td>Fast local feedback, supply-chain hygiene</td></tr>
+    <tr><td><span class="badge badge-gray">Packaging</span></td><td>Hatchling, PyPI trusted publishing, GHCR</td><td>Clean release path</td></tr>
+    <tr><td><span class="badge badge-gray">Deploy</span></td><td>Docker single-container, Google Cloud Run</td><td>Same-origin, HIPAA-eligible with BAA</td></tr>
+  </tbody>
+</table>
+
+<!-- ===== DELIVERABLES ===== -->
+<h2 id="deliverables">Deliverables Summary</h2>
+<table>
+  <thead>
+    <tr><th>Phase</th><th>Scope</th><th>Test Criteria</th><th>Est. Files</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><span class="badge badge-gray">0</span></td><td>Scaffolding + Tooling</td><td><code>pip install -e .[dev]</code> works, lint passes</td><td>~20</td></tr>
+    <tr><td><span class="badge badge-blue">1</span></td><td>Library: Models + Enums</td><td>All Pydantic models instantiate, serialize to JSON</td><td>~25</td></tr>
+    <tr><td><span class="badge badge-blue">2</span></td><td>Library: Parser</td><td>Parse fixture 270/271 into typed objects</td><td>~8</td></tr>
+    <tr><td><span class="badge badge-blue">3</span></td><td>Library: Encoder</td><td>Roundtrip: <code>parse(encode(parse(raw))) == parse(raw)</code></td><td>~4</td></tr>
+    <tr><td><span class="badge badge-blue">4</span></td><td>Library: Validator + DC Medicaid</td><td>SNIP 1&ndash;5 + DC Medicaid rules catch known-bad fixtures</td><td>~10</td></tr>
+    <tr><td><span class="badge badge-green">5</span></td><td>Web Backend: FastAPI API</td><td>All endpoints return correct responses via TestClient</td><td>~18</td></tr>
+    <tr><td><span class="badge badge-purple">6</span></td><td>Web Frontend: React UI</td><td>Components render, hooks work, pages navigate</td><td>~40</td></tr>
+    <tr><td><span class="badge badge-amber">7</span></td><td>Integration + Docker</td><td>Full flow in docker-compose</td><td>~6</td></tr>
+    <tr><td><span class="badge badge-red">8</span></td><td>CI/CD + Docs + Hardening</td><td>GitHub Actions green, PyPI publishable</td><td>~25</td></tr>
+  </tbody>
+</table>
+
+<!-- ===== ASSUMPTIONS ===== -->
+<h2 id="assumptions">Assumptions</h2>
+<div class="card">
+<ol style="font-size:0.9rem; color:#334155; padding-left:1.5rem;">
+  <li>Python 3.11+ (Pydantic v2 compatibility, modern type hints)</li>
+  <li>Only 270/271 transaction types in v1.0 (extensible for 837/835 later)</li>
+  <li>DC Medicaid-specific: ISA08/GS03 = <code>DCMEDICAID</code>, no dependent loops (all members are primary subscribers)</li>
+  <li>Stateless web app &mdash; no database, no user accounts, no sessions, no file retention</li>
+  <li>Near-zero deployment cost (Vercel/Render for demos; Cloud Run for production PHI)</li>
+  <li>Companion guide at <code>metadata/full_text.txt</code> is dev reference only &mdash; <strong>NEVER published</strong></li>
+  <li>MIT license, open source from day one</li>
+  <li><strong>PHI Safety</strong>: No PHI in logs, no PHI in test fixtures, no server-side file retention. All test fixtures must be synthetic.</li>
+  <li>UI import is strictly template-based (canonical columns), not heuristic guessing</li>
+  <li>Library is generic X12-first; DC Medicaid rules live in a pluggable payer profile pack</li>
+</ol>
+</div>
+
+<!-- ===== SYSTEM ARCHITECTURE DIAGRAM ===== -->
+<h2 id="system-architecture">System Architecture</h2>
+<p>The system is a monorepo with two primary deliverables: a reusable PyPI library (<code>packages/x12-edi-tools</code>) and a deployable web application (<code>apps/</code>) that consumes the library.</p>
+
+<div class="diagram-container">
+<svg viewBox="0 0 960 620" xmlns="http://www.w3.org/2000/svg" style="max-width:960px">
+  <!-- Monorepo outer box -->
+  <rect x="10" y="10" width="940" height="600" rx="12" fill="#f8fafc" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 3"/>
+  <text x="480" y="38" text-anchor="middle" class="svg-text svg-text-bold" font-size="14">X12-Parser-Encoder Monorepo</text>
+
+  <!-- Library package -->
+  <rect x="30" y="55" width="440" height="500" class="svg-box-primary" rx="10"/>
+  <text x="250" y="80" text-anchor="middle" class="svg-text svg-text-bold" font-size="13">packages/x12-edi-tools</text>
+  <text x="250" y="95" text-anchor="middle" class="svg-text-label" font-size="9">PIP-INSTALLABLE LIBRARY</text>
+
+  <!-- Models -->
+  <rect x="50" y="110" width="130" height="80" class="svg-box" rx="6"/>
+  <text x="115" y="132" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">Models</text>
+  <text x="115" y="148" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">Segments (15+)</text>
+  <text x="115" y="162" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">Loops (12)</text>
+  <text x="115" y="176" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">Transactions (2)</text>
+
+  <!-- Common -->
+  <rect x="195" y="110" width="120" height="80" class="svg-box" rx="6"/>
+  <text x="255" y="132" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">Common</text>
+  <text x="255" y="148" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">Enums</text>
+  <text x="255" y="162" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">Delimiters</text>
+  <text x="255" y="176" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">Types</text>
+
+  <!-- Exceptions -->
+  <rect x="330" y="110" width="120" height="80" class="svg-box" rx="6"/>
+  <text x="390" y="132" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">Exceptions</text>
+  <text x="390" y="148" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">X12Error</text>
+  <text x="390" y="162" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">ParseError</text>
+  <text x="390" y="176" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">EncodeError</text>
+
+  <!-- Parser -->
+  <rect x="50" y="210" width="195" height="90" class="svg-box-green" rx="6"/>
+  <text x="148" y="233" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">Parser (4-Stage Pipeline)</text>
+  <text x="148" y="250" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">A: ISA Parser (fixed-width)</text>
+  <text x="148" y="264" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">B: Tokenizer</text>
+  <text x="148" y="278" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">C: Segment Parser (registry)</text>
+  <text x="148" y="292" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">D: Loop Builder (state machine)</text>
+
+  <!-- Encoder -->
+  <rect x="260" y="210" width="195" height="90" class="svg-box-green" rx="6"/>
+  <text x="358" y="233" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">Encoder</text>
+  <text x="358" y="250" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">Segment Encoder</text>
+  <text x="358" y="264" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">ISA Encoder (106 chars)</text>
+  <text x="358" y="278" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">X12 Encoder (orchestrator)</text>
+  <text x="358" y="292" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">Auto-compute SE/GE/IEA</text>
+
+  <!-- Validator -->
+  <rect x="50" y="320" width="195" height="90" class="svg-box-amber" rx="6"/>
+  <text x="148" y="343" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">Validator (SNIP 1&ndash;5)</text>
+  <text x="148" y="360" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">1: Syntax &bull; 2: TR3 Reqs</text>
+  <text x="148" y="374" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">3: Balancing &bull; 4: Inter-seg</text>
+  <text x="148" y="388" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">5: External Code Sets</text>
+  <text x="148" y="402" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">x12_validator.py orchestrator</text>
+
+  <!-- Payer Profiles -->
+  <rect x="260" y="320" width="195" height="90" class="svg-box-purple" rx="6"/>
+  <text x="358" y="343" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">Payer Profiles</text>
+  <text x="358" y="360" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">PayerProfile protocol</text>
+  <text x="358" y="374" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">dc_medicaid/profile.py</text>
+  <text x="358" y="388" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">dc_medicaid/constants.py</text>
+  <text x="358" y="402" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">dc_medicaid/search_criteria.py</text>
+
+  <!-- Convenience API -->
+  <rect x="50" y="430" width="405" height="55" class="svg-box" rx="6"/>
+  <text x="252" y="453" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">Convenience API</text>
+  <text x="252" y="470" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">from_csv() &bull; from_excel() &bull; build_270() &bull; read_271() &bull; validate() &bull; encode()</text>
+
+  <!-- Config -->
+  <rect x="50" y="498" width="405" height="40" class="svg-box" rx="6"/>
+  <text x="252" y="523" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">SubmitterConfig &bull; Delimiters &bull; ParseResult &bull; ValidationResult</text>
+
+  <!-- Apps section -->
+  <rect x="490" y="55" width="440" height="310" class="svg-box-green" rx="10"/>
+  <text x="710" y="80" text-anchor="middle" class="svg-text svg-text-bold" font-size="13">apps/ (Deployable Web Application)</text>
+
+  <!-- API Backend -->
+  <rect x="510" y="100" width="200" height="130" class="svg-box" rx="6"/>
+  <text x="610" y="122" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">apps/api/ (FastAPI)</text>
+  <text x="610" y="140" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">Routers: convert, generate,</text>
+  <text x="610" y="154" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">validate, parse, export</text>
+  <text x="610" y="170" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">Services &bull; Schemas</text>
+  <text x="610" y="186" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">Middleware (correlation IDs)</text>
+  <text x="610" y="202" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">PHI-safe structured logging</text>
+  <text x="610" y="218" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">Templates (.xlsx, .csv)</text>
+
+  <!-- React Frontend -->
+  <rect x="725" y="100" width="190" height="130" class="svg-box" rx="6"/>
+  <text x="820" y="122" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">apps/web/ (React)</text>
+  <text x="820" y="140" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">6 Pages: Home, Preview,</text>
+  <text x="820" y="154" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">Generate, Validate,</text>
+  <text x="820" y="170" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">Dashboard, Templates</text>
+  <text x="820" y="186" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">UI Components &bull; Hooks</text>
+  <text x="820" y="202" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">Tailwind CSS v4 tokens</text>
+  <text x="820" y="218" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">Smart file routing</text>
+
+  <!-- Arrow: API consumes library -->
+  <line x1="510" y1="240" x2="460" y2="260" class="svg-arrow svg-arrow-bold" marker-end="url(#arrowhead-blue)"/>
+  <text x="500" y="260" text-anchor="end" class="svg-text svg-text-xs" fill="#3b82f6">imports library</text>
+
+  <!-- Arrow: Frontend -> API -->
+  <line x1="725" y1="180" x2="715" y2="180" class="svg-arrow"/>
+  <text x="720" y="175" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">HTTP</text>
+
+  <!-- Config flow -->
+  <rect x="510" y="260" width="400" height="45" class="svg-box" rx="6"/>
+  <text x="710" y="280" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">Stateless &middot; No Database &middot; No Sessions &middot; No File Retention</text>
+  <text x="710" y="296" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">PHI flows in (request) &rarr; PHI flows out (response) &rarr; nothing persisted</text>
+
+  <!-- Infrastructure boxes -->
+  <rect x="490" y="385" width="210" height="75" class="svg-box" rx="6"/>
+  <text x="595" y="407" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">docker/</text>
+  <text x="595" y="424" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">Dockerfile (multi-stage)</text>
+  <text x="595" y="438" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">Dockerfile.dev (hot-reload)</text>
+  <text x="595" y="452" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">docker-compose.yml</text>
+
+  <rect x="720" y="385" width="210" height="75" class="svg-box" rx="6"/>
+  <text x="825" y="407" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">.github/workflows/</text>
+  <text x="825" y="424" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">ci.yml (lint, test, cov)</text>
+  <text x="825" y="438" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">release.yml (PyPI + GHCR)</text>
+  <text x="825" y="452" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">deploy.yml (Cloud Run)</text>
+
+  <rect x="490" y="480" width="210" height="65" class="svg-box" rx="6"/>
+  <text x="595" y="502" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">docs/</text>
+  <text x="595" y="519" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">architecture &bull; payer-packs</text>
+  <text x="595" y="533" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">frontend-standards &bull; deployment</text>
+
+  <rect x="720" y="480" width="210" height="65" class="svg-box-red" rx="6"/>
+  <text x="825" y="502" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">metadata/ (LOCAL ONLY)</text>
+  <text x="825" y="519" text-anchor="middle" class="svg-text svg-text-xs" fill="#991b1b">full_text.txt (PROPRIETARY)</text>
+  <text x="825" y="533" text-anchor="middle" class="svg-text svg-text-xs" fill="#991b1b">NEVER published in repo</text>
+</svg>
+<div class="diagram-caption">Figure 1 &mdash; System Architecture: Monorepo with reusable library + deployable web application</div>
+</div>
+
+<!-- ===== PARSER PIPELINE DIAGRAM ===== -->
+<h2 id="parser-pipeline">Parser Pipeline Architecture</h2>
+<p>The parser operates as a four-stage pipeline transforming raw X12 strings into fully-typed Pydantic model trees.</p>
+
+<div class="diagram-container">
+<svg viewBox="0 0 900 680" xmlns="http://www.w3.org/2000/svg" style="max-width:900px">
+  <!-- Input -->
+  <rect x="250" y="10" width="400" height="50" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+  <text x="450" y="32" text-anchor="middle" class="svg-text svg-text-bold svg-text-white" font-size="12">Raw X12 String</text>
+  <text x="450" y="48" text-anchor="middle" class="svg-text svg-text-xs svg-text-white" style="fill:#94a3b8">ISA*00*          *00*          *ZZ*SENDER...</text>
+
+  <line x1="450" y1="60" x2="450" y2="85" class="svg-arrow"/>
+
+  <!-- Stage A -->
+  <rect x="150" y="85" width="600" height="100" class="svg-box-primary" rx="8"/>
+  <text x="175" y="110" class="svg-text svg-text-bold" font-size="12">Stage A: ISA Parser</text>
+  <text x="175" y="110" class="svg-text-label" font-size="9" dx="230">isa_parser.py</text>
+  <text x="175" y="130" class="svg-text svg-text-xs" fill="#64748b">ISA is ALWAYS exactly 106 characters. Delimiters extracted by POSITION:</text>
+  <text x="190" y="148" class="svg-text svg-text-xs" style="font-family:monospace;fill:#1d4ed8">pos 3 &rarr; element separator (*) &nbsp;&nbsp; pos 82 &rarr; repetition separator (^)</text>
+  <text x="190" y="163" class="svg-text svg-text-xs" style="font-family:monospace;fill:#1d4ed8">pos 104 &rarr; sub-element sep (:) &nbsp; pos 105 &rarr; segment terminator (~)</text>
+  <text x="630" y="175" text-anchor="end" class="svg-text svg-text-xs" fill="#64748b">Output: ISASegment + Delimiters</text>
+
+  <line x1="450" y1="185" x2="450" y2="210" class="svg-arrow"/>
+
+  <!-- Stage B -->
+  <rect x="150" y="210" width="600" height="85" class="svg-box-primary" rx="8"/>
+  <text x="175" y="235" class="svg-text svg-text-bold" font-size="12">Stage B: Tokenizer</text>
+  <text x="175" y="235" class="svg-text-label" font-size="9" dx="180">tokenizer.py</text>
+  <text x="175" y="255" class="svg-text svg-text-xs" fill="#64748b">Split remaining string on segment terminator (~). For each segment, split on element separator (*).</text>
+  <text x="175" y="270" class="svg-text svg-text-xs" fill="#64748b">Strip whitespace/newlines between segments. Preserve empty trailing elements.</text>
+  <text x="630" y="285" text-anchor="end" class="svg-text svg-text-xs" fill="#64748b">Output: list[SegmentToken(id, elements, position)]</text>
+
+  <line x1="450" y1="295" x2="450" y2="320" class="svg-arrow"/>
+
+  <!-- Stage C -->
+  <rect x="150" y="320" width="600" height="100" class="svg-box-primary" rx="8"/>
+  <text x="175" y="345" class="svg-text svg-text-bold" font-size="12">Stage C: Segment Parser</text>
+  <text x="175" y="345" class="svg-text-label" font-size="9" dx="230">segment_parser.py</text>
+  <text x="175" y="365" class="svg-text svg-text-xs" fill="#64748b">Registry dispatch: segment_id &rarr; Pydantic model class via _element_map protocol</text>
+  <text x="190" y="383" class="svg-text svg-text-xs" style="font-family:monospace;fill:#1d4ed8">"NM1" &rarr; NM1Segment &nbsp; "EB" &rarr; EBSegment &nbsp; "DTP" &rarr; DTPSegment</text>
+  <text x="175" y="400" class="svg-text svg-text-xs" fill="#64748b">Strict mode: raise on unknown. Lenient mode: skip unknown.</text>
+  <text x="630" y="410" text-anchor="end" class="svg-text svg-text-xs" fill="#64748b">Output: list[Pydantic Segment Models]</text>
+
+  <line x1="450" y1="420" x2="450" y2="445" class="svg-arrow"/>
+
+  <!-- Stage D -->
+  <rect x="150" y="445" width="600" height="110" class="svg-box-primary" rx="8"/>
+  <text x="175" y="470" class="svg-text svg-text-bold" font-size="12">Stage D: Loop Builder</text>
+  <text x="175" y="470" class="svg-text-label" font-size="9" dx="210">loop_builder.py</text>
+  <text x="175" y="490" class="svg-text svg-text-xs" fill="#64748b">State machine builds nested HL tree from flat segment list:</text>
+  <text x="190" y="508" class="svg-text svg-text-xs" style="font-family:monospace;fill:#1d4ed8">HL*1**20*1~ &rarr; Level 20: Information Source (Payer)</text>
+  <text x="190" y="522" class="svg-text svg-text-xs" style="font-family:monospace;fill:#1d4ed8">HL*2*1*21*1~ &rarr; Level 21: Information Receiver (Provider)</text>
+  <text x="190" y="536" class="svg-text svg-text-xs" style="font-family:monospace;fill:#1d4ed8">HL*3*2*22*0~ &rarr; Level 22: Subscriber (Patient) [repeats]</text>
+  <text x="630" y="548" text-anchor="end" class="svg-text svg-text-xs" fill="#64748b">Output: Interchange (fully nested typed model tree)</text>
+
+  <line x1="450" y1="555" x2="450" y2="580" class="svg-arrow"/>
+
+  <!-- Orchestrator -->
+  <rect x="200" y="580" width="500" height="80" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+  <text x="450" y="605" text-anchor="middle" class="svg-text svg-text-bold svg-text-white" font-size="12">Orchestrator: x12_parser.py</text>
+  <text x="450" y="625" text-anchor="middle" class="svg-text svg-text-xs" style="fill:#86efac;font-family:monospace">parse(raw, strict=True, on_error="raise") &rarr; ParseResult</text>
+  <text x="450" y="645" text-anchor="middle" class="svg-text svg-text-xs svg-text-white" style="fill:#94a3b8">Error strategies: "raise" | "skip" | "collect" (partial success for web API)</text>
+</svg>
+<div class="diagram-caption">Figure 2 &mdash; Four-Stage Parser Pipeline: Raw X12 &rarr; ISA &rarr; Tokens &rarr; Segments &rarr; Nested Model Tree</div>
+</div>
+
+<!-- ===== ENCODER ARCHITECTURE ===== -->
+<h2 id="encoder-architecture">Encoder Architecture</h2>
+<p>The encoder reverses the parser pipeline, transforming typed Pydantic models back into valid X12 ANSI strings with auto-computed envelope counts.</p>
+
+<div class="card-grid">
+  <div class="card">
+    <div class="card-header">segment_encoder.py</div>
+    <p style="font-size:0.85rem;color:#475569;">Calls <code>segment.to_elements()</code>, joins with element separator, trims trailing empties, appends segment terminator.</p>
+  </div>
+  <div class="card">
+    <div class="card-header">isa_encoder.py</div>
+    <p style="font-size:0.85rem;color:#475569;">Special handling for ISA fixed-width: pads each field to exact width, outputs exactly 106 characters.</p>
+  </div>
+  <div class="card">
+    <div class="card-header">x12_encoder.py</div>
+    <p style="font-size:0.85rem;color:#475569;">Walks Interchange tree depth-first. <strong>Auto-computes</strong> SE01 (segment count), GE01 (transaction count), IEA01 (group count).</p>
+  </div>
+</div>
+
+<div class="alert alert-info">
+  <div class="alert-icon">&#x1F4A1;</div>
+  <div><strong>Auto-compute counts</strong>: If a user builds an Interchange programmatically, they might get SE01/GE01/IEA01 wrong. Computing them during encoding prevents SNIP Level 3 errors. Original parsed values remain on the model for inspection.</div>
+</div>
+
+<!-- ===== VALIDATOR ARCHITECTURE DIAGRAM ===== -->
+<h2 id="validator-architecture">Validator Architecture</h2>
+<p>Five generic SNIP validation levels plus pluggable payer-specific profile packs. All results normalized into a common <code>ValidationError</code> structure with severity, plain-English messages, and actionable fix suggestions.</p>
+
+<div class="diagram-container">
+<svg viewBox="0 0 900 520" xmlns="http://www.w3.org/2000/svg" style="max-width:900px">
+  <!-- Input -->
+  <rect x="350" y="10" width="200" height="40" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+  <text x="450" y="35" text-anchor="middle" class="svg-text svg-text-bold svg-text-white svg-text-sm">Interchange Model</text>
+
+  <line x1="450" y1="50" x2="450" y2="75" class="svg-arrow"/>
+
+  <!-- Orchestrator -->
+  <rect x="300" y="75" width="300" height="40" class="svg-box-primary" rx="8"/>
+  <text x="450" y="100" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">x12_validator.py (orchestrator)</text>
+
+  <!-- Fan out -->
+  <line x1="350" y1="115" x2="130" y2="155" class="svg-arrow"/>
+  <line x1="450" y1="115" x2="450" y2="155" class="svg-arrow"/>
+  <line x1="550" y1="115" x2="770" y2="155" class="svg-arrow"/>
+
+  <!-- SNIP 1 -->
+  <rect x="30" y="155" width="160" height="90" class="svg-box-amber" rx="6"/>
+  <text x="110" y="177" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">SNIP Level 1</text>
+  <text x="110" y="193" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">Syntax Integrity</text>
+  <text x="110" y="210" text-anchor="middle" class="svg-text svg-text-xs" fill="#92400e">ISA = 106 chars</text>
+  <text x="110" y="224" text-anchor="middle" class="svg-text svg-text-xs" fill="#92400e">Valid segment IDs</text>
+  <text x="110" y="238" text-anchor="middle" class="svg-text svg-text-xs" fill="#92400e">Proper nesting</text>
+
+  <!-- SNIP 2 -->
+  <rect x="200" y="155" width="160" height="90" class="svg-box-amber" rx="6"/>
+  <text x="280" y="177" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">SNIP Level 2</text>
+  <text x="280" y="193" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">TR3 Requirements</text>
+  <text x="280" y="210" text-anchor="middle" class="svg-text svg-text-xs" fill="#92400e">Required segments</text>
+  <text x="280" y="224" text-anchor="middle" class="svg-text svg-text-xs" fill="#92400e">Required elements</text>
+  <text x="280" y="238" text-anchor="middle" class="svg-text svg-text-xs" fill="#92400e">Code values &bull; Lengths</text>
+
+  <!-- SNIP 3 -->
+  <rect x="370" y="155" width="160" height="90" class="svg-box-amber" rx="6"/>
+  <text x="450" y="177" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">SNIP Level 3</text>
+  <text x="450" y="193" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">Balancing</text>
+  <text x="450" y="210" text-anchor="middle" class="svg-text svg-text-xs" fill="#92400e">SE01 segment count</text>
+  <text x="450" y="224" text-anchor="middle" class="svg-text svg-text-xs" fill="#92400e">GE01 / IEA01 counts</text>
+  <text x="450" y="238" text-anchor="middle" class="svg-text svg-text-xs" fill="#92400e">Control # cross-refs</text>
+
+  <!-- SNIP 4 -->
+  <rect x="540" y="155" width="160" height="90" class="svg-box-amber" rx="6"/>
+  <text x="620" y="177" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">SNIP Level 4</text>
+  <text x="620" y="193" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">Inter-Segment Rules</text>
+  <text x="620" y="210" text-anchor="middle" class="svg-text svg-text-xs" fill="#92400e">HL parent references</text>
+  <text x="620" y="224" text-anchor="middle" class="svg-text svg-text-xs" fill="#92400e">NM1 context match</text>
+  <text x="620" y="238" text-anchor="middle" class="svg-text svg-text-xs" fill="#92400e">DTP format/qualifier</text>
+
+  <!-- SNIP 5 -->
+  <rect x="710" y="155" width="160" height="90" class="svg-box-amber" rx="6"/>
+  <text x="790" y="177" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">SNIP Level 5</text>
+  <text x="790" y="193" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">External Code Sets</text>
+  <text x="790" y="210" text-anchor="middle" class="svg-text svg-text-xs" fill="#92400e">US state codes</text>
+  <text x="790" y="224" text-anchor="middle" class="svg-text svg-text-xs" fill="#92400e">Calendar dates &bull; Gender</text>
+  <text x="790" y="238" text-anchor="middle" class="svg-text svg-text-xs" fill="#92400e">NPI Luhn &bull; Svc types</text>
+
+  <!-- Payer Profile -->
+  <rect x="300" y="270" width="300" height="100" class="svg-box-purple" rx="8"/>
+  <text x="450" y="295" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">Payer Profile (Pluggable)</text>
+  <text x="450" y="313" text-anchor="middle" class="svg-text svg-text-xs" fill="#6b21a8">PayerProfile Protocol</text>
+  <text x="450" y="330" text-anchor="middle" class="svg-text svg-text-xs" fill="#6b21a8">name: str</text>
+  <text x="450" y="344" text-anchor="middle" class="svg-text svg-text-xs" fill="#6b21a8">validate(interchange) &rarr; list[ValidationError]</text>
+  <text x="450" y="358" text-anchor="middle" class="svg-text svg-text-xs" fill="#6b21a8">get_defaults() &rarr; dict</text>
+
+  <line x1="450" y1="370" x2="450" y2="395" class="svg-arrow"/>
+
+  <!-- DC Medicaid -->
+  <rect x="275" y="395" width="350" height="105" class="svg-box-purple" rx="6"/>
+  <text x="450" y="418" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">dc_medicaid/ Profile Pack</text>
+  <text x="310" y="438" class="svg-text svg-text-xs" fill="#6b21a8">&#x2022; ISA08 = DCMEDICAID (padded to 15)</text>
+  <text x="310" y="453" class="svg-text svg-text-xs" fill="#6b21a8">&#x2022; No HL03=23 (no dependents)</text>
+  <text x="310" y="468" class="svg-text svg-text-xs" fill="#6b21a8">&#x2022; Max 5000 batch / 1 real-time</text>
+  <text x="310" y="483" class="svg-text svg-text-xs" fill="#6b21a8">&#x2022; No future svc dates / max 13mo historical</text>
+  <text x="310" y="498" class="svg-text svg-text-xs" fill="#6b21a8">&#x2022; Valid svc type codes: 1,30,33,35,47,48,50,86,88,98,AL,MH,UC</text>
+</svg>
+<div class="diagram-caption">Figure 3 &mdash; Validator Architecture: 5 SNIP Levels + Pluggable Payer Profile Packs</div>
+</div>
+
+<!-- ===== WEB REQUEST FLOW ===== -->
+<h2 id="web-request-flow">Web Application Request Flow</h2>
+
+<h3>Three Primary Workflows</h3>
+
+<div id="workflow-generate">
+<h4>Workflow A: Generate 270 Eligibility Inquiry</h4>
+<div class="workflow-steps">
+  <div class="workflow-step">
+    <div class="workflow-step-num">1</div>
+    <div class="workflow-step-title">Upload File</div>
+    <div class="workflow-step-desc">User drops .xlsx/.csv</div>
+  </div>
+  <div class="workflow-step">
+    <div class="workflow-step-num">2</div>
+    <div class="workflow-step-title">POST /convert</div>
+    <div class="workflow-step-desc">Auto-correct dates, names, IDs</div>
+  </div>
+  <div class="workflow-step">
+    <div class="workflow-step-num">3</div>
+    <div class="workflow-step-title">Preview</div>
+    <div class="workflow-step-desc">PatientRecord[] + corrections</div>
+  </div>
+  <div class="workflow-step">
+    <div class="workflow-step-num">4</div>
+    <div class="workflow-step-title">POST /generate</div>
+    <div class="workflow-step-desc">Build X12 270 envelope</div>
+  </div>
+  <div class="workflow-step">
+    <div class="workflow-step-num">5</div>
+    <div class="workflow-step-title">Download</div>
+    <div class="workflow-step-desc">Download .x12 file</div>
+  </div>
+</div>
+</div>
+
+<div id="workflow-validate">
+<h4>Workflow B: Validate 270 for Compliance</h4>
+<div class="workflow-steps">
+  <div class="workflow-step">
+    <div class="workflow-step-num">1</div>
+    <div class="workflow-step-title">Upload X12</div>
+    <div class="workflow-step-desc">User drops .x12 (270)</div>
+  </div>
+  <div class="workflow-step">
+    <div class="workflow-step-num">2</div>
+    <div class="workflow-step-title">POST /validate</div>
+    <div class="workflow-step-desc">SNIP 1-5 + DC Medicaid</div>
+  </div>
+  <div class="workflow-step">
+    <div class="workflow-step-num">3</div>
+    <div class="workflow-step-title">Results</div>
+    <div class="workflow-step-desc">PASS/FAIL + issue list</div>
+  </div>
+</div>
+</div>
+
+<div id="workflow-parse">
+<h4>Workflow C: Parse 271 Eligibility Response</h4>
+<div class="workflow-steps">
+  <div class="workflow-step">
+    <div class="workflow-step-num">1</div>
+    <div class="workflow-step-title">Upload X12</div>
+    <div class="workflow-step-desc">User drops .x12 (271)</div>
+  </div>
+  <div class="workflow-step">
+    <div class="workflow-step-num">2</div>
+    <div class="workflow-step-title">POST /parse</div>
+    <div class="workflow-step-desc">on_error="collect"</div>
+  </div>
+  <div class="workflow-step">
+    <div class="workflow-step-num">3</div>
+    <div class="workflow-step-title">Dashboard</div>
+    <div class="workflow-step-desc">Stat cards + sortable table</div>
+  </div>
+  <div class="workflow-step">
+    <div class="workflow-step-num">4</div>
+    <div class="workflow-step-title">POST /export/xlsx</div>
+    <div class="workflow-step-desc">Export to Excel</div>
+  </div>
+</div>
+</div>
+
+<!-- ===== DEPLOYMENT ARCHITECTURE ===== -->
+<h2 id="deployment-architecture">Deployment Architecture</h2>
+
+<div class="diagram-container">
+<svg viewBox="0 0 900 400" xmlns="http://www.w3.org/2000/svg" style="max-width:900px">
+  <!-- Local Dev -->
+  <rect x="20" y="10" width="260" height="180" rx="10" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+  <text x="150" y="35" text-anchor="middle" class="svg-text svg-text-bold" font-size="12">Local Development</text>
+  <text x="150" y="50" text-anchor="middle" class="svg-text-label" font-size="8">DOCKER-COMPOSE.YML</text>
+
+  <rect x="40" y="65" width="220" height="35" class="svg-box" rx="4"/>
+  <text x="150" y="87" text-anchor="middle" class="svg-text svg-text-xs">FastAPI (uvicorn --reload) :8000</text>
+
+  <rect x="40" y="110" width="220" height="35" class="svg-box" rx="4"/>
+  <text x="150" y="132" text-anchor="middle" class="svg-text svg-text-xs">Vite Dev Server (npm run dev) :5173</text>
+
+  <text x="150" y="170" text-anchor="middle" class="svg-text svg-text-xs" fill="#166534">Volume mounts: packages/, apps/</text>
+  <text x="150" y="184" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">No auth &bull; No real PHI</text>
+
+  <!-- Production -->
+  <rect x="320" y="10" width="560" height="380" rx="10" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="600" y="35" text-anchor="middle" class="svg-text svg-text-bold" font-size="12">Production (Google Cloud Run &mdash; HIPAA-eligible with BAA)</text>
+
+  <!-- IAP -->
+  <rect x="340" y="55" width="520" height="45" rx="6" fill="#dbeafe" stroke="#93c5fd"/>
+  <text x="600" y="75" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">Cloud IAP / OIDC Proxy (External Identity Boundary)</text>
+  <text x="600" y="90" text-anchor="middle" class="svg-text svg-text-xs" fill="#1d4ed8">Authenticates users &bull; Sets trusted identity headers &bull; App NEVER manages credentials</text>
+
+  <line x1="600" y1="100" x2="600" y2="120" class="svg-arrow"/>
+
+  <!-- Container -->
+  <rect x="340" y="120" width="520" height="170" rx="6" fill="#fff" stroke="#cbd5e1"/>
+  <text x="600" y="145" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">Single Container (Multi-Stage Dockerfile)</text>
+
+  <rect x="360" y="155" width="240" height="25" rx="4" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="480" y="173" text-anchor="middle" class="svg-text svg-text-xs">Stage 1: npm run build &rarr; dist/</text>
+
+  <rect x="360" y="185" width="240" height="25" rx="4" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="480" y="203" text-anchor="middle" class="svg-text svg-text-xs">Stage 2: pip install x12-edi-tools</text>
+
+  <rect x="360" y="215" width="240" height="25" rx="4" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="480" y="233" text-anchor="middle" class="svg-text svg-text-xs">Stage 3: FastAPI serves API + static</text>
+
+  <rect x="620" y="155" width="220" height="85" rx="6" fill="#fef2f2" stroke="#fca5a5"/>
+  <text x="730" y="175" text-anchor="middle" class="svg-text svg-text-bold svg-text-xs" fill="#991b1b">STATELESS</text>
+  <text x="730" y="192" text-anchor="middle" class="svg-text svg-text-xs" fill="#991b1b">No DB &bull; No sessions</text>
+  <text x="730" y="206" text-anchor="middle" class="svg-text svg-text-xs" fill="#991b1b">No temp files</text>
+  <text x="730" y="220" text-anchor="middle" class="svg-text svg-text-xs" fill="#991b1b">No PHI retained</text>
+  <text x="730" y="234" text-anchor="middle" class="svg-text svg-text-xs" fill="#991b1b">PHI-redacted logs only</text>
+
+  <!-- Infra services -->
+  <rect x="340" y="305" width="165" height="40" class="svg-box" rx="4"/>
+  <text x="422" y="330" text-anchor="middle" class="svg-text svg-text-xs">Secret Manager (future creds)</text>
+
+  <rect x="520" y="305" width="165" height="40" class="svg-box" rx="4"/>
+  <text x="602" y="330" text-anchor="middle" class="svg-text svg-text-xs">Cloud Logging (PHI-safe JSON)</text>
+
+  <rect x="700" y="305" width="145" height="40" class="svg-box" rx="4"/>
+  <text x="772" y="330" text-anchor="middle" class="svg-text svg-text-xs">Cost: ~$0-5/mo</text>
+
+  <text x="600" y="375" text-anchor="middle" class="svg-text svg-text-xs" fill="#1d4ed8">Scale to zero &bull; Pay-per-use &bull; Single container deploy</text>
+</svg>
+<div class="diagram-caption">Figure 4 &mdash; Deployment Architecture: Local Docker Compose vs Production Cloud Run</div>
+</div>
+
+<!-- ===== SECURITY BOUNDARIES ===== -->
+<h2 id="security-boundaries">Security &amp; PHI Boundaries</h2>
+<div class="alert alert-danger">
+  <div class="alert-icon">&#x1F6E1;</div>
+  <div><strong>PHI Safety is a first-class requirement.</strong> No PHI in logs, no PHI in test fixtures, no server-side file retention after request completion. All test fixtures must be synthetic. The companion guide (<code>metadata/full_text.txt</code>) is <strong>NEVER published</strong>.</div>
+</div>
+
+<div class="card-grid">
+  <div class="card">
+    <div class="card-header">Application Layer</div>
+    <ul style="font-size:0.85rem;color:#475569;padding-left:1.2rem;">
+      <li>No PHI in logs (structured JSON: correlation_id, endpoint, status, duration)</li>
+      <li>No PHI in test fixtures (all synthetic)</li>
+      <li>No PHI in published artifacts</li>
+      <li>Stateless: no persistence, no temp files</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-header">Infrastructure Layer</div>
+    <ul style="font-size:0.85rem;color:#475569;padding-left:1.2rem;">
+      <li>External identity boundary (Cloud IAP / OIDC)</li>
+      <li>App trusts identity headers, no password management</li>
+      <li>Secret Manager for future payer credentials</li>
+      <li>Cloud Logging with PHI-redacted rules</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-header">Build/Publish Boundary</div>
+    <ul style="font-size:0.85rem;color:#475569;padding-left:1.2rem;">
+      <li><code>metadata/</code> is <code>.gitignore</code>'d, NEVER in wheel/sdist</li>
+      <li>All test fixtures are synthetic, no real patient data</li>
+      <li>Payer rules are original abstractions, not copied text</li>
+      <li>MIT license, no closed-source dependencies</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===== DATA MODEL ERD ===== -->
+<h2 id="data-model-erd">Data Model Hierarchy (ERD)</h2>
+<p>Since the system is <strong>stateless with no database</strong>, this diagram shows the Pydantic model relationships that represent the X12 envelope nesting structure. These models serve as the in-memory data layer.</p>
+
+<div class="diagram-container">
+<svg viewBox="0 0 960 780" xmlns="http://www.w3.org/2000/svg" style="max-width:960px">
+  <!-- Interchange -->
+  <rect x="330" y="10" width="300" height="95" rx="8" fill="#0f172a" stroke="#334155" stroke-width="2"/>
+  <text x="480" y="32" text-anchor="middle" class="svg-text svg-text-bold svg-text-white" font-size="13">Interchange</text>
+  <text x="340" y="50" class="svg-text svg-text-xs svg-text-white" style="fill:#94a3b8">isa: ISASegment</text>
+  <text x="340" y="64" class="svg-text svg-text-xs svg-text-white" style="fill:#94a3b8">functional_groups: list[FunctionalGroup]</text>
+  <text x="340" y="78" class="svg-text svg-text-xs svg-text-white" style="fill:#94a3b8">iea: IEASegment</text>
+  <text x="340" y="92" class="svg-text svg-text-xs svg-text-white" style="fill:#94a3b8">delimiters: Delimiters</text>
+
+  <!-- ISASegment entity -->
+  <rect x="10" y="10" width="240" height="160" class="svg-box-primary" rx="6"/>
+  <text x="130" y="32" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">ISASegment</text>
+  <line x1="10" y1="38" x2="250" y2="38" class="svg-line"/>
+  <text x="22" y="55" class="svg-text svg-text-xs" fill="#1d4ed8">segment_id = "ISA"</text>
+  <text x="22" y="70" class="svg-text svg-text-xs" fill="#64748b">authorization_info_qual: str</text>
+  <text x="22" y="84" class="svg-text svg-text-xs" fill="#64748b">authorization_info: str</text>
+  <text x="22" y="98" class="svg-text svg-text-xs" fill="#64748b">security_info_qual: str</text>
+  <text x="22" y="112" class="svg-text svg-text-xs" fill="#64748b">sender_id_qualifier: str</text>
+  <text x="22" y="126" class="svg-text svg-text-xs" fill="#64748b">interchange_sender_id: str</text>
+  <text x="22" y="140" class="svg-text svg-text-xs" fill="#64748b">interchange_receiver_id: str</text>
+  <text x="22" y="154" class="svg-text svg-text-xs" fill="#64748b">... (16 fixed-width fields, 106 chars)</text>
+
+  <!-- Connection: Interchange -> ISA -->
+  <line x1="330" y1="40" x2="250" y2="40" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="290" y="36" text-anchor="middle" class="svg-text svg-text-xs" fill="#3b82f6">1:1</text>
+
+  <!-- IEASegment -->
+  <rect x="710" y="10" width="230" height="75" class="svg-box-primary" rx="6"/>
+  <text x="825" y="32" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">IEASegment</text>
+  <line x1="710" y1="38" x2="940" y2="38" class="svg-line"/>
+  <text x="720" y="55" class="svg-text svg-text-xs" fill="#64748b">number_of_groups: str</text>
+  <text x="720" y="70" class="svg-text svg-text-xs" fill="#64748b">interchange_control_number: str</text>
+
+  <!-- Connection: Interchange -> IEA -->
+  <line x1="630" y1="40" x2="710" y2="40" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="670" y="36" text-anchor="middle" class="svg-text svg-text-xs" fill="#3b82f6">1:1</text>
+
+  <!-- FunctionalGroup -->
+  <line x1="480" y1="105" x2="480" y2="140" class="svg-arrow svg-arrow-bold" marker-end="url(#arrowhead-blue)"/>
+  <text x="490" y="128" class="svg-text svg-text-xs" fill="#3b82f6">1:N</text>
+
+  <rect x="310" y="140" width="340" height="80" rx="8" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+  <text x="480" y="162" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">FunctionalGroup</text>
+  <text x="320" y="180" class="svg-text svg-text-xs" fill="#64748b">gs: GSSegment &nbsp;&nbsp; ge: GESegment</text>
+  <text x="320" y="195" class="svg-text svg-text-xs" fill="#64748b">transactions: list[Transaction270 | Transaction271]</text>
+  <text x="320" y="210" class="svg-text svg-text-xs" fill="#166534">GS08 = "005010X279A1" for 270/271</text>
+
+  <!-- Transaction -->
+  <line x1="480" y1="220" x2="480" y2="260" class="svg-arrow svg-arrow-bold" marker-end="url(#arrowhead-blue)"/>
+  <text x="490" y="245" class="svg-text svg-text-xs" fill="#3b82f6">1:N</text>
+
+  <rect x="280" y="260" width="400" height="85" rx="8" fill="#fffbeb" stroke="#fcd34d" stroke-width="1.5"/>
+  <text x="480" y="282" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">Transaction270 / Transaction271</text>
+  <text x="290" y="300" class="svg-text svg-text-xs" fill="#64748b">st: STSegment &nbsp;&nbsp; bht: BHTSegment &nbsp;&nbsp; se: SESegment</text>
+  <text x="290" y="315" class="svg-text svg-text-xs" fill="#64748b">loop_2000a: Loop2000A &nbsp; (ST01 = "270" or "271")</text>
+  <text x="290" y="330" class="svg-text svg-text-xs" fill="#92400e">Separate types: Transaction270 vs Transaction271</text>
+
+  <!-- Loop 2000A -->
+  <line x1="480" y1="345" x2="480" y2="380" class="svg-arrow svg-arrow-bold" marker-end="url(#arrowhead-blue)"/>
+  <text x="490" y="367" class="svg-text svg-text-xs" fill="#3b82f6">1:1</text>
+
+  <rect x="320" y="380" width="320" height="55" class="svg-box-purple" rx="6"/>
+  <text x="480" y="402" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">Loop2000A (HL Level 20 &mdash; Information Source)</text>
+  <text x="330" y="420" class="svg-text svg-text-xs" fill="#6b21a8">hl: HLSegment &nbsp;&nbsp; loop_2100a: Loop2100A (NM1*PR &mdash; Payer)</text>
+  <text x="330" y="432" class="svg-text svg-text-xs" fill="#6b21a8">loop_2000b: Loop2000B</text>
+
+  <!-- Loop 2000B -->
+  <line x1="480" y1="435" x2="480" y2="465" class="svg-arrow svg-arrow-bold" marker-end="url(#arrowhead-blue)"/>
+  <text x="490" y="455" class="svg-text svg-text-xs" fill="#3b82f6">1:1</text>
+
+  <rect x="320" y="465" width="320" height="55" class="svg-box-purple" rx="6"/>
+  <text x="480" y="487" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">Loop2000B (HL Level 21 &mdash; Info Receiver)</text>
+  <text x="330" y="505" class="svg-text svg-text-xs" fill="#6b21a8">hl: HLSegment &nbsp;&nbsp; loop_2100b: Loop2100B (NM1*1P &mdash; Provider)</text>
+  <text x="330" y="517" class="svg-text svg-text-xs" fill="#6b21a8">loop_2000c_list: list[Loop2000C]  (repeats per patient)</text>
+
+  <!-- Loop 2000C -->
+  <line x1="480" y1="520" x2="480" y2="555" class="svg-arrow svg-arrow-bold" marker-end="url(#arrowhead-blue)"/>
+  <text x="490" y="542" class="svg-text svg-text-xs" fill="#3b82f6">1:N</text>
+
+  <rect x="260" y="555" width="440" height="60" class="svg-box-purple" rx="6"/>
+  <text x="480" y="577" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">Loop2000C (HL Level 22 &mdash; Subscriber)</text>
+  <text x="270" y="595" class="svg-text svg-text-xs" fill="#6b21a8">hl: HLSegment &nbsp; trn: TRNSegment? &nbsp; loop_2100c: Loop2100C &nbsp; loop_2110c_list: list[Loop2110C]</text>
+  <text x="270" y="610" class="svg-text svg-text-xs" fill="#6b21a8">Repeats per patient in the batch</text>
+
+  <!-- Sub-loop details -->
+  <rect x="20" y="640" width="295" height="130" class="svg-box" rx="6"/>
+  <text x="168" y="662" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">Loop2100C (Subscriber ID)</text>
+  <line x1="20" y1="668" x2="315" y2="668" class="svg-line"/>
+  <text x="30" y="685" class="svg-text svg-text-xs" fill="#64748b">nm1: NM1Segment (NM101=IL)</text>
+  <text x="30" y="700" class="svg-text svg-text-xs" fill="#64748b">ref: REFSegment? (reference ID)</text>
+  <text x="30" y="715" class="svg-text svg-text-xs" fill="#64748b">dmg: DMGSegment? (demographics)</text>
+  <text x="30" y="730" class="svg-text svg-text-xs" fill="#64748b">dtp: DTPSegment? (dates)</text>
+  <text x="30" y="745" class="svg-text svg-text-xs" fill="#64748b">n3: N3Segment? n4: N4Segment? (271 only)</text>
+  <text x="30" y="760" class="svg-text svg-text-xs" fill="#991b1b">aaa: AAASegment? (271 rejection codes)</text>
+
+  <rect x="340" y="640" width="295" height="130" class="svg-box" rx="6"/>
+  <text x="488" y="662" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">Loop2110C (Eligibility)</text>
+  <line x1="340" y1="668" x2="635" y2="668" class="svg-line"/>
+  <text x="350" y="685" class="svg-text svg-text-xs" fill="#1d4ed8">270: eq: EQSegment (service type inquiry)</text>
+  <text x="350" y="700" class="svg-text svg-text-xs" fill="#166534">271: eb: EBSegment (eligibility/benefit)</text>
+  <text x="350" y="715" class="svg-text svg-text-xs" fill="#64748b">dtp: DTPSegment? (dates)</text>
+  <text x="350" y="730" class="svg-text svg-text-xs" fill="#64748b">loop_2120c: Loop2120C?</text>
+  <text x="350" y="745" class="svg-text svg-text-xs" fill="#64748b">&nbsp;&nbsp;(271: benefit-related entities)</text>
+  <text x="350" y="760" class="svg-text svg-text-xs" fill="#64748b">Repeats per service type inquiry</text>
+
+  <rect x="660" y="640" width="280" height="130" class="svg-box" rx="6"/>
+  <text x="800" y="662" text-anchor="middle" class="svg-text svg-text-bold svg-text-sm">Key Segment Types</text>
+  <line x1="660" y1="668" x2="940" y2="668" class="svg-line"/>
+  <text x="670" y="685" class="svg-text svg-text-xs" fill="#64748b">NM1: Entity name/ID (PR, 1P, IL)</text>
+  <text x="670" y="700" class="svg-text svg-text-xs" fill="#64748b">REF: Reference identification</text>
+  <text x="670" y="715" class="svg-text svg-text-xs" fill="#64748b">DMG: Demographics (DOB, gender)</text>
+  <text x="670" y="730" class="svg-text svg-text-xs" fill="#64748b">DTP: Date/time period</text>
+  <text x="670" y="745" class="svg-text svg-text-xs" fill="#64748b">EB: Eligibility/benefit (271)</text>
+  <text x="670" y="760" class="svg-text svg-text-xs" fill="#991b1b">AAA: Rejection reason (271)</text>
+
+  <!-- Connection lines to sub-loops -->
+  <line x1="380" y1="615" x2="168" y2="640" stroke="#c4b5fd" stroke-width="1" stroke-dasharray="4 3"/>
+  <line x1="480" y1="615" x2="488" y2="640" stroke="#c4b5fd" stroke-width="1" stroke-dasharray="4 3"/>
+</svg>
+<div class="diagram-caption">Figure 5 &mdash; Data Model Hierarchy (ERD): X12 Envelope Nesting Structure as Pydantic Models. No database &mdash; all in-memory.</div>
+</div>
+
+<!-- ===== SEGMENT MODELS ===== -->
+<h2 id="segment-models">Segment Models</h2>
+<p>Each segment uses the declarative <code>_element_map</code> pattern to map X12 element positions to Python fields. The base class provides generic <code>from_elements()</code> and <code>to_elements()</code>; only ISA and composite-element segments override.</p>
+
+<div class="table-wrapper">
+<table>
+  <thead>
+    <tr><th>Segment</th><th>File</th><th>Purpose</th><th>Key Fields</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>ISA</code></td><td>isa.py</td><td>Interchange header (16 fixed-width fields, 106 chars)</td><td>sender_id, receiver_id, date, control_number</td></tr>
+    <tr><td><code>GS</code></td><td>gs.py</td><td>Functional group header</td><td>version (005010X279A1), sender/receiver IDs</td></tr>
+    <tr><td><code>ST</code></td><td>st.py</td><td>Transaction set header</td><td>transaction_set_id (270/271), control_number</td></tr>
+    <tr><td><code>BHT</code></td><td>bht.py</td><td>Begin hierarchical transaction</td><td>purpose_code, reference_id, date, time</td></tr>
+    <tr><td><code>HL</code></td><td>hl.py</td><td>Hierarchical level (builds tree)</td><td>id, parent_id, level_code (20/21/22), child_code</td></tr>
+    <tr><td><code>NM1</code></td><td>nm1.py</td><td>Entity name/identification</td><td>entity_id_code (PR/1P/IL), name, id_qualifier, id_code</td></tr>
+    <tr><td><code>REF</code></td><td>ref.py</td><td>Reference identification</td><td>qualifier, reference_id</td></tr>
+    <tr><td><code>DMG</code></td><td>dmg.py</td><td>Demographic information</td><td>date_of_birth, gender_code</td></tr>
+    <tr><td><code>DTP</code></td><td>dtp.py</td><td>Date or time period</td><td>qualifier, format (D8/RD8), date_value</td></tr>
+    <tr><td><code>EQ</code></td><td>eq.py</td><td>Eligibility inquiry (270 only)</td><td>service_type_code</td></tr>
+    <tr><td><code>EB</code></td><td>eb.py</td><td>Eligibility/benefit info (271 only)</td><td>eligibility_code, service_type, insurance_type, amount</td></tr>
+    <tr><td><code>AAA</code></td><td>aaa.py</td><td>Request validation (271 rejection)</td><td>valid_request, reject_reason_code, follow_up_action</td></tr>
+    <tr><td><code>TRN</code></td><td>trn.py</td><td>Transaction control information</td><td>trace_type, reference_id, originator_id</td></tr>
+    <tr><td><code>N3</code></td><td>n3.py</td><td>Address line</td><td>address_line_1, address_line_2</td></tr>
+    <tr><td><code>N4</code></td><td>n4.py</td><td>Geographic location</td><td>city, state, postal_code</td></tr>
+    <tr><td><code>PER</code></td><td>per.py</td><td>Contact information</td><td>contact_name, phone, email</td></tr>
+    <tr><td><code>PRV</code></td><td>prv.py</td><td>Provider specialty</td><td>provider_code, qualifier, taxonomy_code</td></tr>
+    <tr><td><code>LS/LE</code></td><td>ls_le.py</td><td>Loop start/end (271 2115C/2120C)</td><td>loop_identifier</td></tr>
+    <tr><td><code>SE</code></td><td>se.py</td><td>Transaction set trailer</td><td>segment_count, control_number</td></tr>
+    <tr><td><code>GE</code></td><td>ge.py</td><td>Group trailer</td><td>transaction_count, control_number</td></tr>
+    <tr><td><code>IEA</code></td><td>iea.py</td><td>Interchange trailer</td><td>group_count, control_number</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ===== LOOP MODELS ===== -->
+<h2 id="loop-models">Loop Models</h2>
+<table>
+  <thead><tr><th>Loop</th><th>HL Level</th><th>Role</th><th>Key Sub-Loops</th><th>Repeats</th></tr></thead>
+  <tbody>
+    <tr><td><code>Loop2000A</code></td><td>20</td><td>Information Source</td><td>Loop2100A (NM1*PR &mdash; Payer)</td><td>1 per transaction</td></tr>
+    <tr><td><code>Loop2000B</code></td><td>21</td><td>Information Receiver</td><td>Loop2100B (NM1*1P &mdash; Provider)</td><td>1 per transaction</td></tr>
+    <tr><td><code>Loop2000C</code></td><td>22</td><td>Subscriber</td><td>Loop2100C (NM1*IL), Loop2110C (EQ/EB)</td><td>N per batch</td></tr>
+    <tr><td><code>Loop2100A</code></td><td>&mdash;</td><td>Payer ID</td><td>NM1, REF?, PER?</td><td>1</td></tr>
+    <tr><td><code>Loop2100B</code></td><td>&mdash;</td><td>Provider ID</td><td>NM1, REF?, PRV?</td><td>1</td></tr>
+    <tr><td><code>Loop2100C</code></td><td>&mdash;</td><td>Subscriber ID</td><td>NM1, REF?, DMG?, DTP?, N3?, N4?, AAA?</td><td>1</td></tr>
+    <tr><td><code>Loop2110C</code></td><td>&mdash;</td><td>Eligibility Detail</td><td>EQ (270) / EB (271), DTP?</td><td>N per subscriber</td></tr>
+    <tr><td><code>Loop2115C</code></td><td>&mdash;</td><td>Loop control (271)</td><td>LS/LE wrapper</td><td>Optional</td></tr>
+    <tr><td><code>Loop2120C</code></td><td>&mdash;</td><td>Benefit entities (271)</td><td>NM1 (PCP, plan sponsor), N3?, N4?</td><td>Optional</td></tr>
+  </tbody>
+</table>
+
+<!-- ===== TRANSACTION MODELS ===== -->
+<h2 id="transaction-models">Transaction Models</h2>
+<div class="card-grid">
+  <div class="card">
+    <div class="card-header">Transaction270</div>
+    <p style="font-size:0.85rem;color:#475569;">Eligibility inquiry. Contains ST, BHT, Loop2000A (with nested 2000B, 2000C), SE. Each Loop2000C has EQ segments for service type inquiries.</p>
+  </div>
+  <div class="card">
+    <div class="card-header">Transaction271</div>
+    <p style="font-size:0.85rem;color:#475569;">Eligibility response. Same structure but Loop2100C may include N3/N4/AAA, and Loop2110C contains EB segments with benefit info + optional Loop2120C entities.</p>
+  </div>
+</div>
+
+<!-- ===== ENUMS ===== -->
+<h2 id="enums">Enums &amp; Constants</h2>
+<table>
+  <thead><tr><th>Enum</th><th>Values</th><th>Usage</th></tr></thead>
+  <tbody>
+    <tr><td><code>EntityIdentifierCode</code></td><td>PR, 1P, IL, 40, FA, ...</td><td>NM101 &mdash; identifies entity role</td></tr>
+    <tr><td><code>HierarchicalLevelCode</code></td><td>20, 21, 22</td><td>HL03 &mdash; tree level</td></tr>
+    <tr><td><code>EligibilityInfoCode</code></td><td>1 (Active), 6 (Inactive), B (Co-Pay), ...</td><td>EB01 &mdash; eligibility status</td></tr>
+    <tr><td><code>ServiceTypeCode</code></td><td>1, 30, 33, 35, 47, 48, 50, 86, 88, 98, AL, MH, UC</td><td>EQ01/EB03 &mdash; DC Medicaid Appendix A.1</td></tr>
+    <tr><td><code>GenderCode</code></td><td>M, F, U</td><td>DMG03</td></tr>
+    <tr><td><code>AAARejectReasonCode</code></td><td>51, 71, 72, 73, 75</td><td>AAA03 &mdash; DC Medicaid rejection reasons</td></tr>
+  </tbody>
+</table>
+
+<!-- ========================================= -->
+<!-- ===== API REFERENCE ===== -->
+<!-- ========================================= -->
+<h2 id="api-overview">API Reference</h2>
+<p>All endpoints are versioned under <code>/api/v1/</code>. Every response includes an <code>X-Correlation-ID</code> header for tracing. The API is stateless &mdash; no database, no sessions.</p>
+
+<div class="alert alert-info">
+  <div class="alert-icon">&#x2139;</div>
+  <div><strong>Base URL</strong>: <code>http://localhost:8000/api/v1</code> (development) &mdash; All request/response bodies are JSON unless otherwise noted.</div>
+</div>
+
+<!-- POST /convert -->
+<div class="endpoint" id="api-convert">
+  <div class="endpoint-header">
+    <span class="method method-post">POST</span>
+    <span class="endpoint-path">/api/v1/convert</span>
+    <span class="endpoint-desc">Template-based Excel/CSV &rarr; JSON (import preview)</span>
+  </div>
+  <div class="endpoint-body">
+    <h4>Request</h4>
+    <p style="font-size:0.85rem;color:#475569;"><code>multipart/form-data</code> with <code>file</code> field (.xlsx, .csv, .tsv, .txt)</p>
+    <pre><span class="comment"># Example using curl</span>
+curl -X POST http://localhost:8000/api/v1/convert \
+  -F "file=@patients.xlsx"</pre>
+
+    <h4>Response <span class="badge badge-green">200 OK</span></h4>
+    <pre>{
+  <span class="string">"filename"</span>: <span class="string">"patients.xlsx"</span>,
+  <span class="string">"file_type"</span>: <span class="string">"excel"</span>,
+  <span class="string">"record_count"</span>: <span class="number">47</span>,
+  <span class="string">"warnings"</span>: [],
+  <span class="string">"corrections"</span>: [
+    {
+      <span class="string">"row"</span>: <span class="number">3</span>,
+      <span class="string">"field"</span>: <span class="string">"date_of_birth"</span>,
+      <span class="string">"original"</span>: <span class="string">"01/15/1985"</span>,
+      <span class="string">"corrected"</span>: <span class="string">"19850115"</span>,
+      <span class="string">"rule"</span>: <span class="string">"date_normalization"</span>
+    },
+    {
+      <span class="string">"row"</span>: <span class="number">5</span>,
+      <span class="string">"field"</span>: <span class="string">"last_name"</span>,
+      <span class="string">"original"</span>: <span class="string">"smith"</span>,
+      <span class="string">"corrected"</span>: <span class="string">"SMITH"</span>,
+      <span class="string">"rule"</span>: <span class="string">"uppercase_names"</span>
+    }
+  ],
+  <span class="string">"patients"</span>: [
+    {
+      <span class="string">"last_name"</span>: <span class="string">"SMITH"</span>,
+      <span class="string">"first_name"</span>: <span class="string">"JOHN"</span>,
+      <span class="string">"date_of_birth"</span>: <span class="string">"19850115"</span>,
+      <span class="string">"gender"</span>: <span class="string">"M"</span>,
+      <span class="string">"member_id"</span>: <span class="string">"12345678"</span>,
+      <span class="string">"ssn"</span>: <span class="keyword">null</span>,
+      <span class="string">"service_type_code"</span>: <span class="string">"30"</span>,
+      <span class="string">"service_date"</span>: <span class="string">"20260406"</span>,
+      <span class="string">"service_date_end"</span>: <span class="keyword">null</span>
+    }
+  ]
+}</pre>
+
+    <h4>Error Response <span class="badge badge-red">400</span></h4>
+    <pre>{
+  <span class="string">"detail"</span>: <span class="string">"Missing required column: 'last_name'. Your file must include columns: last_name, first_name, date_of_birth, gender, member_id, service_date."</span>,
+  <span class="string">"suggestion"</span>: <span class="string">"Download the template from GET /api/v1/templates/eligibility_template.xlsx"</span>
+}</pre>
+  </div>
+</div>
+
+<!-- POST /generate -->
+<div class="endpoint" id="api-generate">
+  <div class="endpoint-header">
+    <span class="method method-post">POST</span>
+    <span class="endpoint-path">/api/v1/generate</span>
+    <span class="endpoint-desc">JSON PatientRecords &rarr; X12 270</span>
+  </div>
+  <div class="endpoint-body">
+    <h4>Request</h4>
+    <pre>{
+  <span class="string">"config"</span>: {
+    <span class="string">"organization_name"</span>: <span class="string">"ACME HOME HEALTH"</span>,
+    <span class="string">"provider_npi"</span>: <span class="string">"1234567890"</span>,
+    <span class="string">"provider_entity_type"</span>: <span class="string">"2"</span>,
+    <span class="string">"trading_partner_id"</span>: <span class="string">"MYTP123456"</span>,
+    <span class="string">"payer_name"</span>: <span class="string">"DC MEDICAID"</span>,
+    <span class="string">"payer_id"</span>: <span class="string">"DCMEDICAID"</span>,
+    <span class="string">"interchange_receiver_id"</span>: <span class="string">"DCMEDICAID"</span>,
+    <span class="string">"usage_indicator"</span>: <span class="string">"T"</span>
+  },
+  <span class="string">"patients"</span>: [
+    {
+      <span class="string">"last_name"</span>: <span class="string">"SMITH"</span>,
+      <span class="string">"first_name"</span>: <span class="string">"JOHN"</span>,
+      <span class="string">"date_of_birth"</span>: <span class="string">"19850115"</span>,
+      <span class="string">"gender"</span>: <span class="string">"M"</span>,
+      <span class="string">"member_id"</span>: <span class="string">"12345678"</span>,
+      <span class="string">"service_type_code"</span>: <span class="string">"30"</span>,
+      <span class="string">"service_date"</span>: <span class="string">"20260406"</span>
+    }
+  ],
+  <span class="string">"profile"</span>: <span class="string">"dc_medicaid"</span>
+}</pre>
+
+    <h4>Response <span class="badge badge-green">200 OK</span></h4>
+    <pre>{
+  <span class="string">"x12_content"</span>: <span class="string">"ISA*00*          *00*          *ZZ*MYTP123456     *ZZ*DCMEDICAID     *260406*1200*^*00501*000000001*0*T*:~GS*HS*MYTP123456*DCMEDICAID*20260406*1200*1*X*005010X279A1~ST*270*0001*005010X279A1~BHT*0022*13*REF123*20260406*1200~HL*1**20*1~..."</span>,
+  <span class="string">"transaction_count"</span>: <span class="number">1</span>,
+  <span class="string">"segment_count"</span>: <span class="number">14</span>,
+  <span class="string">"file_size_bytes"</span>: <span class="number">847</span>,
+  <span class="string">"split_count"</span>: <span class="number">1</span>
+}</pre>
+  </div>
+</div>
+
+<!-- POST /validate -->
+<div class="endpoint" id="api-validate">
+  <div class="endpoint-header">
+    <span class="method method-post">POST</span>
+    <span class="endpoint-path">/api/v1/validate</span>
+    <span class="endpoint-desc">X12 file &rarr; SNIP 1-5 + DC Medicaid validation</span>
+  </div>
+  <div class="endpoint-body">
+    <h4>Request</h4>
+    <p style="font-size:0.85rem;color:#475569;"><code>multipart/form-data</code> with <code>file</code> (.x12, .edi, .txt)</p>
+
+    <h4>Response <span class="badge badge-green">200 OK</span> (Valid)</h4>
+    <pre>{
+  <span class="string">"filename"</span>: <span class="string">"batch_270.x12"</span>,
+  <span class="string">"is_valid"</span>: <span class="keyword">true</span>,
+  <span class="string">"error_count"</span>: <span class="number">0</span>,
+  <span class="string">"warning_count"</span>: <span class="number">0</span>,
+  <span class="string">"issues"</span>: []
+}</pre>
+
+    <h4>Response <span class="badge badge-green">200 OK</span> (Invalid)</h4>
+    <pre>{
+  <span class="string">"filename"</span>: <span class="string">"batch_270.x12"</span>,
+  <span class="string">"is_valid"</span>: <span class="keyword">false</span>,
+  <span class="string">"error_count"</span>: <span class="number">2</span>,
+  <span class="string">"warning_count"</span>: <span class="number">1</span>,
+  <span class="string">"issues"</span>: [
+    {
+      <span class="string">"severity"</span>: <span class="string">"error"</span>,
+      <span class="string">"level"</span>: <span class="string">"dc_medicaid"</span>,
+      <span class="string">"code"</span>: <span class="string">"DCM_FUTURE_SERVICE_DATE"</span>,
+      <span class="string">"message"</span>: <span class="string">"Row 12: Service date '20270101' is in the future. DC Medicaid does not accept future service dates."</span>,
+      <span class="string">"location"</span>: <span class="string">"Loop2110C.DTP.03"</span>,
+      <span class="string">"segment_id"</span>: <span class="string">"DTP"</span>,
+      <span class="string">"element"</span>: <span class="string">"03"</span>,
+      <span class="string">"suggestion"</span>: <span class="string">"Use today's date or a past date within the last 13 months."</span>,
+      <span class="string">"profile"</span>: <span class="string">"dc_medicaid"</span>
+    },
+    {
+      <span class="string">"severity"</span>: <span class="string">"error"</span>,
+      <span class="string">"level"</span>: <span class="string">"snip5"</span>,
+      <span class="string">"code"</span>: <span class="string">"SNIP5_INVALID_NPI"</span>,
+      <span class="string">"message"</span>: <span class="string">"Provider NPI '123456789' fails Luhn check digit validation."</span>,
+      <span class="string">"location"</span>: <span class="string">"Loop2100B.NM1.09"</span>,
+      <span class="string">"segment_id"</span>: <span class="string">"NM1"</span>,
+      <span class="string">"element"</span>: <span class="string">"09"</span>,
+      <span class="string">"suggestion"</span>: <span class="string">"Verify the NPI at https://npiregistry.cms.hhs.gov/"</span>,
+      <span class="string">"profile"</span>: <span class="keyword">null</span>
+    }
+  ]
+}</pre>
+  </div>
+</div>
+
+<!-- POST /parse -->
+<div class="endpoint" id="api-parse">
+  <div class="endpoint-header">
+    <span class="method method-post">POST</span>
+    <span class="endpoint-path">/api/v1/parse</span>
+    <span class="endpoint-desc">X12 271 &rarr; Structured eligibility dashboard data</span>
+  </div>
+  <div class="endpoint-body">
+    <h4>Request</h4>
+    <p style="font-size:0.85rem;color:#475569;"><code>multipart/form-data</code> with <code>file</code> (.x12, .edi, .txt containing a 271 response)</p>
+
+    <h4>Response <span class="badge badge-green">200 OK</span></h4>
+    <pre>{
+  <span class="string">"filename"</span>: <span class="string">"response_271.x12"</span>,
+  <span class="string">"transaction_count"</span>: <span class="number">47</span>,
+  <span class="string">"summary"</span>: {
+    <span class="string">"active"</span>: <span class="number">34</span>,
+    <span class="string">"inactive"</span>: <span class="number">8</span>,
+    <span class="string">"error"</span>: <span class="number">3</span>,
+    <span class="string">"not_found"</span>: <span class="number">2</span>
+  },
+  <span class="string">"payer_name"</span>: <span class="string">"DC MEDICAID"</span>,
+  <span class="string">"results"</span>: [
+    {
+      <span class="string">"member_name"</span>: <span class="string">"SMITH, JOHN"</span>,
+      <span class="string">"member_id"</span>: <span class="string">"12345678"</span>,
+      <span class="string">"date_of_birth"</span>: <span class="string">"19850115"</span>,
+      <span class="string">"overall_status"</span>: <span class="string">"active"</span>,
+      <span class="string">"eligibility_segments"</span>: [
+        {
+          <span class="string">"eligibility_code"</span>: <span class="string">"1"</span>,
+          <span class="string">"eligibility_label"</span>: <span class="string">"Active Coverage"</span>,
+          <span class="string">"service_type_code"</span>: <span class="string">"30"</span>,
+          <span class="string">"service_type_label"</span>: <span class="string">"Health Benefit Plan Coverage"</span>,
+          <span class="string">"insurance_type"</span>: <span class="string">"MC"</span>,
+          <span class="string">"insurance_type_label"</span>: <span class="string">"Medicaid"</span>,
+          <span class="string">"plan_description"</span>: <span class="string">"FFS"</span>,
+          <span class="string">"coverage_start"</span>: <span class="string">"20260101"</span>,
+          <span class="string">"coverage_end"</span>: <span class="string">"20261231"</span>,
+          <span class="string">"monetary_amount"</span>: <span class="keyword">null</span>
+        }
+      ],
+      <span class="string">"benefit_entities"</span>: [
+        {
+          <span class="string">"entity_type"</span>: <span class="string">"Primary Care Provider"</span>,
+          <span class="string">"name"</span>: <span class="string">"DR. WELLNESS"</span>,
+          <span class="string">"npi"</span>: <span class="string">"1234567890"</span>,
+          <span class="string">"address"</span>: <span class="string">"456 Health Ave, Washington, DC 20002"</span>
+        }
+      ],
+      <span class="string">"aaa_errors"</span>: []
+    },
+    {
+      <span class="string">"member_name"</span>: <span class="string">"DOE, JANE"</span>,
+      <span class="string">"member_id"</span>: <span class="string">"00000000"</span>,
+      <span class="string">"date_of_birth"</span>: <span class="string">"19900520"</span>,
+      <span class="string">"overall_status"</span>: <span class="string">"error"</span>,
+      <span class="string">"eligibility_segments"</span>: [],
+      <span class="string">"benefit_entities"</span>: [],
+      <span class="string">"aaa_errors"</span>: [
+        {
+          <span class="string">"reject_reason_code"</span>: <span class="string">"72"</span>,
+          <span class="string">"reject_reason_label"</span>: <span class="string">"Invalid/Missing Subscriber/Insured ID"</span>,
+          <span class="string">"follow_up_action"</span>: <span class="string">"C"</span>,
+          <span class="string">"follow_up_label"</span>: <span class="string">"Please Correct and Resubmit"</span>
+        }
+      ]
+    }
+  ]
+}</pre>
+  </div>
+</div>
+
+<!-- POST /export/xlsx -->
+<div class="endpoint" id="api-export">
+  <div class="endpoint-header">
+    <span class="method method-post">POST</span>
+    <span class="endpoint-path">/api/v1/export/xlsx</span>
+    <span class="endpoint-desc">Eligibility results &rarr; Excel download</span>
+  </div>
+  <div class="endpoint-body">
+    <h4>Request</h4>
+    <p style="font-size:0.85rem;color:#475569;"><code>application/json</code> with parsed eligibility results array</p>
+
+    <h4>Response <span class="badge badge-green">200 OK</span></h4>
+    <p style="font-size:0.85rem;color:#475569;"><code>Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet</code><br>Streaming binary download &mdash; formatted workbook generated server-side with openpyxl.</p>
+  </div>
+</div>
+
+<!-- POST /pipeline -->
+<div class="endpoint" id="api-pipeline">
+  <div class="endpoint-header">
+    <span class="method method-post">POST</span>
+    <span class="endpoint-path">/api/v1/pipeline</span>
+    <span class="endpoint-desc">Single-call end-to-end (agent-friendly)</span>
+  </div>
+  <div class="endpoint-body">
+    <h4>Request</h4>
+    <p style="font-size:0.85rem;color:#475569;"><code>multipart/form-data</code> with <code>file</code> (.xlsx, .csv) + optional <code>profile</code> (default: "dc_medicaid")</p>
+
+    <h4>Response <span class="badge badge-green">200 OK</span> (Success)</h4>
+    <pre>{
+  <span class="string">"x12_content"</span>: <span class="string">"ISA*00*..."</span>,
+  <span class="string">"validation_result"</span>: {
+    <span class="string">"is_valid"</span>: <span class="keyword">true</span>,
+    <span class="string">"error_count"</span>: <span class="number">0</span>,
+    <span class="string">"issues"</span>: []
+  },
+  <span class="string">"transaction_count"</span>: <span class="number">47</span>,
+  <span class="string">"segment_count"</span>: <span class="number">612</span>,
+  <span class="string">"warnings"</span>: []
+}</pre>
+
+    <h4>Response <span class="badge badge-green">200 OK</span> (Validation Failed)</h4>
+    <pre>{
+  <span class="string">"x12_content"</span>: <span class="keyword">null</span>,
+  <span class="string">"validation_result"</span>: {
+    <span class="string">"is_valid"</span>: <span class="keyword">false</span>,
+    <span class="string">"error_count"</span>: <span class="number">3</span>,
+    <span class="string">"issues"</span>: [ <span class="comment">/* ... */</span> ]
+  },
+  <span class="string">"transaction_count"</span>: <span class="number">0</span>,
+  <span class="string">"segment_count"</span>: <span class="number">0</span>,
+  <span class="string">"warnings"</span>: [<span class="string">"3 validation errors prevented X12 generation."</span>]
+}</pre>
+  </div>
+</div>
+
+<!-- GET /templates -->
+<div class="endpoint" id="api-templates">
+  <div class="endpoint-header">
+    <span class="method method-get">GET</span>
+    <span class="endpoint-path">/api/v1/templates/{name}</span>
+    <span class="endpoint-desc">Download canonical import templates</span>
+  </div>
+  <div class="endpoint-body">
+    <h4>Available Templates</h4>
+    <table>
+      <tr><td><code>eligibility_template.xlsx</code></td><td>Excel template with pre-formatted columns</td></tr>
+      <tr><td><code>eligibility_template.csv</code></td><td>CSV template with header row</td></tr>
+    </table>
+
+    <h4>Canonical Template Columns</h4>
+    <table>
+      <thead><tr><th>Column</th><th>Required</th><th>Format</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td><code>last_name</code></td><td><span class="badge badge-red">Yes</span></td><td>Text (auto-uppercased)</td><td>SMITH</td></tr>
+        <tr><td><code>first_name</code></td><td><span class="badge badge-red">Yes</span></td><td>Text (auto-uppercased)</td><td>JOHN</td></tr>
+        <tr><td><code>date_of_birth</code></td><td><span class="badge badge-red">Yes</span></td><td>CCYYMMDD or MM/DD/YYYY</td><td>19850115</td></tr>
+        <tr><td><code>gender</code></td><td><span class="badge badge-red">Yes</span></td><td>M, F, or U</td><td>M</td></tr>
+        <tr><td><code>member_id</code></td><td><span class="badge badge-amber">Conditional</span></td><td>DC Medicaid Member ID</td><td>12345678</td></tr>
+        <tr><td><code>ssn</code></td><td><span class="badge badge-amber">Conditional</span></td><td>9-digit SSN</td><td>999887777</td></tr>
+        <tr><td><code>service_type_code</code></td><td><span class="badge badge-gray">Default: 30</span></td><td>Appendix A.1 code</td><td>30</td></tr>
+        <tr><td><code>service_date</code></td><td><span class="badge badge-red">Yes</span></td><td>CCYYMMDD</td><td>20260406</td></tr>
+        <tr><td><code>service_date_end</code></td><td><span class="badge badge-gray">Optional</span></td><td>CCYYMMDD (for RD8 ranges)</td><td>20260430</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- GET /profiles -->
+<div class="endpoint" id="api-profiles">
+  <div class="endpoint-header">
+    <span class="method method-get">GET</span>
+    <span class="endpoint-path">/api/v1/profiles/{name}/defaults</span>
+    <span class="endpoint-desc">Get payer profile default values</span>
+  </div>
+  <div class="endpoint-body">
+    <h4>Response <span class="badge badge-green">200 OK</span></h4>
+    <pre>{
+  <span class="string">"payer_name"</span>: <span class="string">"DC MEDICAID"</span>,
+  <span class="string">"payer_id"</span>: <span class="string">"DCMEDICAID"</span>,
+  <span class="string">"interchange_receiver_id"</span>: <span class="string">"DCMEDICAID"</span>,
+  <span class="string">"receiver_id_qualifier"</span>: <span class="string">"ZZ"</span>,
+  <span class="string">"default_service_type_code"</span>: <span class="string">"30"</span>,
+  <span class="string">"max_batch_size"</span>: <span class="number">5000</span>
+}</pre>
+  </div>
+</div>
+
+<!-- GET /health -->
+<div class="endpoint" id="api-health">
+  <div class="endpoint-header">
+    <span class="method method-get">GET</span>
+    <span class="endpoint-path">/api/v1/health</span>
+    <span class="endpoint-desc">Health check</span>
+  </div>
+  <div class="endpoint-body">
+    <h4>Response <span class="badge badge-green">200 OK</span></h4>
+    <pre>{
+  <span class="string">"status"</span>: <span class="string">"ok"</span>,
+  <span class="string">"version"</span>: <span class="string">"0.1.0"</span>
+}</pre>
+  </div>
+</div>
+
+<!-- ===== LIBRARY API ===== -->
+<h2 id="lib-convenience">Library: Convenience API (Agent-Friendly)</h2>
+<p>High-level functions for zero-config usage. Designed for LLM agents and non-expert callers.</p>
+<pre><span class="keyword">import</span> <span class="type">x12_edi_tools</span>
+
+<span class="comment"># Import: auto-detect format, auto-correct dates/names/IDs</span>
+patients = <span class="type">x12_edi_tools</span>.<span class="function">from_csv</span>(<span class="string">"patients.csv"</span>)
+patients = <span class="type">x12_edi_tools</span>.<span class="function">from_excel</span>(<span class="string">"patients.xlsx"</span>)
+
+<span class="comment"># Generate: one call, all defaults filled</span>
+interchange = <span class="type">x12_edi_tools</span>.<span class="function">build_270</span>(patients, profile=<span class="string">"dc_medicaid"</span>)
+
+<span class="comment"># Validate: plain-English results</span>
+result = <span class="type">x12_edi_tools</span>.<span class="function">validate</span>(interchange, profile=<span class="string">"dc_medicaid"</span>)
+<span class="keyword">print</span>(result.<span class="function">human_readable_summary</span>())
+
+<span class="comment"># Encode + write</span>
+x12_content = <span class="type">x12_edi_tools</span>.<span class="function">encode</span>(interchange)
+<span class="type">Path</span>(<span class="string">"output.x12"</span>).<span class="function">write_text</span>(x12_content)
+
+<span class="comment"># Parse 271 responses: structured eligibility, not raw X12</span>
+eligibility = <span class="type">x12_edi_tools</span>.<span class="function">read_271</span>(<span class="string">"response.x12"</span>)
+df = eligibility.<span class="function">to_dataframe</span>()  <span class="comment"># optional pandas integration</span></pre>
+
+<h2 id="lib-granular">Library: Granular API (Full Control)</h2>
+<pre><span class="keyword">import</span> <span class="type">x12_edi_tools</span>
+
+<span class="comment"># Parse raw X12 into typed models</span>
+interchange = <span class="type">x12_edi_tools</span>.<span class="function">parse</span>(raw_x12_string)
+result = <span class="type">x12_edi_tools</span>.<span class="function">parse</span>(raw, on_error=<span class="string">"collect"</span>)  <span class="comment"># partial success</span>
+
+<span class="comment"># Encode typed models back to X12</span>
+raw_output = <span class="type">x12_edi_tools</span>.<span class="function">encode</span>(interchange)
+
+<span class="comment"># Validate with specific SNIP levels</span>
+result = <span class="type">x12_edi_tools</span>.<span class="function">validate</span>(interchange, levels={<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>})
+
+<span class="comment"># Types for inspection</span>
+<span class="type">x12_edi_tools</span>.Interchange
+<span class="type">x12_edi_tools</span>.Transaction270
+<span class="type">x12_edi_tools</span>.Transaction271
+<span class="type">x12_edi_tools</span>.ParseResult
+<span class="type">x12_edi_tools</span>.ValidationResult
+<span class="type">x12_edi_tools</span>.ValidationError
+<span class="type">x12_edi_tools</span>.SnipLevel
+<span class="type">x12_edi_tools</span>.Delimiters</pre>
+
+<!-- ===== SUBMITTER CONFIG ===== -->
+<h2 id="lib-config">SubmitterConfig</h2>
+<p>Provider/submitter identity and envelope settings. Passed from the frontend via API request body &mdash; the backend never reads from server-side config files for submitter identity.</p>
+<pre><span class="keyword">class</span> <span class="type">SubmitterConfig</span>(<span class="type">BaseModel</span>):
+    <span class="comment"># Group 1: Submitter Identity</span>
+    organization_name: <span class="type">str</span>                  <span class="comment"># NM103 in 2100B</span>
+    provider_npi: <span class="type">str</span>                       <span class="comment"># NM109 in 2100B</span>
+    provider_entity_type: <span class="type">str</span> = <span class="string">"2"</span>         <span class="comment"># NM102 in 2100B</span>
+    trading_partner_id: <span class="type">str</span>                 <span class="comment"># ISA06, GS02</span>
+    provider_taxonomy_code: <span class="type">str</span> | <span class="keyword">None</span> = <span class="keyword">None</span>  <span class="comment"># PRV03</span>
+
+    <span class="comment"># Group 2: Payer/Receiver (from profile, overridable)</span>
+    payer_name: <span class="type">str</span>                          <span class="comment"># NM103 in 2100A</span>
+    payer_id: <span class="type">str</span>                            <span class="comment"># NM109 in 2100A</span>
+    interchange_receiver_id: <span class="type">str</span>            <span class="comment"># ISA08</span>
+    receiver_id_qualifier: <span class="type">str</span> = <span class="string">"ZZ"</span>       <span class="comment"># ISA07</span>
+
+    <span class="comment"># Group 3: Envelope</span>
+    sender_id_qualifier: <span class="type">str</span> = <span class="string">"ZZ"</span>         <span class="comment"># ISA05</span>
+    usage_indicator: <span class="type">str</span> = <span class="string">"T"</span>             <span class="comment"># ISA15 (T=Test, P=Production)</span>
+    acknowledgment_requested: <span class="type">str</span> = <span class="string">"0"</span>    <span class="comment"># ISA14</span>
+
+    <span class="comment"># Group 4: Transaction Defaults</span>
+    default_service_type_code: <span class="type">str</span> = <span class="string">"30"</span>   <span class="comment"># Health Benefit Plan Coverage</span>
+    default_service_date: <span class="type">str</span> | <span class="keyword">None</span> = <span class="keyword">None</span>  <span class="comment"># None = today</span>
+    max_batch_size: <span class="type">int</span> = <span class="number">5000</span>              <span class="comment"># DC Medicaid hard limit</span></pre>
+
+<!-- ===== CONFIGURATION SYSTEM ===== -->
+<h2 id="config-system">Configuration System</h2>
+<p>The web UI includes a Settings panel where the user configures their provider identity, target payer, and envelope defaults <strong>before</strong> uploading files. Settings persist in browser <code>localStorage</code> (no server-side storage).</p>
+
+<h3>Configuration Groups</h3>
+<div class="card-grid">
+  <div class="card">
+    <div class="card-header">Group 1: Submitter / Provider Identity</div>
+    <p style="font-size:0.85rem;color:#475569;">Who you are &mdash; set once, used for every 270 file generated.</p>
+    <ul style="font-size:0.82rem;color:#475569;padding-left:1.2rem;">
+      <li>Organization Name (required)</li>
+      <li>Provider NPI (required, Luhn-validated)</li>
+      <li>Provider Entity Type (default: 2)</li>
+      <li>Trading Partner ID (required)</li>
+      <li>Taxonomy Code, Contact Info (optional)</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-header">Group 2: Payer / Receiver Identity</div>
+    <p style="font-size:0.85rem;color:#475569;">Who you're sending to &mdash; auto-populated from payer profile.</p>
+    <ul style="font-size:0.82rem;color:#475569;padding-left:1.2rem;">
+      <li>Payer Profile selection (drives defaults)</li>
+      <li>Payer Name: "DC MEDICAID"</li>
+      <li>Payer ID: "DCMEDICAID"</li>
+      <li>Interchange Receiver ID: "DCMEDICAID"</li>
+      <li>Receiver ID Qualifier: "ZZ"</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-header">Group 3: Envelope Defaults</div>
+    <p style="font-size:0.85rem;color:#475569;">X12 envelope settings &mdash; rarely change but must be configurable.</p>
+    <ul style="font-size:0.82rem;color:#475569;padding-left:1.2rem;">
+      <li>Sender ID Qualifier (default: ZZ)</li>
+      <li>Usage Indicator (T=Test, P=Production)</li>
+      <li>Acknowledgment Requested (default: 0)</li>
+      <li>X12 Version: 005010X279A1 (read-only)</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-header">Group 4: Transaction Defaults</div>
+    <p style="font-size:0.85rem;color:#475569;">Defaults applied when CSV doesn't specify per-row values.</p>
+    <ul style="font-size:0.82rem;color:#475569;padding-left:1.2rem;">
+      <li>Default Service Type Code: 30</li>
+      <li>Default Service Date: today</li>
+      <li>Max Batch Size: 5000</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===== PAYER PROFILES ===== -->
+<h2 id="payer-profiles">Payer Profiles</h2>
+<p>DC Medicaid rules are <strong>not hardcoded</strong> into the generic validator. The <code>PayerProfile</code> protocol allows pluggable payer-specific validation.</p>
+<pre><span class="keyword">class</span> <span class="type">PayerProfile</span>(<span class="type">Protocol</span>):
+    name: <span class="type">str</span>
+    <span class="keyword">def</span> <span class="function">validate</span>(self, interchange: <span class="type">Interchange</span>) -> <span class="type">list</span>[<span class="type">ValidationError</span>]: ...
+    <span class="keyword">def</span> <span class="function">get_defaults</span>(self) -> <span class="type">dict</span>: ...  <span class="comment"># Default values for generation</span></pre>
+
+<h2 id="dc-medicaid">DC Medicaid Profile</h2>
+<table>
+  <thead><tr><th>Rule</th><th>Value</th><th>Source</th></tr></thead>
+  <tbody>
+    <tr><td>ISA08 / GS03</td><td><code>DCMEDICAID</code> (padded to 15)</td><td>Companion Guide</td></tr>
+    <tr><td>Payer Name</td><td><code>DC MEDICAID</code> in NM1 Loop 2100A</td><td>Companion Guide</td></tr>
+    <tr><td>Dependents</td><td>No HL03=23 (all members are primary)</td><td>Companion Guide</td></tr>
+    <tr><td>Real-time Limit</td><td>Max 1 transaction</td><td>Companion Guide</td></tr>
+    <tr><td>Batch Limit</td><td>Max 5000 transactions</td><td>Companion Guide</td></tr>
+    <tr><td>Service Dates</td><td>No future; historical max 13 months</td><td>Companion Guide</td></tr>
+    <tr><td>Service Type Codes</td><td>1, 30, 33, 35, 47, 48, 50, 86, 88, 98, AL, MH, UC</td><td>Appendix A.1</td></tr>
+    <tr><td>AAA Reject: 51</td><td>Provider Not on File</td><td>Companion Guide</td></tr>
+    <tr><td>AAA Reject: 71</td><td>DOB Mismatch</td><td>Companion Guide</td></tr>
+    <tr><td>AAA Reject: 72</td><td>Invalid Member ID</td><td>Companion Guide</td></tr>
+    <tr><td>AAA Reject: 73</td><td>Invalid Name</td><td>Companion Guide</td></tr>
+    <tr><td>AAA Reject: 75</td><td>Subscriber Not Found</td><td>Companion Guide</td></tr>
+  </tbody>
+</table>
+
+<h4>Search Criteria Combinations (Section 7.2)</h4>
+<div class="card">
+<ul style="font-size:0.88rem;color:#334155;padding-left:1.5rem;">
+  <li><strong>Member ID search</strong>: ID + (name + DOB) OR (name + SSN) OR (SSN + DOB)</li>
+  <li><strong>Non-member search</strong>: name + DOB OR name + SSN OR SSN + DOB</li>
+</ul>
+</div>
+
+<!-- ===== DELIVERY STRATEGY ===== -->
+<h2 id="delivery-strategy">Delivery Strategy</h2>
+<div class="alert alert-success">
+  <div class="alert-icon">&#x1F4CB;</div>
+  <div>Execute as <strong>vertical slices</strong> rather than directory completion. Deliver working workflows end-to-end before generalizing.</div>
+</div>
+
+<ol style="font-size:0.9rem;">
+  <li><strong>Slice A first</strong>: Canonical template intake, row validation, 270 generation, validation of generated output, file download.</li>
+  <li><strong>Slice B second</strong>: 271 upload, tolerant parsing, eligibility dashboard, Excel export.</li>
+  <li><strong>Generalize after A+B are green</strong>: Broaden optional segment coverage, deepen payer-profile seams, expand SNIP depth.</li>
+  <li><strong>Hardening last</strong>: Packaging, OSS ceremony, stricter quality gates once workflow contract is stable.</li>
+</ol>
+
+<!-- ===== PHASE ROADMAP ===== -->
+<h2 id="phases">Phase Roadmap</h2>
+
+<div class="phase-item">
+  <div class="phase-marker" style="background:#64748b;">0</div>
+  <div class="phase-body">
+    <div class="phase-title">Scaffolding + Tooling</div>
+    <div class="phase-meta">~20 config/init files &bull; pip install, lint, Vite, Makefile, VERSION, synthetic fixtures</div>
+  </div>
+</div>
+<div class="phase-item">
+  <div class="phase-marker" style="background:#3b82f6;">1</div>
+  <div class="phase-body">
+    <div class="phase-title">Library: Pydantic Models + Enums</div>
+    <div class="phase-meta">~25 model files &bull; Segments (15+), loops (12), transactions (2), base classes, _element_map pattern</div>
+  </div>
+</div>
+<div class="phase-item">
+  <div class="phase-marker" style="background:#3b82f6;">2</div>
+  <div class="phase-body">
+    <div class="phase-title">Library: Parser</div>
+    <div class="phase-meta">~8 parser files &bull; 4-stage pipeline: ISA parser, tokenizer, segment parser, loop builder + 8 synthetic fixtures</div>
+  </div>
+</div>
+<div class="phase-item">
+  <div class="phase-marker" style="background:#3b82f6;">3</div>
+  <div class="phase-body">
+    <div class="phase-title">Library: Encoder</div>
+    <div class="phase-meta">~4 encoder files &bull; Segment encoder, ISA encoder, X12 encoder + auto-compute counts + roundtrip tests</div>
+  </div>
+</div>
+<div class="phase-item">
+  <div class="phase-marker" style="background:#3b82f6;">4</div>
+  <div class="phase-body">
+    <div class="phase-title">Library: Validator + DC Medicaid Profile</div>
+    <div class="phase-meta">~10 validator files &bull; SNIP 1-5 generic + dc_medicaid payer profile pack</div>
+  </div>
+</div>
+<div class="phase-item">
+  <div class="phase-marker" style="background:#22c55e;">5</div>
+  <div class="phase-body">
+    <div class="phase-title">Web Backend: FastAPI API</div>
+    <div class="phase-meta">~18 backend files &bull; 9 endpoints, middleware, services, schemas, templates, PHI-safe logging</div>
+  </div>
+</div>
+<div class="phase-item">
+  <div class="phase-marker" style="background:#a855f7;">6</div>
+  <div class="phase-body">
+    <div class="phase-title">Web Frontend: React UI</div>
+    <div class="phase-meta">~40 frontend files &bull; 6 pages, UI components, hooks, smart file routing, Tailwind design system</div>
+  </div>
+</div>
+<div class="phase-item">
+  <div class="phase-marker" style="background:#f59e0b;">7</div>
+  <div class="phase-body">
+    <div class="phase-title">Integration + Docker</div>
+    <div class="phase-meta">~6 docker files &bull; Full E2E flow, docker-compose, multi-stage Dockerfile, smoke tests</div>
+  </div>
+</div>
+<div class="phase-item">
+  <div class="phase-marker" style="background:#ef4444;">8</div>
+  <div class="phase-body">
+    <div class="phase-title">CI/CD + Docs + Hardening + Release</div>
+    <div class="phase-meta">~25 config/doc files &bull; GitHub Actions, Hypothesis tests, CONTRIBUTING, SECURITY, PyPI publish</div>
+  </div>
+</div>
+
+<!-- ===== DESIGN PHILOSOPHY ===== -->
+<h2 id="design-philosophy">Design Philosophy: Zero Cognitive Load</h2>
+<p>The primary user is a <strong>non-technical healthcare worker</strong>. Every design decision is measured against: <em>"Does this make the user think less?"</em></p>
+
+<div class="card-grid">
+  <div class="card">
+    <div class="card-header">1. One Happy Path</div>
+    <p style="font-size:0.85rem;color:#475569;">User configures provider/payer once in Settings, then uploads files and gets results. Sensible defaults for everything.</p>
+  </div>
+  <div class="card">
+    <div class="card-header">2. System Tells You What to Do Next</div>
+    <p style="font-size:0.85rem;color:#475569;">Every screen has exactly one primary action. After upload: "Preview." After preview: "Generate." The UI is a guided corridor.</p>
+  </div>
+  <div class="card">
+    <div class="card-header">3. Errors Are Instructions</div>
+    <p style="font-size:0.85rem;color:#475569;">Never show "SNIP Level 2 Error: E2.05". Show "Row 12: Member ID '1234' is too short &mdash; DC Medicaid requires 8 digits."</p>
+  </div>
+  <div class="card">
+    <div class="card-header">4. Auto-Detect, Auto-Correct, Auto-Fill</div>
+    <p style="font-size:0.85rem;color:#475569;">Auto-detect file type, auto-correct dates, auto-uppercase names, auto-pad member IDs, auto-fill defaults, auto-split at 5000.</p>
+  </div>
+  <div class="card">
+    <div class="card-header">5. Progressive Disclosure</div>
+    <p style="font-size:0.85rem;color:#475569;">Summary first, details on demand. Status badges (Active/Inactive/Error); click to expand. Raw X12 never shown unless requested.</p>
+  </div>
+  <div class="card">
+    <div class="card-header">6. Drag-and-Drop Is the Interface</div>
+    <p style="font-size:0.85rem;color:#475569;">Home page IS a drop zone. Drop any file and the system routes: .xlsx &rarr; Generate, .x12+ST01=270 &rarr; Validate, .x12+ST01=271 &rarr; Parse.</p>
+  </div>
+</div>
+
+<!-- ===== MONOREPO STRUCTURE ===== -->
+<h2 id="monorepo">Monorepo Structure</h2>
+<div class="alert alert-info">
+  <div class="alert-icon">&#x1F4C1;</div>
+  <div><strong><code>packages/</code></strong> = publishable artifacts (PyPI library). Independently versionable.<br>
+  <strong><code>apps/</code></strong> = deployable applications (FastAPI + React). Consume the library as a dependency.</div>
+</div>
+
+<pre style="font-size:0.78rem;line-height:1.5;">X12-Parser-Encoder/
+├── .claude/                    <span class="comment"># Claude Code commands/plans</span>
+├── .github/workflows/          <span class="comment"># ci.yml, release.yml, deploy.yml</span>
+├── docker/                     <span class="comment"># Dockerfile, Dockerfile.dev, nginx.conf</span>
+├── metadata/                   <span class="comment"># LOCAL ONLY (.gitignore'd) — companion guide</span>
+├── packages/
+│   └── x12-edi-tools/          <span class="comment"># ===== PyPI LIBRARY =====</span>
+│       ├── src/x12_edi_tools/
+│       │   ├── __init__.py     <span class="comment"># Public API + __version__</span>
+│       │   ├── config.py       <span class="comment"># SubmitterConfig model</span>
+│       │   ├── exceptions.py   <span class="comment"># X12Error hierarchy</span>
+│       │   ├── convenience.py  <span class="comment"># from_csv, build_270, read_271</span>
+│       │   ├── common/         <span class="comment"># enums, delimiters, types</span>
+│       │   ├── models/
+│       │   │   ├── base.py     <span class="comment"># X12Segment + _element_map</span>
+│       │   │   ├── segments/   <span class="comment"># 20+ segment files</span>
+│       │   │   ├── loops/      <span class="comment"># 9+ loop composites</span>
+│       │   │   └── transactions/ <span class="comment"># interchange, group, 270, 271</span>
+│       │   ├── parser/         <span class="comment"># 4-stage pipeline</span>
+│       │   ├── encoder/        <span class="comment"># reverse pipeline</span>
+│       │   ├── validator/      <span class="comment"># SNIP 1-5 + orchestrator</span>
+│       │   └── payers/         <span class="comment"># PayerProfile + dc_medicaid/</span>
+│       ├── tests/
+│       │   ├── fixtures/       <span class="comment"># 8 SYNTHETIC .x12 files</span>
+│       │   └── test_*/         <span class="comment"># models, parser, encoder, validator</span>
+│       └── pyproject.toml
+├── apps/
+│   ├── api/                    <span class="comment"># ===== FastAPI BACKEND =====</span>
+│   │   ├── app/
+│   │   │   ├── main.py         <span class="comment"># FastAPI app + CORS + routers</span>
+│   │   │   ├── core/           <span class="comment"># config, middleware, logging</span>
+│   │   │   ├── routers/        <span class="comment"># convert, generate, validate, parse, export</span>
+│   │   │   ├── schemas/        <span class="comment"># request/response models</span>
+│   │   │   └── services/       <span class="comment"># converter, generator, validator, parser</span>
+│   │   └── templates/          <span class="comment"># .xlsx, .csv canonical templates</span>
+│   └── web/                    <span class="comment"># ===== React FRONTEND =====</span>
+│       ├── src/
+│       │   ├── pages/          <span class="comment"># 6 pages</span>
+│       │   ├── components/     <span class="comment"># ui/, layout/, features/</span>
+│       │   ├── hooks/          <span class="comment"># useApi, useFileUpload, etc.</span>
+│       │   ├── utils/          <span class="comment"># fileDetection, formatters</span>
+│       │   └── styles/         <span class="comment"># tokens.css (design system)</span>
+│       └── package.json
+├── docs/                       <span class="comment"># Architecture, API docs</span>
+├── CLAUDE.md                   <span class="comment"># Agent rules</span>
+├── Makefile                    <span class="comment"># install, lint, test, clean</span>
+├── VERSION                     <span class="comment"># 0.1.0 (semver single source of truth)</span>
+├── docker-compose.yml          <span class="comment"># Local dev</span>
+└── LICENSE                     <span class="comment"># MIT</span></pre>
+
+<!-- ===== TESTING STRATEGY ===== -->
+<h2 id="testing">Testing Strategy</h2>
+<table>
+  <thead><tr><th>Phase</th><th>Tests</th><th>Tools</th><th>Coverage Target</th></tr></thead>
+  <tbody>
+    <tr><td>1: Models</td><td>Segment instantiation, serialization, _element_map roundtrip (14 tests)</td><td>pytest</td><td>&ge;90%</td></tr>
+    <tr><td>2: Parser</td><td>Delimiter detection, tokenization, parsing, HL tree building (23 tests)</td><td>pytest + 8 fixtures</td><td>&ge;90%</td></tr>
+    <tr><td>3: Encoder</td><td>Fixed-width ISA, auto-compute counts, roundtrip identity (12 tests)</td><td>pytest</td><td>&ge;90%</td></tr>
+    <tr><td>4: Validator</td><td>SNIP 1-5, DC Medicaid profile rules (24 tests)</td><td>pytest</td><td>&ge;90%</td></tr>
+    <tr><td>5: API</td><td>All endpoint contracts, PHI-safe logging, correlation IDs (32 tests)</td><td>httpx/TestClient</td><td>&ge;85%</td></tr>
+    <tr><td>6: Frontend</td><td>Component rendering, hooks, smart file routing, E2E (22 tests)</td><td>Vitest + Playwright</td><td>ESLint clean</td></tr>
+    <tr><td>7: Integration</td><td>Docker build, full E2E flow, health check (7 tests)</td><td>docker-compose</td><td>Smoke</td></tr>
+    <tr><td>8: Hardening</td><td>Property-based roundtrip (Hypothesis), CI green, package build (11 tests)</td><td>Hypothesis + CI</td><td>&ge;95% (lib)</td></tr>
+  </tbody>
+</table>
+
+<div class="alert alert-warning">
+  <div class="alert-icon">&#x26A0;</div>
+  <div><strong>All test fixtures must be synthetic.</strong> No real patient data, no real PHI. Every fixture file directory contains a <code>README.md</code> stating: "All fixtures are synthetic. No real patient data."</div>
+</div>
+
+<!-- ===== CI/CD ===== -->
+<h2 id="cicd">CI/CD Pipeline</h2>
+
+<div class="diagram-container">
+<svg viewBox="0 0 900 280" xmlns="http://www.w3.org/2000/svg" style="max-width:900px">
+  <!-- PR/Push -->
+  <rect x="10" y="10" width="880" height="120" rx="10" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="450" y="32" text-anchor="middle" class="svg-text svg-text-bold" font-size="12">ci.yml &mdash; On PR / Push to main</text>
+
+  <rect x="30" y="50" width="140" height="60" class="svg-box" rx="6"/>
+  <text x="100" y="72" text-anchor="middle" class="svg-text svg-text-bold svg-text-xs">Lint</text>
+  <text x="100" y="88" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">ruff format + lint</text>
+  <text x="100" y="102" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">detect-secrets</text>
+
+  <rect x="190" y="50" width="140" height="60" class="svg-box" rx="6"/>
+  <text x="260" y="72" text-anchor="middle" class="svg-text svg-text-bold svg-text-xs">Typecheck</text>
+  <text x="260" y="88" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">mypy (strict)</text>
+  <text x="260" y="102" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">lib + backend</text>
+
+  <rect x="350" y="50" width="165" height="60" class="svg-box" rx="6"/>
+  <text x="432" y="72" text-anchor="middle" class="svg-text svg-text-bold svg-text-xs">Test Library</text>
+  <text x="432" y="88" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">py3.11-3.13 / cov&ge;90%</text>
+  <text x="432" y="102" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">+ Hypothesis</text>
+
+  <rect x="535" y="50" width="140" height="60" class="svg-box" rx="6"/>
+  <text x="605" y="72" text-anchor="middle" class="svg-text svg-text-bold svg-text-xs">Test API</text>
+  <text x="605" y="88" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">httpx / cov&ge;85%</text>
+
+  <rect x="695" y="50" width="170" height="60" class="svg-box" rx="6"/>
+  <text x="780" y="72" text-anchor="middle" class="svg-text svg-text-bold svg-text-xs">Test Web</text>
+  <text x="780" y="88" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">vitest + eslint + build</text>
+
+  <!-- Release -->
+  <rect x="10" y="150" width="880" height="110" rx="10" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+  <text x="450" y="172" text-anchor="middle" class="svg-text svg-text-bold" font-size="12">release.yml &mdash; On Tag v*.*.*</text>
+
+  <rect x="30" y="190" width="190" height="50" class="svg-box" rx="6"/>
+  <text x="125" y="212" text-anchor="middle" class="svg-text svg-text-bold svg-text-xs">Build wheel + sdist</text>
+  <text x="125" y="228" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">hatchling</text>
+
+  <line x1="220" y1="215" x2="250" y2="215" class="svg-arrow"/>
+
+  <rect x="250" y="190" width="190" height="50" class="svg-box" rx="6"/>
+  <text x="345" y="212" text-anchor="middle" class="svg-text svg-text-bold svg-text-xs">Publish to PyPI</text>
+  <text x="345" y="228" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">OIDC trusted publishing</text>
+
+  <rect x="470" y="190" width="190" height="50" class="svg-box" rx="6"/>
+  <text x="565" y="212" text-anchor="middle" class="svg-text svg-text-bold svg-text-xs">Build + Push Docker</text>
+  <text x="565" y="228" text-anchor="middle" class="svg-text svg-text-xs" fill="#64748b">GHCR container registry</text>
+
+  <line x1="660" y1="215" x2="690" y2="215" class="svg-arrow"/>
+
+  <rect x="690" y="190" width="180" height="50" class="svg-box-green" rx="6"/>
+  <text x="780" y="212" text-anchor="middle" class="svg-text svg-text-bold svg-text-xs">Deploy to Cloud Run</text>
+  <text x="780" y="228" text-anchor="middle" class="svg-text svg-text-xs" fill="#166534">+ GitHub Release</text>
+</svg>
+<div class="diagram-caption">Figure 6 &mdash; CI/CD Pipeline: Automated testing, publishing, and deployment</div>
+</div>
+
+<!-- ===== OPEN SOURCE ===== -->
+<h2 id="oss">Open Source Considerations</h2>
+<div class="card-grid">
+  <div class="card">
+    <div class="card-header">Independently Installable</div>
+    <p style="font-size:0.85rem;color:#475569;"><code>pip install x12-edi-tools</code> &mdash; no web app dependency. Only requires <code>pydantic&ge;2.0</code>.</p>
+  </div>
+  <div class="card">
+    <div class="card-header">Fully Typed</div>
+    <p style="font-size:0.85rem;color:#475569;"><code>py.typed</code> PEP 561 marker + strict mypy. Full IDE autocomplete support.</p>
+  </div>
+  <div class="card">
+    <div class="card-header">Extensible</div>
+    <p style="font-size:0.85rem;color:#475569;">New payers = new directory under <code>payers/</code>. New transactions = new segment models + register in SEGMENT_REGISTRY.</p>
+  </div>
+  <div class="card">
+    <div class="card-header">No Secrets, No Proprietary Content</div>
+    <p style="font-size:0.85rem;color:#475569;">No API keys, no SFTP credentials. <code>metadata/</code> gitignored. All fixtures synthetic. Rules are original abstractions.</p>
+  </div>
+</div>
+
+<h3>Critical Files Reference</h3>
+<table>
+  <thead><tr><th>File</th><th>Significance</th></tr></thead>
+  <tbody>
+    <tr><td><code>metadata/full_text.txt</code></td><td>DC Medicaid companion guide &mdash; development reference, <strong>NEVER published</strong></td></tr>
+    <tr><td><code>parser/loop_builder.py</code></td><td>Most complex file: HL-tree state machine</td></tr>
+    <tr><td><code>models/segments/isa.py</code></td><td>ISA fixed-width is foundation of roundtrip fidelity</td></tr>
+    <tr><td><code>models/base.py</code></td><td>Declarative <code>_element_map</code> protocol + generic from_elements/to_elements</td></tr>
+    <tr><td><code>payers/dc_medicaid/profile.py</code></td><td>DC Medicaid business rules</td></tr>
+    <tr><td><code>payers/dc_medicaid/search_criteria.py</code></td><td>Valid search combinations from Section 7.2</td></tr>
+    <tr><td><code>apps/api/app/core/logging.py</code></td><td>PHI-safe logging &mdash; must NEVER log patient data</td></tr>
+    <tr><td><code>apps/web/src/styles/tokens.css</code></td><td>Single design system source of truth</td></tr>
+    <tr><td><code>EligibilityDashboardPage.tsx</code></td><td>Most complex UI page</td></tr>
+  </tbody>
+</table>
+
+<!-- ===== FOOTER ===== -->
+<div style="margin-top:4rem; padding-top:2rem; border-top:2px solid #e2e8f0; text-align:center; color:#94a3b8; font-size:0.8rem;">
+  <p>X12 EDI Parser &amp; Encoder &mdash; Implementation Plan v2</p>
+  <p>MIT License &copy; 2026 Kartik Hirijaganer</p>
+  <p style="margin-top:0.5rem;">Generated from <code>.claude/plans/IMPLEMENTATION_PLAN.md</code></p>
+</div>
+
+</main>
+</div>
+</body>
+</html>

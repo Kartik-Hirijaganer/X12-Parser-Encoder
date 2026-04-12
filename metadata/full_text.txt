@@ -1,0 +1,1084 @@
+===== PAGE 1 =====
+Department of Health Care Finance
+(DHCF)
+DC MMIS Core Solution
+Companion Guide (CG)
+DC Medicaid 270/271 Eligibility Inquiry and Response
+January 28, 2026
+Version 1.4
+
+===== PAGE 2 =====
+Companion Guide (CG)
+This Companion Guide to the v5010 ASC X12N Implementation Guides and associated errata adopted
+under Health Insurance Portability and Accountability Act (HIPAA) clarifies and specifies the data content
+when exchanging electronically with Gainwell Technologies (Gainwell). Transmissions based on this
+Companion Guide, used in tandem with the v5010 ASC X12N Implementation Guides, are compliant with
+both ASC X12 syntax and those guides. This Companion Guide is intended to convey information that is
+within the framework of the ASC X12N Implementation Guides adopted for use under HIPAA. The
+Companion Guide is not intended to convey information that exceeds the requirements or usages of data
+expressed in the Implementation Guides.
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. i
+
+===== PAGE 3 =====
+Change History Companion Guide (CG)
+Change History
+The following change history log contains a record of changes made to this document.
+Version Date Author Description
+1.0 12/05/2025 Gainwell Initial Document
+1.1 02/05/2025 Savanna Bader Gainwell Tech Writer Review
+1.2 10/20/2025 EDI SWS Team Updated to apply Section 7 for the 270/271 to
+provide DC Medicaid specific rules and
+limitations across the DC Companion Guides.
+1.3 1/28/2026 Stayce Towles Updated contact information
+1.4 1/28/2026 Scott M. Bullington Gainwell Technical Writer Review
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. ii
+
+===== PAGE 4 =====
+Table of Contents Companion Guide (CG)
+Table of Contents
+1. Introduction ............................................................................................................................................ 1
+1.1 Overview .................................................................................................................................... 1
+1.2 Reference Information ............................................................................................................... 1
+2. Getting Started ...................................................................................................................................... 3
+2.1 Information for DC Medicaid Trading Partners .......................................................................... 3
+2.1.1 What is Changing for DC Medicaid Trading Partners? ............................................... 3
+2.2 Trading Partner Registration and Certification .......................................................................... 4
+2.3 Trading Partner Questions ........................................................................................................ 4
+3. Testing with DC Medicaid ..................................................................................................................... 5
+3.1 Certification Testing ................................................................................................................... 5
+3.2 SNIP Levels Applied .................................................................................................................. 5
+3.3 270/271 Eligibility Inquiry/Response Transaction Test Files ..................................................... 5
+3.4 Review Testing and Certification Information ............................................................................ 5
+4. EDI Connectivity Overview .................................................................................................................... 7
+4.1 Web Portal Upload and Retrieval (Batch Mode) ....................................................................... 7
+4.2 SFTP File Exchange (Batch Mode) ........................................................................................... 7
+4.3 CAQH CORE Web Service (Real-Time Mode) ......................................................................... 7
+4.4 Trading Partner File Retransmissions ....................................................................................... 7
+4.5 Passwords ................................................................................................................................. 7
+4.6 Scheduled Maintenance ............................................................................................................ 8
+5. 270 CG Transaction Table .................................................................................................................... 9
+6. 271 CG Transaction Table .................................................................................................................. 14
+7. Payer Business Rules and Limitations ................................................................................................ 23
+7.1 DC Medicaid 270/271 Eligibility Inquiry & Response Transactions ......................................... 23
+7.2 DC Medicaid 270 Eligibility Inquiry Search Criteria ................................................................. 23
+7.2.1 DC Medicaid Member ID: 270 Eligibility Search Criteria Options: ............................ 23
+7.2.2 DC Medicaid Non-Member ID: 270 Eligibility Search Criteria Options: .................... 24
+7.3 271 AAA Responses ............................................................................................................... 24
+Appendix A. Companion Guide Appendices ......................................................................................... 25
+A.1 270 2110C EQ01 Service Type Codes ................................................................................... 25
+A.2 WSDL SOAP Information and Reference Example ................................................................ 26
+A.3 Trading Partner Implementation Checklist .............................................................................. 27
+A.4 Retrieving Acknowledgements for X12 Transactions via SFTP Submission .......................... 27
+A.5 EDI File Transmission Examples............................................................................................. 27
+A.5.1 TA1 Interchange Acknowledgement ...................................................................................... 27
+A.5.2 999 Implementation Acknowledgement for Health Care Insurance ...................................... 28
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. iii
+
+===== PAGE 5 =====
+Table of Contents Companion Guide (CG)
+A.5.3 824 Application Advice ........................................................................................................... 28
+A.5.4 Business Rejection Report..................................................................................................... 28
+Appendix B. Acronyms .......................................................................................................................... 29
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. iv
+
+===== PAGE 6 =====
+Table of ContentsTable of Contents Companion Guide (CG)
+Table of Contents
+List of Tables
+Table 1 Batch Acknowledgements and Reports ........................................................................................... 3
+Table 2 270 CG Transaction Table ............................................................................................................... 9
+Table 3 271 CG Transaction Table ............................................................................................................. 14
+Table 4 Loop 2100B .................................................................................................................................... 24
+Table 5 Loop 2100C .................................................................................................................................... 24
+Table 6 Phase 1 CORE Required Service Type Codes ............................................................................. 25
+Table 7 Acronyms ....................................................................................................................................... 29
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. v
+
+===== PAGE 7 =====
+1: Introduction Companion Guide (CG)
+1. Introduction
+1.1 Overview
+This companion guide documents the transaction type listed below and further defines situational and
+required data elements that are used for processing claims for programs administered by DC Medicaid.
+This document is not the complete Electronic Data Interchange (EDI) transaction format specifications.
+• 270/271 Eligibility Inquiry & Response (005010X279A1)
+Refer to the ASC X12N Implementation Guides or 5010 Technical Report Type 3 (TR3s) for information
+not supplied in this document, such as code lists, definitions, and edits. Data elements, segments, and
+loops not included in this guide are not used for processing transactions by DC Medicaid but must still be
+sent if the information is required for compliance with the ASC X12N version 5010A1 format.
+1.2 Reference Information
+X12N Implementation Guides or TR3s:
+The ASC X12N Implementation Guides or 5010 TR3s are standards developed by the X12 committee
+and published by the Washington Publishing Company (WPC):
+http://store.x12.org/store/healthcare-5010-consolidated-guides.
+Overview of HIPAA Legislation:
+HIPAA carries provisions for administrative simplification. This requires the Secretary of the Department
+of Health and Human Services (HHS) to adopt standards to support the electronic exchange of
+administrative and financial health care transactions primarily between health care providers and plans.
+HIPAA directs the Secretary to adopt standards for transactions to enable health information to be
+exchanged electronically and to adopt specifications for implementing each standard. HIPAA serves to:
+• Create better access to health insurance.
+• Limit fraud and abuse.
+• Reduce administrative costs.
+Compliance According to HIPAA:
+The HIPAA regulations at 45 Code of Federal Regulations (CFR) 162.915 require that covered entities
+not enter into a trading partner agreement that would do any of the following:
+• Change the definition, data condition, or use of a data element or segment in a standard.
+• Add any data elements or segments to the maximum defined data set.
+• Use any code or data elements that are marked “not used” in the standard’s implementation
+specifications or are not in the standard’s implementation specification(s).
+• Change the meaning or intent of the standard’s implementation specification(s).
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 1
+
+===== PAGE 8 =====
+1: Introduction Companion Guide (CG)
+Compliance According to ASC X12
+ASC X12’s requirements include specific restrictions that prohibit trading partners from the following:
+• Modifying any defining, explanatory, or clarifying content contained in the implementation guide.
+• Modifying any requirement contained in the implementation guide.
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 2
+
+===== PAGE 9 =====
+2: Getting Started Companion Guide (CG)
+2. Getting Started
+2.1 Information for DC Medicaid Trading Partners
+2.1.1 What is Changing for DC Medicaid Trading Partners?
+• Trading Partner Registration: New and existing trading partners will need to complete an online
+trading partner registration and receive an updated trading partner ID (TPID) for use with
+Gainwell Technologies and DC Medicaid.
+• Trading Partner Certification Testing: Trading partners must complete certification testing prior to
+submission of production transactions for DC Medicaid.
+• VAN SFTP Channel Partners: Established trading partners using Secure File Transfer Protocol
+(SFTP) will need to request and complete an updated registration form and return to the DC
+Medicaid EDI Helpdesk.
+• VAN HTTPS (SOAP/WSDL) Channel Partners: Established trading partners using the CORE
+Operating Rules compliant Web Service Endpoint will transition to use of a new endpoint with the
+new DC Medicaid Management Information System (MMIS).
+• DC Medicaid EDI Sender & Receiver ID Values: Interconnections Systems Agreement (ISA) and
+GS Receiver ID value for DC Medicaid have been updated to use DCMEDICAID in place of the
+formerly used 100000 and 77033 ISA and GS values.
+• EDI Validation & Edits: Strategic National Implementation Process (SNIP) Levels 1-7 will be
+applied to all file submissions to accelerate the identification and reporting of errors detected back
+to the submitting trading partner for correction and resubmission. This includes Level 7 - Provider
+ID and Member ID business edits applied to validate the identifier values received against the
+new DC MMIS repository.
+• EDI Response Files: EDI response transactions have been updated for DC Medicaid and include
+the following transactions and report when applicable:
+The acknowledgements/reports listed below are related to the submission of EDI transactions by a
+trading partner. These acknowledgements/reports are downloaded via the DC CORE MMIS-Online Web
+portal or through SFTP for those that submit via SFTP connection.
+Table 1 Batch Acknowledgements and Reports
+Type Acknowledgement/Report Description
+TA1 TA1 Interchange Acknowledgement – This acknowledgement is sent if requested by
+setting ISA14 to “1”, or if ISA14 is set to ”0” and there is an error that needs to be reported.
+999 999 Functional Acknowledgement – This acknowledgement file reports any errors found
+while checking compliance against TR3 specifications, or acceptance of an EDI transaction
+that meets the TR3 specifications for SNIP Levels 1 and 2.
+824 824 Application Reporting – This transaction is used to report the results of data content
+edits and errors detected. It is designed to report rejections based on business rules such
+as invalid diagnosis codes, invalid procedure codes, and invalid provider numbers. The 824
+Application Reporting response will only be generated by the EDI Gateway if there are
+errors within the transaction for SNIP Level 3 through 7 (005010X186).
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 3
+
+===== PAGE 10 =====
+2: Getting Started Companion Guide (CG)
+Type Acknowledgement/Report Description
+BRR Business Reject Report (BRR) – A business operations version error report generated to
+support the trading partner’s understanding and ability to quickly identify and resolve errors
+for resubmission of rejected transactions.
+For additional detailed information concerning the TA1, 999, 824 and BRR, please reference the
+DC CORE MMIS-Online user guides available to trading partners: https://medicaid.dc.gov/.
+2.2 Trading Partner Registration and Certification
+To get started, visit the following link for DC Medicaid trading partner information and instructions for
+registration as a trading partner: https://medicaid.dc.gov/.
+2.3 Trading Partner Questions
+For any trading partner questions or to receive assistance with registering for an assigned Trading
+Partner ID, please use the link above or contact DC Medicaid EDI Helpdesk:
+• Email: mailto: DCEDI@gainwelltechnologies.com
+• Telephone: 844-366-4237
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 4
+
+===== PAGE 11 =====
+3: Testing with DC Medicaid Companion Guide (CG)
+3. Testing with DC Medicaid
+3.1 Certification Testing
+All trading partners must first be registered and then test for certification to submit production EDI
+transactions. Any trading partner may submit test EDI transactions once registration is completed. The
+Usage Indicator, populated in element 15 of the ISA of an X12 file, indicates if a file is test or production.
+The required production certification is required on a per transaction type basis. For example, a trading
+partner may be certified to submit 837P professional claims but not certified to submit 837I Institutional
+claim files until after 837I certification testing is also completed by the trading partner.
+3.2 SNIP Levels Applied
+SNIP Levels 1-5 and 7 are applied to test and production EDI file submissions.
+Trading partners must submit a set number of test files of a particular transaction type with a minimum
+number of transactions within each file. Each test file must pass validation without receiving any failures
+or rejections to become certified for production: https://medicaid.dc.gov/.
+3.3 270/271 Eligibility Inquiry/Response Transaction Test Files
+Trading partners must submit a set number of test files of a particular transaction type with a minimum
+number of transactions within each file. Each test file must pass validation without receiving any failures
+or rejections to become certified for production.
+• Batch Transactions:
+o Minimum of three (3) test files must be submitted with a minimum of fifteen (15) transactions
+within each file.
+• Real-Time Transactions:
+o Minimum of fifteen (15) single inquiry real-time transactions.
+Each transaction type requires testing and certification to authorize the submission of production
+transaction files for DC Medicaid.
+3.4 Review Testing and Certification Information
+To begin testing, review the “EDI Certification Status” page of the DC Medicaid Online Portal under the
+“Account Maintenance” menu option to verify when testing for a particular transaction has been
+completed.
+The EDI Certification Status page is found by logging into your trading partner account on the DC
+Medicaid-Online website: https://medicaid.dc.gov/.
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 5
+
+===== PAGE 12 =====
+3: Testing with DC Medicaid Companion Guide (CG)
+Detailed instructions for retrieving and interpreting HIPAA validation acknowledgments may be found in
+the Business Scenarios and Transmission Examples appendices found at the end of this companion
+guide.
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 6
+
+===== PAGE 13 =====
+4: EDI Connectivity Overview Companion Guide (CG)
+4. EDI Connectivity Overview
+The following secure EDI channels are available for use by registered trading partners contingent on the
+completion of required administrative tasks and approvals where applicable.
+4.1 Web Portal Upload and Retrieval (Batch Mode)
+X12 batch files can be uploaded via the DC Medicaid-Online web portal through the File Exchange X12
+Upload option available to registered trading partners. The associated acknowledgments and responses
+to transactions submitted can be accessed by selecting the Download/Responses under the File
+Exchange menu.
+For additional information or to begin using the Web Portal upload/down EDI secure channel, please refer
+to the DC Medicaid-Online user guides at https://medicaid.dc.gov/.
+4.2 SFTP File Exchange (Batch Mode)
+Trading Partners who have submitted X12 transactions via SFTP in the past can be enabled to continue
+use of SFTP for file submission and retrieval from their designated SFTP pickup location. To complete the
+required SFTP registration required to enable the use of this EDI secure channel, please contact the DC
+Medicaid EDI Helpdesk:
+• Email: DCEDI@gainwelltechnologies.com
+• Telephone: 844-3664237
+4.3 CAQH CORE Web Service (Real-Time Mode)
+Authorized trading partners can transmit 276 transactions through Council for Affordable Quality
+Healthcare (CAQH) Web Services. The CAQH Web Services have been enhanced to support this
+functionality. The CAQH Web Services supports transaction protocol Simple Object Access Protocol
+(SOAP) via the below web service endpoints. The SA13 Interchange Control Numbers need to be unique
+to each file and trading partner ID.
+4.4 Trading Partner File Retransmissions
+This section provides Gainwell’s specific procedures for re-transmissions:
+• The ISA 13 Interchange Control Numbers need to be unique to each file and trading partner ID.
+4.5 Passwords
+Trading partners create their own password at the time of registration and are required to update it every
+sixty (60) days per the DC Medicaid-Online requirements. Password must be at least seven (7)
+characters long, contain at least one (1) uppercase character, at least one (1) numeral, and at least one
+(1) special character.
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 7
+
+===== PAGE 14 =====
+4: EDI Connectivity Overview Companion Guide (CG)
+4.6 Scheduled Maintenance
+The real time services for Eligibility and Claim Status Inquiry/Response transactions are restarted daily at
+12:00 a.m. EST for a period of thirty (30) minutes to ensure optimal performance and scalability for EDI
+trading partners.
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 8
+
+===== PAGE 15 =====
+5: 270 CG Transaction Table Companion Guide (CG)
+5. 270 CG Transaction Table
+The specific requirements for submitting and processing an ASC X12N 270 Eligibility Inquiry transaction
+file for DC Medicaid. Use these guidelines in conjunction with the official ASC X12N 270/271 TR3
+document to submit and receive these transactions.
+Table 2 270 CG Transaction Table
+Loop ID Reference Name Codes Length Notes/Comments
+Header ISA Interchange
+Control Header
+ISA06 Interchange 15 DC Medicaid assigned trading
+Sender ID partner ID
+ISA08 Interchange 15 DCMEDICAID
+Receiver ID
+ISA13 Interchange 9 Unique Control Number per file
+Control Number defined by sending Trading
+Partner
+GS Functional
+Group Header
+GS02 Application 2/15 DC Medicaid assigned trading
+Sender’s Code partner ID
+GS03 Application 15 DCMEDICAID
+Receiver’s Code
+GS08 Version / Release 005010X279A1 12
+Code
+ST Transaction Set
+Header
+ST01 Transaction Set 270 4/9 270 – Health Care Claim Status
+Identifier Code Request
+ST03 Technical Report 005010X279A1 1/35
+Type 3 Version
+Name
+BHT Beginning
+Hierarchical
+Transaction
+Segment
+BHT01 Transaction Set 0010 3 Information Source, Information
+Identifier Code Receiver, Provider of Service,
+Subscriber, Dependent
+BHT02 Transaction Set 13 2 13 - Request
+Purpose Code
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 9
+
+===== PAGE 16 =====
+5: 270 CG Transaction Table Companion Guide (CG)
+Loop ID Reference Name Codes Length Notes/Comments
+BHT03 Reference 1/50 This is the number assigned by
+identification the originator to identify the
+transaction within the
+originator’s business application
+system
+BHT04 Date CCYYMMDD 8 Transaction Set Creation Date
+BHT05 Time HHMM 4/8 Transaction Set Creation Time
+2000A HL Information
+Source Level
+HL01 Hierarchical ID 1 1/12 Hierarchical ID Number
+Number
+HL03 Hierarchical 20 1/2 Information Source
+Level Code
+HL04 Hierarchical Child 1 2/80 Additional Subordinate HL Data
+Code Segment
+2100A NM1 Information Payer Name
+Source Name
+NM101 Entity Identifier PR 2/3 Payer
+Code
+NM102 Entity Type 2 1 Non-Person Entity
+Qualifier
+NM103 Name Last or 1/60 DC MEDICAID
+Organization
+Name
+NM108 Identification PI 1/2 PI - Payer Identification
+Code Qualifier
+NM109 Identification 2/80 DCMEDICAID
+Code
+2000B HL Information
+Receiver Level
+HL01 Hierarchical ID 2 1/12 Hierarchical ID Number
+Number
+HL02 Hierarchical 1 1/12 Parent ID Number
+Parent ID
+Number
+HL03 Hierarchical 21 1/2 21 - Information Receiver
+Level Code
+HL04 Hierarchical Child 1 2/80 Additional Subordinate
+Code
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 10
+
+===== PAGE 17 =====
+5: 270 CG Transaction Table Companion Guide (CG)
+Loop ID Reference Name Codes Length Notes/Comments
+2100B NM1 Information Information Receiver Name
+Receiver Name
+NM101 Entity Identifier 1P 2/3 1P - Provider
+Code 80 80 - Hospital
+FA FA - Facility
+PR PR - Payer
+NM102 Entity Type 1 1 1 - Person
+Qualifier 2 2 - Non-Person Entity
+NM103 Name Last or 1/60 Provider Name
+Organization
+Name
+NM108 Identification XX 1/2 XX - National Provider ID (NPI)
+Code Qualifier SV SV - Service Provider Number
+NM109 Identification 2/80
+Code
+2000C HL Service Provider
+Level
+HL01 Hierarchical ID 3 1/12 Hierarchical ID Number
+Number
+HL02 Hierarchical 2 1/12 Parent ID Number
+Parent ID
+Number
+HL03 Hierarchical 22 1/2 Subscriber
+Level Code
+HL04 Hierarchical Child 0 2/80 0 – No Additional Subordinate
+Code
+2000C TRN Subscriber
+Trace Number
+TRN01 Trace Type Code 1 1 1 - Current Transaction Trace
+Number
+TRN02 Reference 1/50 Trace Number:
+Identification
+TRN03 Originating 10 ID Number of the company that
+Company assigned the trace number
+Identifier
+TRN04 Reference 1/50 Used to further identify a
+Identification specific component of the
+company identified in the
+previous data element
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 11
+
+===== PAGE 18 =====
+5: 270 CG Transaction Table Companion Guide (CG)
+Loop ID Reference Name Codes Length Notes/Comments
+2100C NM1 Subscriber
+Name
+NM101 Entity Identifier IL 2 IL - Subscriber
+Code
+NM102 Entity Type 1 1 1 - Person
+Qualifier
+NM103 Name Last 1/60 Member Last Name
+NM104 Name First 1/35 Member First Name
+NM105 Name Middle 1/25 Member Middle Initial
+NM108 Identification MI 1/2 MI - Member Identification
+Code Qualifier Number
+NM109 Identification 2/80 DC Medicaid Member ID
+Code
+2100C REF Reference
+Number
+REF01 Reference SY 2/3 SY - SSN
+Identification
+Qualifier
+REF02 Reference 1/50 DC Medicaid Member Social
+Identification Security Number (SSN)
+2100C DMG Subscriber
+Demographic
+Information
+DMG01 Date Time Period D8 2 D8 - Date Format
+Format Qualifier
+DMG02 Date Time Period CCYYMMDD 1/35 Subscribers Date of Birth
+DMG03 Gender Code F 1 F – Female
+M M – Male
+U U - Unknown
+2100C DTP Date or Time
+Period
+DTP01 Date/Time 291 3 291 - Plan
+Qualifier
+DTP02 Date/Time Period D8 2/3 D8 – Single Date of Service
+Format Qualifier RD8 RD8 – Date Range
+Use RD8 for a Date Range
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 12
+
+===== PAGE 19 =====
+5: 270 CG Transaction Table Companion Guide (CG)
+Loop ID Reference Name Codes Length Notes/Comments
+DTP03 Date Time Period 1/35 Date requested for eligibility
+verification
+2110C EQ Subscriber
+Eligibility/Benefi
+t Information
+EQ01 Service Type 2/3 See Appendix A.1 for Service
+Code Type Codes
+Not used if EQ02 is used
+EQ02-1 Procedure Code 2/2 Not used if EQ01 is used
+Qualifier
+EQ02-2 Procedure Code 1/48
+EQ02-3 Procedure 2/2
+Modifier
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 13
+
+===== PAGE 20 =====
+6: 271 CG Transaction Table Companion Guide (CG)
+6. 271 CG Transaction Table
+The specific requirements for receiving and processing an ASC X12N 271 Eligibility Response
+transaction file from DC Medicaid.
+Use these guidelines in conjunction with the official ASC X12N 270/271 TR3 document to submit and
+receive these transactions.
+Table 3 271 CG Transaction Table
+Loop ID Reference Name Codes Length Notes/Comments
+Header ISA Interchange
+Control Header
+ISA06 Interchange 15 DCMEDICAID
+Sender ID
+ISA08 Interchange 15 DC Medicaid assigned
+Receiver ID Trading Partner ID
+ISA13 Interchange 9 Unique Control Number per
+Control Number file defined by sending
+Trading Partner and
+returned on the 271
+GS Functional
+Group Header
+GS02 Application 2/15 DCMEDICAID
+Sender’s Code
+GS03 Application 15 DC Medicaid assigned
+Receiver’s Code Trading Partner ID
+GS08 Version / Release 005010X279A1 12
+Code
+ST Transaction Set
+Header
+ST01 Transaction Set 4/9 271 – Eligibility Response
+Identifier Code
+ST03 Technical Report 005010X279A1 1/35
+Type 3 Version
+Name
+BHT Beginning BHT
+Hierarchical
+Transaction
+Segment
+BHT01 Transaction Set 0022 3
+Identifier Code
+BHT02 Transaction Set 11 2 11 - Response
+Purpose Code
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 14
+
+===== PAGE 21 =====
+6: 271 CG Transaction Table Companion Guide (CG)
+Loop ID Reference Name Codes Length Notes/Comments
+BHT03 Reference 1/50 Originator Application
+identification Transaction Identifier
+BHT04 Date 8 CCYYMMDD
+- Transaction Set
+Creation Date
+BHT05 Time HHMM 4/8 HHMM – Transaction Set
+Creation Time
+2000A HL Information
+Source Level
+HL01 Hierarchical ID 1 1/12 Hierarchical ID Number
+Number
+HL03 Hierarchical Level 20 1/2 20 - Information Source
+Code
+HL04 Hierarchical Child 1 2/80 Additional Subordinate HL
+Code Data Segment
+2000A AAA Request
+Validation
+AAA01 Yes/No Condition Y 1 Y= Request Valid or
+or Response N N = Request Not Valid
+Code
+AAA03 Reject Reason 2 Code to indicate reason
+Code transaction was unable to be
+processed
+AAA04 Follow-up Action 1 Code identifying follow-up
+Code actions
+2100A NM1 Information Payer Name
+Source Name
+NM101 Entity Identifier PR 2/3 PR - Payer
+Code
+NM102 Entity Type 2 1 Non-Person Entity
+Qualifier
+NM103 Name Last or 1/60 DC MEDICAID
+Organization
+Name
+NM108 Identification PI 1/2 Payer Identification
+Code Qualifier
+NM109 Identification 2/80 DCMEDICAID
+Code
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 15
+
+===== PAGE 22 =====
+6: 271 CG Transaction Table Companion Guide (CG)
+Loop ID Reference Name Codes Length Notes/Comments
+2100A PER Information
+Source Contact
+Information
+PER01 Contact Function IC 2 IC - Information Contact
+Code
+PER02 Payer Contact 1/60 DC MEDICAID ELIGIBILITY
+Name VERIFICATION SYSTEM
+PER03 Communication TE 2 TE - Telephone
+Number Qualifier
+PER04 Communication 1/256 Placeholder: DC Medicaid
+Number Phone #
+PER05 Communication EM 2 EM - Email
+Number Qualifier
+PER06 Communication 1/256 DC Medicaid Email Address:
+Number DC_Operations@GAINWEL
+LTECHNOLOGIES.COM
+2100A AAA Request
+Validation
+AAA01 Yes/No Condition Y 1 Y= Request Valid or
+or Response N N = Request Not Valid
+Code
+AAA03 Reject Reason 2 Code to indicate reason
+Code transaction was unable to be
+processed
+AAA04 Follow-up Action 1 Code identifying follow-up
+Code actions
+2000B HL Information
+Receiver Level
+HL01 Hierarchical ID 2 1/12 Hierarchical ID Number
+Number
+HL02 Hierarchical 1 1/12 Parent ID Number
+Parent ID Number
+HL03 Hierarchical Level 21 1/2 Information Receiver
+Code
+HL04 Hierarchical Child 1 2/80 Additional Subordinate
+Code
+2100B NM1 Information Information Receiver
+Receiver Name Name
+NM101 Entity Identifier 1P 2/3 1P - Provider
+Code
+NM102 Entity Type 1 1 1 - Person
+Qualifier 2 2 - Non-Person Entity
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 16
+
+===== PAGE 23 =====
+6: 271 CG Transaction Table Companion Guide (CG)
+Loop ID Reference Name Codes Length Notes/Comments
+NM103 Provider Name 1/60
+Last or
+Organization
+Name
+NM104 Provider First 1/35
+Name
+NM105 Provider Middle 1
+Initial
+NM108 Identification XX 1/2 XX – NPI
+Code Qualifier SV – Service SV – Service Provider
+Provider Number
+Number
+NM109 Identification 2/80
+Code
+2100B REF Information
+Receiver
+Additional
+Identification
+REF01 Reference EO 2 EO – Submitter ID
+Identification
+Qualifier
+REF02 Reference 1/50 DC Medicaid assigned
+Identification Trading Partner ID
+2100B AAA Request
+Validation
+AAA01 Yes/No Condition Y 1 Y= Request Valid
+or Response N N = Request Not Valid
+Code
+AAA03 Reject Reason 2 Code to indicate reason
+Code transaction was unable to be
+processed
+AAA04 Follow-up Action 1 Code identifying follow-up
+Code actions
+2000C HL Service Provider
+Level
+HL01 Hierarchical ID 3 1/12 Hierarchical ID Number
+Number
+HL02 Hierarchical 2 1/12 Parent ID Number
+Parent ID Number
+HL03 Hierarchical Level 22 1/2 22 - Subscriber
+Code
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 17
+
+===== PAGE 24 =====
+6: 271 CG Transaction Table Companion Guide (CG)
+Loop ID Reference Name Codes Length Notes/Comments
+HL04 Hierarchical Child 0 2/80 Additional Subordinate
+Code
+2000C TRN Subscriber Trace
+Number
+TRN01 Trace Type Code 1 1 1 – Current Trace Number
+TRN02 Reference 1/50 DC Medicaid Unique Trace
+Identification Number
+2000C TRN Subscriber Trace
+Number
+TRN01 Trace Type Code 2 1 2 – Inquiry Trace Number
+TRN02 Reference 1/50 Transaction trace numbers
+Identification sent in the 270 transaction
+and returned in the 271
+response.
+2100C NM101 Subscriber Subscriber Name
+Name
+NM101 Entity Identifier IL 2/3 IL - Subscriber
+Code
+NM102 Entity Type Code 1 1 1 - Person
+NM103 Name Last 1/60 Member Last Name
+NM104 Name First 1/35 Member First Name
+NM105 Name Middle 1/25 Member Middle Initial
+NM107 Name Suffix 1/10 Member Name Suffix
+NM108 Identification MI 1/2 MI – Member Identifier
+Code Qualifier
+NM109 Identification 2/80 DC Medicaid
+Code Member ID
+2100C REF Reference
+Number
+REF01 Reference SY 2 SY – SSN
+Identification
+Qualifier
+REF02 Reference 1/50 DC Medicaid Member SSN
+Identification
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 18
+
+===== PAGE 25 =====
+6: 271 CG Transaction Table Companion Guide (CG)
+Loop ID Reference Name Codes Length Notes/Comments
+2100C N3 Subscriber
+Address
+N301 Subscriber 1/55
+Address Line
+N302 Subscriber 1/55
+Address Line
+2100C N4 Subscriber
+City/State/Zip
+Code
+N401 Subscriber City 2/30
+Name
+N402 Subscriber State 2
+Code
+N403 Subscriber Postal 3/15
+Zone or Zip Code
+2100C AAA Request
+Validation
+AAA01 Yes/No Condition Y 1 Y= Request Valid or
+or Response
+N N = Request Not Valid
+Code
+AAA03 Reject Reason 2 Code to indicate reason
+Code transaction was unable to be
+processed
+AAA04 Follow-up Action 1 Code identifying follow-up
+Code actions
+2100C DMG Subscriber
+Demographic
+Information
+DMG01 Date Time Period D8 2 D8 - Date Format
+Format Qualifier
+DMG02 Date Time Period 8 Member Date of Birth-
+CCYYMMDD
+DMG03 Gender Code F 1 F – Female
+M M – Male
+U U – Unknown
+2110C EB Subscriber The following segments
+Eligibility or will repeat for each
+Benefit eligibility segment the
+Information member has on file that
+meets the Service Date
+inquiry sent on the 270:
+• 2110C EB
+• 2110C DTP
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 19
+
+===== PAGE 26 =====
+6: 271 CG Transaction Table Companion Guide (CG)
+Loop ID Reference Name Codes Length Notes/Comments
+• 2115 LS
+• 2120C NM1
+• 2120C PER
+• 2120C LE
+EB01 Eligibility or 1/2 1 – Active
+Benefit 6 – Inactive
+Information
+B – Co- Payment
+F – Limitations
+J – Share of Cost
+L – Primary Care Provider
+N – Lock-in
+R – Other or Additional
+Payer
+EB02 Coverage Level 3
+Code
+EB03 Service Type 1/2 Value is returned if service
+Code type code was sent in the
+EQ01 in the 270
+See Appendix A.1
+EB04 Insurance Type MC 1/3 MC – Medicaid
+Code
+EB05 Plan Coverage 1/50 DC Medicaid Member:
+Description Benefit Plan | Rate Code |
+Coverage Code.
+EB06 Time Period 1/2
+Qualifier
+EB07 Monetary Amount 1/18 Co-Payment Amount
+EB13-1 Product/Service 2/2
+ID Qualifier
+EB13-2 Procedure Code 1/48
+2110C DTP Date or Time or
+Period
+DTP01 Date/Time 307 3 307 - Eligibility
+Qualifier
+DTP02 Date Time Period RD8 2 RD8 - Date Format
+Format Qualifier
+DTP03 Date Time Period 17 Eligibility Dates
+CCYYMMDD-CCYYMMDD
+2110C DTP Date or Time or
+Period
+DTP01 Date/Time 307 3 346 – Begin Date
+Qualifier
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 20
+
+===== PAGE 27 =====
+6: 271 CG Transaction Table Companion Guide (CG)
+Loop ID Reference Name Codes Length Notes/Comments
+DTP02 Date Time Period RD8 2 RD8 - Date Format
+Format Qualifier
+DTP03 Date Time Period 17 Begin Date
+CCYYMMDD
+2110C AAA Request
+Validation
+AAA01 Yes/No Condition Y 1 Y= Request Valid
+or Response
+N N = Request Not Valid
+Code
+AAA03 Reject Reason 2 Code to indicate reason
+Code transaction was unable to be
+processed
+AAA04 Follow-up Action 1 Code identifying follow-up
+Code actions
+2115C LS Subscriber
+Eligibility or
+Benefit
+Additional
+Information
+LS01 Loop Identifier 1/4 Loop 2120
+2120C NM101 Subscriber
+Benefit Related
+Entity Name
+NM101 Entity Identifier P3 2/3 P3 – Primary Care Provider
+Code P5 P5 - Plan Sponsor
+1l 1I – Provider Network
+NM102 Entity Type Code 2 1 2 – Non-Person
+NM103 Organization 1/60 Primary Care Provider, Plan
+Name Sponsor Organization
+Name, or Network Name
+PER Administrative Segment can repeat up to
+Communications three (3) times per Plan
+Contact Sponsor if necessary to
+convey contact
+information
+PER01 Contact Function IC - Information 2
+Code Contact
+PER02 Name 1/60
+PER03 Communication 2
+Number Qualifier
+PER04 Communication AAABBBCCCC 1/256 AAA – Area Code
+Number BBBCCCC – Local Number
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 21
+
+===== PAGE 28 =====
+6: 271 CG Transaction Table Companion Guide (CG)
+Loop ID Reference Name Codes Length Notes/Comments
+PER05 Communication 2
+Number Qualifier
+PER06 Communication AAABBBCCCC 1/256 AAA – Area Code
+Number BBBCCCC – Local Number
+PER07 Communication 2
+Number Qualifier
+PER08 Communication AAABBBCCCC 1/256 AAA – Area Code
+Number
+BBBCCCC – Local Number
+Provider Subscriber PRV 3
+Specialty Benefit Related
+Informatio Provider
+n (PRV) Information
+PRV01 Provider Code 1/3
+PRV02 Reference Healthcare 2/3 PXC – Taxonomy Number
+Identification Provider
+Qualifier Taxonomy
+Code (PXC)
+PRV03 Provider Identifier 1/50
+2120C LE Loop Trailer
+LE01 Loop Identifier 1/4 2120
+Code
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 22
+
+===== PAGE 29 =====
+7: Payer Business Rules and Limitations Companion Guide (CG)
+7. Payer Business Rules and Limitations
+7.1 DC Medicaid 270/271 Eligibility Inquiry & Response Transactions
+Listed below are the transmission constraints associated with the submission of the 270/271 Healthcare
+eligibility request transactions for DC Medicaid:
+• Subscriber/Insured Member in the DC Medicaid Eligibility Verification System does not allow for
+dependents to be enrolled under a primary subscriber; rather, all enrollees/members are primary
+subscribers within each program or Managed Care Organization (MCO).
+• There should be only one interchange per transmission and one transaction type per interchange.
+• Real-Time Mode: Maximum of 1 transaction per transmission.
+• Batch Mode: Maximum of five-thousand (5,000) transactions per transmission.
+• Historical and Future Inquiry Limitations:
+o Future: Inquiry dates greater than current date are not supported.
+o Historical: Inquiry dates are supported up to thirteen (13) months back from current date.
+• Compliance Checking Eligibility and Response transactions are validated through SNIP Levels
+1-5 and 7.
+7.2 DC Medicaid 270 Eligibility Inquiry Search Criteria
+In alignment with the 270/271 TR3 and industry standard mandated primary search options for
+270 Member Eligibility Inquiries and the new DC MMIS.
+• Unique Member ID
+• Member First Name and Last Name
+• Member Date of Birth (DOB)
+7.2.1 DC Medicaid Member ID: 270 Eligibility Search Criteria Options:
+Using DC Member ID, plus one of the below to ensure a unique DC Member match is supported:
+• First, Last name and DOB & SSN
+• First, Last name and DOB
+• First, Last name and SSN
+• First, Last name
+• Last name and DOB
+• Last name and DOB & SSN
+• Last name
+• SSN and DOB
+• DOB
+• SSN
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 23
+
+===== PAGE 30 =====
+7: Payer Business Rules and Limitations Companion Guide (CG)
+7.2.2 DC Medicaid Non-Member ID: 270 Eligibility Search Criteria Options:
+Additionally, any of the below can be used to search without use of the DC Recipient’s DC Medicaid
+Member ID:
+• First, Last name and DOB & SSN
+• First, Last name and DOB
+• First, Last name and SSN
+• Last name & DOB and SSN
+• SSN and DOB
+7.3 271 AAA Responses
+The 271 AAA Request Validation segments are used to identify why the 270 Eligibility, Coverage or
+Benefit Inquiry has been rejected. This below includes AAA03 Reject Reason Code and AAA04 Follow-up
+Action Code values used with DC 271 Eligibility Responses specific to the validation of Provider and
+Member as submitted in the 270 Eligibility Inquiry:
+• Loop 2100B: If the submitted file passes HIPAA validation and the provider is not found, then the
+following AAA code should be returned in the 271 to help determine why the file failed.
+Table 4 Loop 2100B
+Element AAA code AAA Description
+Invalid Provider ID AAA*N*51 Provider Not on File
+• Loop 2100C: If the submitted file passes HIPAA validation and the subscriber is not found, then
+one of the following AAA codes should be returned in the 271 to help determine why the file
+failed.
+Table 5 Loop 2100C
+Element AAA code AAA Description
+Invalid or Wrong DOB AAA*N**71*C~ Patient Birth Date Does Not Match
+That for the Patient on the Database
+Invalid or Wrong Member ID AAA*N**72*C~ Invalid/Missing Subscriber/Insured ID
+Invalid or Missing Name AAA*N**73*C~ Invalid/Missing Subscriber/Insured
+Name
+Member not found AAA*N**75*C~ Subscriber/Insured Not Found
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 24
+
+===== PAGE 31 =====
+Appendix A: Companion Guide Appendices Companion Guide (CG)
+Appendix A. Companion Guide Appendices
+A.1 270 2110C EQ01 Service Type Codes
+Table 6 Phase 1 CORE Required Service Type Codes
+Service Type Code Description
+1 Medical Care
+30 Health Benefit Plan Coverage
+33 Chiropractic
+35 Dental Care
+47 Hospital
+48 Hospital Inpatient
+50 Hospital Outpatient
+86 Emergency Services
+88 Pharmacy
+98 Professional (Physician) – Visit Office
+AL Vision (Optometry)
+MH Mental Health
+UC Urgent Care
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 25
+
+===== PAGE 32 =====
+Appendix A: Companion Guide Appendices Companion Guide (CG)
+A.2 WSDL SOAP Information and Reference Example
+SOAP messages must conform to standards set forth by the WEB Services Description Language
+(WSDL) for Extensible Markup Language (XML) envelope formatting, submission, and retrieval.
+The XML schema definition can be found at: CAQH CORE XML Schema vC2.2.0
+The WSDL definitions can be found at: CAQH CORE WSDL Schema vC2.2.0
+<soapenv:Envelope xmlns:soapenv="http://www.w3.org/2003/05/soap-envelope"
+xmlns:cor="http://www.caqh.org/SOAP/WSDL/CORERule2.2.0.xsd">
+<soapenv:Header>
+<wsse:Security soapenv:mustUnderstand="1" xmlns:wsse="http://docs.oasis-
+open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+<wsse:UsernameToken cor:Id="Example">
+<wsse:Username>Username</wsse:Username>
+<wsse:Password>Password</wsse:Password>
+</wsse:UsernameToken>
+</wsse:Security>
+</soapenv:Header>
+<soapenv:Body>
+<COREEnvelopeRealTimeRequest xmlns="http://www.caqh.org/SOAP/WSDL/CORERule2.2.0.xsd">
+<PayloadType>X12_270_Request_005010X279A1</PayloadType>
+<ProcessingMode>RealTime</ProcessingMode>
+<PayloadID>f81d4fae-7dec-11d0-a765-00a0a918754126</PayloadID>
+<TimeStamp>2024-04-14T10:20:34Z</TimeStamp>
+<SenderID>DCTPIDXXXXXX</SenderID>
+<ReceiverID>DCMEDICAID</ReceiverID>
+<CORERuleVersion>2.2.0</CORERuleVersion>
+<Payload><![CDATA[ISA*00* … IEA*1*000000242]]></Payload>
+</COREEnvelopeRealTimeRequest>
+</soapenv:Body>
+</soapenv:Envelope>HTTP
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 26
+
+===== PAGE 33 =====
+Appendix A: Companion Guide Appendices Companion Guide (CG)
+A.3 Trading Partner Implementation Checklist
+The DC Medicaid-Online web portal user guides contain all necessary steps for going live with DC
+Medicaid for submitting specified EDI transactions, and receiving EDI responses, including the 5010 837.
+It also covers the following categories:
+• Register for a Trading Partner ID.
+• Test with DC Medicaid.
+The user guides can be found at: https://medicaid.dc.gov/.
+A.4 Retrieving Acknowledgements for X12 Transactions via SFTP Submission
+Trading Partners who have submitted X12 transactions via SFTP may retrieve acknowledgements and
+responses from their designated SFTP pickup location. Any validation responses to the original
+submission (TA1, 999, 824, and BRR) will be based on the DC Medicaid internal file naming convention.
+This naming convention is as follows:
+<Input Class>-<Sender ID>-<Receiver ID>-<Date: CCYYMMDD>-<Time: HHMMSS>-<File ID>-
+<Transaction Type>-<Usage: T for Test, P for Production>.edi
+File Naming Convention Examples:
+An inbound Professional Healthcare claim file from Trading Partner ID DCTPIDXXXXXX would be
+assigned an internal filename of:
+VAN-DCTPIDXXXXXX-DCMEDICAID-20230616-112750-1367-005010X222A1-P.edi
+The HIPAA validation acknowledgements would appear in this trading partner’s SFTP pickup location
+with the files named as follows:
+• VAN-DCTPIDXXXXXX-DCMEDICAID-20230616-112750-1367-005010X222A1-P.edi-1367-TA1.edi
+• VAN-DCTPIDXXXXXX-DCMEDICAID-20230616-112750-1367-005010X222A1-P.edi-1367-999.edi
+• VAN-DCTPIDXXXXXX-DCMEDICAID-20230616-112750-1367-005010X222A1-P.edi-1367-824.edi
+• VAN-DCTPIDXXXXXX-DCMEDICAID-20230616-112750-1367-005010X222A1-P.edi-1367-BRR.edi
+A.5 EDI File Transmission Examples
+A.5.1 TA1 Interchange Acknowledgement
+The TA1 interchange acknowledgement is used to verify the syntactical accuracy of the envelope of the
+X12 interchange. The TA1 interchange will indicate that the file was successfully received, as well as
+indicate what errors existed within the envelope segments of the received X12 file.
+For detailed information concerning the TA1 Interchange Acknowledgement, please reference the DC
+Medicaid-Online user guides: https://medicaid.dc.gov/.
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 27
+
+===== PAGE 34 =====
+Appendix A: Companion Guide Appendices Companion Guide (CG)
+A.5.2 999 Implementation Acknowledgement for Health Care Insurance
+The ASC X12 999 transaction set is designed to report only on conformance against a TR3.
+A.5.3 824 Application Advice
+This transaction is not mandated by HIPAA but will be used to report the results of data content edits of
+transaction sets. It is designed to report rejections based on business rules such as invalid diagnosis
+codes, invalid procedure codes, and invalid provider numbers. The 824 Application Advice does not
+replace the 999 or TA1 transactions and will only be generated by DC Medicaid if there are errors within
+the transaction set.
+For detailed information concerning the 824 Application Advice, please reference the DC Medicaid
+On-Line user guides: https://medicaid.dc.gov/
+A.5.4 Business Rejection Report
+DC Medicaid also produces a readable version of the 824 called the BRR. This report helps to facilitate
+the immediate correction and re-bill of claims rejected during HIPAA validation.
+For detailed information concerning the BRR, please reference the DC Medicaid-Online user guides:
+https://medicaid.dc.gov/
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 28
+
+===== PAGE 35 =====
+Appendix B: Acronyms Companion Guide (CG)
+Appendix B. Acronyms
+The following table contains the list of acronyms, and corresponding definitions, used in this document.
+Table 7 Acronyms
+Acronym Definition
+ASC Accredited Standards Committee
+BHT Beginning Hierarchical Transaction
+BRR Business Reject Report
+CAQH Council for Affordable Quality Healthcare
+CFR Code of Federal Regulations
+CG Companion Guide
+DC District of Columbia
+DDI Design, Develop, and Implement
+DHCF Department of Health Care Finance
+DOB Date of Birth
+EDI Electronic Data Interchange
+Gainwell Gainwell
+Technologies
+HHS Department of Health and Human Services
+HIPAA Health Insurance Portability and Accountability Act
+ISA Interconnections Systems Agreement
+MCO Managed Care Organization
+MMIS Medicaid Management Information System
+NPI National Provider ID
+SFTP Secure File Transfer Protocol
+SNIP Strategic National Implementation Process
+SOAP Simple Object Access Protocol
+SSN Social Security Number
+TPID Trading Partner ID
+TR3 Technical Report Type 3
+WPC Washington Publishing Company
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 29
+
+===== PAGE 36 =====
+0: Companion Guide (CG)
+Acronym Definition
+WSDL WEB Services Description Language
+XML Extensible Markup Language
+Proprietary and Confidential © 2026 Gainwell Technologies. All rights reserved. 30
