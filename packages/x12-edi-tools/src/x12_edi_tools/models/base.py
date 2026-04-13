@@ -69,6 +69,7 @@ class GenericSegment(X12BaseModel):
 
     segment_id: str = Field(min_length=2, max_length=3)
     raw_elements: list[str] = Field(default_factory=list)
+    body_index: int | None = Field(default=None, ge=0)
 
     def to_elements(self) -> list[str]:
         """Return the original raw elements unchanged."""

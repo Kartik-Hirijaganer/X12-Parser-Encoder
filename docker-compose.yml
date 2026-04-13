@@ -1,0 +1,46 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+    working_dir: /workspace/apps/api
+    environment:
+      X12_API_ENVIRONMENT: development
+      PYTHONPATH: /workspace/apps/api:/workspace/packages/x12-edi-tools/src
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python3",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=4)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/workspace
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+    command: npm run dev -- --host 0.0.0.0 --port 5173
+    working_dir: /workspace/apps/web
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      VITE_API_PROXY_TARGET: http://api:8000
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/workspace
+      - web_node_modules:/workspace/apps/web/node_modules
+
+volumes:
+  web_node_modules:

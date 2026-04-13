@@ -1,12 +1,14 @@
 # Eligibility Workbench Web
 
-Phase 0 frontend scaffold for the X12 Eligibility Workbench.
+Phase 6 React UI for the X12 Eligibility Workbench.
 
-The app is generated from the React + TypeScript Vite template, then trimmed to a small baseline:
+Implemented frontend scope:
 
-- Tailwind CSS v4 is wired through the Vite plugin.
-- A persisted submitter-settings hook is in place for later settings work.
-- Vitest and Testing Library provide smoke-test coverage for the shell.
+- Routed home, preview, generate-result, validation-result, dashboard, templates, and settings pages
+- Lean design-system primitives for buttons, badges, tables, banners, cards, and file uploads
+- Smart file routing for spreadsheet vs X12 input
+- Local settings persistence with JSON import/export
+- Tested workflow coverage with Vitest and Testing Library
 
 ## Commands
 
@@ -14,5 +16,11 @@ The app is generated from the React + TypeScript Vite template, then trimmed to 
 npm install
 npm run dev
 npm run lint
+npm run typecheck
 npm run test -- --run
+npm run build
 ```
+
+## Local API Integration
+
+`vite.config.ts` proxies `/api` requests to `http://localhost:8000` by default so the frontend can call the FastAPI app during local development. Override that target with `VITE_API_PROXY_TARGET` if your backend runs elsewhere.

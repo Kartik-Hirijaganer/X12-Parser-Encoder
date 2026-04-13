@@ -11,6 +11,7 @@ export interface SubmitterConfig {
   contactName: string
   contactPhone: string
   contactEmail: string
+  payerProfile: string
   payerName: string
   payerId: string
   interchangeReceiverId: string

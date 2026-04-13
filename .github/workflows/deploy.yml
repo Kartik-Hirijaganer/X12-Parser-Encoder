@@ -1,0 +1,70 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/**"
+      - "docker/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Deployment target"
+        required: true
+        default: cloud-run
+        type: choice
+        options:
+          - cloud-run
+          - render
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve deploy target
+        id: target
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "value=${{ github.event.inputs.target }}" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ vars.DEPLOY_TARGET }}" ]; then
+            echo "value=${{ vars.DEPLOY_TARGET }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=cloud-run" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push deploy image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository }}:main-${{ github.sha }}
+      - name: Authenticate to Google Cloud
+        if: steps.target.outputs.value == 'cloud-run'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - name: Deploy to Cloud Run
+        if: steps.target.outputs.value == 'cloud-run'
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ vars.CLOUD_RUN_SERVICE }}
+          region: ${{ vars.CLOUD_RUN_REGION }}
+          image: ghcr.io/${{ github.repository }}:main-${{ github.sha }}
+      - name: Trigger Render deploy
+        if: steps.target.outputs.value == 'render'
+        run: curl --fail --silent --show-error -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"

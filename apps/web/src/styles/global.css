@@ -1,23 +1,27 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
-@theme {
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
-}
+@layer base {
+  html {
+    color-scheme: light;
+    background:
+      radial-gradient(circle at top left, rgba(0, 100, 224, 0.08), transparent 28%),
+      linear-gradient(180deg, var(--color-surface-primary) 0%, var(--color-surface-wash) 100%);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+  }
 
-html {
-  font-family: var(--font-sans);
-  background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 34%),
-    linear-gradient(180deg, #f8fbf9 0%, var(--color-surface) 100%);
-  color: var(--color-ink);
-}
+  body {
+    min-height: 100vh;
+    margin: 0;
+    font-family: var(--font-sans);
+  }
 
-body {
-  min-height: 100vh;
-}
+  #root {
+    min-height: 100vh;
+  }
 
-#root {
-  min-height: 100vh;
+  * {
+    box-sizing: border-box;
+  }
 }
