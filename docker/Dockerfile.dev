@@ -1,0 +1,31 @@
+FROM node:20-bookworm-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONPATH=/workspace/apps/api:/workspace/packages/x12-edi-tools/src
+
+WORKDIR /workspace
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 python3-pip python3-venv build-essential curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY VERSION /workspace/VERSION
+COPY packages/x12-edi-tools/pyproject.toml packages/x12-edi-tools/README.md /workspace/packages/x12-edi-tools/
+COPY packages/x12-edi-tools/src /workspace/packages/x12-edi-tools/src
+COPY apps/api/pyproject.toml apps/api/README.md /workspace/apps/api/
+COPY apps/api/app /workspace/apps/api/app
+COPY apps/api/templates /workspace/apps/api/templates
+COPY apps/web/package.json apps/web/package-lock.json /workspace/apps/web/
+
+RUN python3 -m pip install --upgrade pip \
+    && python3 -m pip install --no-cache-dir -e /workspace/packages/x12-edi-tools[dev,all] \
+    && python3 -m pip install --no-cache-dir -e /workspace/apps/api[dev]
+
+WORKDIR /workspace/apps/web
+RUN npm ci
+
+WORKDIR /workspace
+
+CMD ["bash"]

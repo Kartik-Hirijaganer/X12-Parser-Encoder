@@ -8,7 +8,7 @@ $ARGUMENTS — must be one of: `major`, `minor`, `patch`, or an explicit semver 
 
 ## Instructions
 
-1. **Read the current version** from the `VERSION` file at the repo root. If it doesn't exist, assume `0.0.0`.
+1. **Read the current version** from the `VERSION` file at the repo root. If it doesn't exist, stop and explain that Phase 8 expects `VERSION` to exist.
 
 2. **Calculate the new version** based on the argument:
    - `major`: increment the major component, reset minor and patch to 0 (e.g. `0.3.2` -> `1.0.0`)
@@ -16,25 +16,28 @@ $ARGUMENTS — must be one of: `major`, `minor`, `patch`, or an explicit semver 
    - `patch`: increment the patch component (e.g. `0.3.2` -> `0.3.3`)
    - Explicit semver (e.g. `1.2.3`): use that version directly after validating it matches `X.Y.Z` format
 
-3. **Update version in all of these files** (skip any that don't exist yet):
-   - `VERSION` — write the bare version string (e.g. `0.2.0`), no trailing newline beyond one
-   - `packages/x12-edi-tools/pyproject.toml` — update the `version = "..."` field under `[project]`
-   - `packages/x12-edi-tools/src/x12_edi_tools/__about__.py` — update `__version__ = "..."`
-   - `packages/x12-edi-tools/src/x12_edi_tools/__init__.py` — update `__version__` if it's defined there
-   - `apps/api/pyproject.toml` — update the `version = "..."` field under `[project]` if present
-   - Any other `pyproject.toml` or `package.json` in the repo that carries a project version
+3. **Run the repo script**:
+   ```bash
+   python scripts/bump_version.py <argument>
+   ```
+   This updates:
+   - `VERSION`
+   - `packages/x12-edi-tools/pyproject.toml`
+   - `packages/x12-edi-tools/src/x12_edi_tools/__about__.py`
+   - `apps/api/pyproject.toml`
+   - `apps/web/package.json`
+   - `apps/web/package-lock.json`
+   - the README version table
+   - `CHANGELOG.md`
 
-4. **Update CHANGELOG.md** (if it exists):
-   - Find the `## [Unreleased]` section
-   - Insert a new section `## [X.Y.Z] - YYYY-MM-DD` (today's date) between `[Unreleased]` and the previous version
-   - Move all content under `[Unreleased]` into the new version section
-   - Leave `[Unreleased]` empty with a blank line beneath it
-   - Update the comparison links at the bottom if they exist
+4. **Verify version sync**:
+   ```bash
+   python scripts/check_version_sync.py
+   ```
 
 5. **Report what changed**: Print a summary showing:
    - Previous version -> New version
    - Each file that was updated
-   - Each file that was skipped (not found)
 
 6. **Stage and commit**: Stage all modified files and create a commit with the message:
    ```

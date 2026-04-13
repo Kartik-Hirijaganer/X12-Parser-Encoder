@@ -1,18 +1,66 @@
-:root {
-  --font-sans: "Inter", "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono", "SFMono-Regular", monospace;
+@theme {
+  --color-action-500: #0064e0;
+  --color-action-600: #0051b5;
+  --color-action-700: #004bb9;
+  --color-action-100: #b3d4fc;
+  --color-action-50: #e8f3ff;
 
-  --color-ink: #18212b;
-  --color-muted: #60707f;
-  --color-surface: #f4f6f2;
-  --color-panel: #ffffff;
-  --color-border: #d7ddd4;
-  --color-primary: #0f766e;
-  --color-primary-strong: #115e59;
-  --color-primary-soft: #def7f2;
-  --color-warning: #b45309;
-  --color-warning-soft: #fff7ed;
-  --color-ok: #166534;
-  --color-ok-soft: #dcfce7;
-  --shadow-panel: 0 18px 45px rgba(24, 33, 43, 0.08);
+  --color-surface-primary: #ffffff;
+  --color-surface-secondary: #f1f4f7;
+  --color-surface-tertiary: #f7f8fa;
+  --color-surface-wash: #f0f2f5;
+  --color-surface-dark: #1c1e21;
+  --color-surface-dark-end: #111314;
+
+  --color-text-primary: #1c2b33;
+  --color-text-secondary: #5d6c7b;
+  --color-text-tertiary: #65676b;
+  --color-text-disabled: #bcc0c4;
+  --color-text-inverse: #ffffff;
+
+  --color-active-500: #007d1e;
+  --color-active-50: #ecfdf3;
+  --color-active-200: #a6f4c5;
+
+  --color-inactive-500: #c80a28;
+  --color-inactive-50: #fef2f2;
+  --color-inactive-200: #fecaca;
+
+  --color-warning-500: #b45309;
+  --color-warning-50: #fffbeb;
+  --color-warning-200: #fde68a;
+
+  --color-notfound-500: #475569;
+  --color-notfound-50: #f1f5f9;
+  --color-notfound-200: #cbd5e1;
+
+  --color-border-default: #dee3e9;
+  --color-border-subtle: #e5e7eb;
+  --color-border-strong: #909396;
+  --color-divider: #ced0d4;
+  --color-row-alt: #fafbfc;
+  --color-focus-ring: rgba(0, 100, 224, 0.25);
+  --color-code-text: #e2e8f0;
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+    Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', Menlo, Consolas, 'Liberation Mono',
+    monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-pill: 100px;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 16px 40px rgba(0, 0, 0, 0.14);
+
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }

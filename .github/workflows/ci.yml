@@ -1,0 +1,137 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install Python tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e "packages/x12-edi-tools[dev]" -e "apps/api[dev]"
+      - name: Ruff format check
+        run: |
+          cd packages/x12-edi-tools && ruff format --check .
+          cd ../../apps/api && ruff format --check .
+      - name: Ruff lint
+        run: |
+          cd packages/x12-edi-tools && ruff check .
+          cd ../../apps/api && ruff check .
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e "packages/x12-edi-tools[dev]" -e "apps/api[dev]"
+          cd apps/web && npm ci
+      - name: Mypy
+        run: |
+          cd packages/x12-edi-tools && mypy src
+          cd ../../apps/api && mypy app
+      - name: TypeScript
+        run: cd apps/web && npm run typecheck
+
+  test-library:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install library dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e "packages/x12-edi-tools[dev]"
+      - name: Library tests with coverage
+        run: |
+          cd packages/x12-edi-tools
+          pytest --cov=src/x12_edi_tools --cov-report=term-missing --cov-report=xml --cov-fail-under=90
+
+  test-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install API dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e "packages/x12-edi-tools[dev]" -e "apps/api[dev]"
+      - name: API tests with coverage
+        run: |
+          cd apps/api
+          pytest --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=85
+
+  test-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install web dependencies
+        run: cd apps/web && npm ci
+      - name: ESLint
+        run: cd apps/web && npm run lint
+      - name: Vitest with coverage
+        run: cd apps/web && npm run test:coverage
+      - name: Build
+        run: cd apps/web && npm run build
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install security tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install detect-secrets
+      - name: detect-secrets scan
+        run: |
+          detect-secrets scan --all-files --force-use-all-plugins > .secrets.baseline
+          python - <<'PY'
+          import json
+          import sys
+
+          data = json.load(open(".secrets.baseline", encoding="utf-8"))
+          findings = {path: values for path, values in data.get("results", {}).items() if values}
+          if findings:
+              print("detect-secrets findings detected:", file=sys.stderr)
+              for path, values in findings.items():
+                  print(f"- {path}: {len(values)} findings", file=sys.stderr)
+              raise SystemExit(1)
+          PY
+      - name: Check local-only content
+        run: python scripts/check_no_proprietary_content.py
+      - name: Check version sync
+        run: python scripts/check_version_sync.py

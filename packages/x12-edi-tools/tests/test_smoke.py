@@ -4,7 +4,8 @@ from x12_edi_tools import SubmitterConfig, __version__
 
 
 def test_package_version() -> None:
-    assert __version__ == "0.1.0"
+    version_file = Path(__file__).resolve().parents[3] / "VERSION"
+    assert __version__ == version_file.read_text(encoding="utf-8").strip()
 
 
 def test_submitter_config_instantiates() -> None:
