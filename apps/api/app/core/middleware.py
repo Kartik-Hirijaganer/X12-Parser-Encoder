@@ -9,6 +9,7 @@ from time import perf_counter, time
 from uuid import uuid4
 
 from fastapi import FastAPI, Request, status
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.formparsers import MultiPartParser
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import JSONResponse, Response
@@ -36,6 +37,16 @@ def register_middleware(app: FastAPI) -> None:
 
     MultiPartParser.spool_max_size = settings.max_upload_size_bytes
     MultiPartParser.max_part_size = settings.max_upload_size_bytes
+
+    if settings.cors_allowed_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=settings.cors_allowed_origins,
+            allow_credentials=False,
+            allow_methods=["*"],
+            allow_headers=["*"],
+            expose_headers=["X-Correlation-ID"],
+        )
 
     @app.middleware("http")
     async def correlation_and_policy_middleware(

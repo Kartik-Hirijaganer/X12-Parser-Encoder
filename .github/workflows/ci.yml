@@ -69,7 +69,7 @@ jobs:
       - name: Library tests with coverage
         run: |
           cd packages/x12-edi-tools
-          pytest --cov=src/x12_edi_tools --cov-report=term-missing --cov-report=xml --cov-fail-under=90
+          pytest --cov=src/x12_edi_tools --cov-report=term-missing --cov-report=xml --cov-fail-under=95
 
   test-api:
     runs-on: ubuntu-latest

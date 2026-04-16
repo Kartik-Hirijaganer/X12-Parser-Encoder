@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -57,6 +58,7 @@ class AppSettings(BaseSettings):
     serve_frontend: bool = True
     metrics_enabled: bool = True
     metrics_path: str = "/metrics"
+    cors_allowed_origins: list[str] = Field(default_factory=list)
 
     max_upload_size_bytes: int = 5 * 1024 * 1024
     max_x12_payload_characters: int = 5 * 1024 * 1024
@@ -71,6 +73,31 @@ class AppSettings(BaseSettings):
     concurrent_upload_limit: int = 5
 
     model_config = SettingsConfigDict(env_prefix="X12_API_", extra="ignore")
+
+    @field_validator("cors_allowed_origins", mode="before")
+    @classmethod
+    def _parse_cors_allowed_origins(cls, value: object) -> list[str] | object:
+        if value is None:
+            return []
+
+        if isinstance(value, str):
+            normalized = value.strip()
+            if not normalized:
+                return []
+            if normalized.startswith("["):
+                try:
+                    decoded = json.loads(normalized)
+                except json.JSONDecodeError:
+                    pass
+                else:
+                    if isinstance(decoded, list):
+                        return [str(item).strip() for item in decoded if str(item).strip()]
+            return [item.strip() for item in normalized.split(",") if item.strip()]
+
+        if isinstance(value, (list, tuple, set)):
+            return [str(item).strip() for item in value if str(item).strip()]
+
+        return value
 
     @property
     def is_development(self) -> bool:
