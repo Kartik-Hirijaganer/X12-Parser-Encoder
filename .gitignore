@@ -213,3 +213,5 @@ apps/web/node_modules/
 apps/web/dist/
 apps/web/coverage/
 *.tsbuildinfo
+# Added by code-review-graph
+.code-review-graph/
