@@ -4,7 +4,22 @@ from x12_edi_tools import payers
 from x12_edi_tools.__about__ import __version__
 from x12_edi_tools.common import Delimiters
 from x12_edi_tools.config import SubmitterConfig
-from x12_edi_tools.convenience import build_270, from_csv, from_excel, read_271
+from x12_edi_tools.convenience import (
+    AAAError,
+    BenefitEntity,
+    Correction,
+    EligibilityResult,
+    EligibilityResultSet,
+    EligibilitySegment,
+    ImportResult,
+    PatientRecord,
+    RowError,
+    WarningMessage,
+    build_270,
+    from_csv,
+    from_excel,
+    read_271,
+)
 from x12_edi_tools.encoder import encode
 from x12_edi_tools.exceptions import (
     ConfigurationError,
@@ -25,12 +40,21 @@ from x12_edi_tools.parser import ParseResult, parse
 from x12_edi_tools.validator import SnipLevel, ValidationError, ValidationResult, validate
 
 __all__ = [
+    "AAAError",
+    "BenefitEntity",
     "ConfigurationError",
+    "Correction",
     "Delimiters",
+    "EligibilityResult",
+    "EligibilityResultSet",
+    "EligibilitySegment",
     "FunctionalGroup",
     "GenericSegment",
+    "ImportResult",
     "Interchange",
     "ParseResult",
+    "PatientRecord",
+    "RowError",
     "SubmitterConfig",
     "SnipLevel",
     "Transaction270",
@@ -38,6 +62,7 @@ __all__ = [
     "TransactionParseError",
     "ValidationError",
     "ValidationResult",
+    "WarningMessage",
     "X12EncodeError",
     "X12Error",
     "X12ParseError",
