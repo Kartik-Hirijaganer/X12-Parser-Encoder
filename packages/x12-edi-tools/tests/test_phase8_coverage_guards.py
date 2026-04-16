@@ -81,6 +81,24 @@ def test_submitter_config_validators(field: str, value: str, expected: str) -> N
         SubmitterConfig(**payload)
 
 
+def test_submitter_config_accepts_explicit_valid_control_flags() -> None:
+    config = SubmitterConfig(
+        organization_name="ACME HOME HEALTH",
+        provider_npi="1234567893",
+        provider_entity_type="1",
+        trading_partner_id="ACMETP01",
+        payer_name="DC MEDICAID",
+        payer_id="DCMEDICAID",
+        interchange_receiver_id="DCMEDICAID",
+        usage_indicator="P",
+        acknowledgment_requested="1",
+    )
+
+    assert config.provider_entity_type == "1"
+    assert config.usage_indicator == "P"
+    assert config.acknowledgment_requested == "1"
+
+
 @pytest.mark.parametrize("function", [from_csv, from_excel, read_271])
 def test_convenience_rejects_missing_source_files(function) -> None:
     with pytest.raises(X12ValidationError, match="does not exist"):
