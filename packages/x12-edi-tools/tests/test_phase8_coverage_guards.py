@@ -82,12 +82,14 @@ def test_submitter_config_validators(field: str, value: str, expected: str) -> N
 
 
 @pytest.mark.parametrize("function", [from_csv, from_excel, read_271])
-def test_convenience_stubs_raise_not_implemented(function) -> None:
-    with pytest.raises(NotImplementedError):
-        function("ignored")  # type: ignore[misc]
+def test_convenience_rejects_missing_source_files(function) -> None:
+    with pytest.raises(X12ValidationError, match="does not exist"):
+        function(FIXTURES / "no_such_file.csv")  # type: ignore[misc]
 
 
-def test_build_270_stub_raises_not_implemented() -> None:
+def test_build_270_requires_at_least_one_patient() -> None:
+    from x12_edi_tools.exceptions import X12EncodeError
+
     config = SubmitterConfig(
         organization_name="ACME HOME HEALTH",
         provider_npi="1234567893",
@@ -97,7 +99,7 @@ def test_build_270_stub_raises_not_implemented() -> None:
         interchange_receiver_id="DCMEDICAID",
     )
 
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(X12EncodeError, match="requires at least one patient"):
         build_270([], config=config, profile="dc_medicaid")
 
 

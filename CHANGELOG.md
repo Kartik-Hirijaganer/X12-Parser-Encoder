@@ -6,7 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-- No user-facing changes yet.
+### Added
+
+- High-level convenience API: `from_csv`, `from_excel`, `build_270`, and
+  `read_271`. Template-aware imports auto-correct dates, names, whitespace, and
+  service-type defaults while surfacing short member IDs as user-confirmable
+  warnings rather than silent corrections. `read_271` returns a structured
+  `EligibilityResultSet` with per-subscriber `EligibilityResult` projections and
+  an optional pandas `to_dataframe()` export.
+- Library-native data contracts for agent-style pipelines: `PatientRecord`,
+  `ImportResult`, `Correction`, `WarningMessage`, `RowError`,
+  `EligibilityResult`, `EligibilitySegment`, `BenefitEntity`, and `AAAError` are
+  now exported from `x12_edi_tools`.
 
 ## [0.1.0] - 2026-04-12
 
