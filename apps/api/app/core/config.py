@@ -5,9 +5,10 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from typing import Annotated
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 def _discover_repo_root() -> Path:
@@ -58,7 +59,7 @@ class AppSettings(BaseSettings):
     serve_frontend: bool = True
     metrics_enabled: bool = True
     metrics_path: str = "/metrics"
-    cors_allowed_origins: list[str] = Field(default_factory=list)
+    cors_allowed_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
 
     max_upload_size_bytes: int = 5 * 1024 * 1024
     max_x12_payload_characters: int = 5 * 1024 * 1024

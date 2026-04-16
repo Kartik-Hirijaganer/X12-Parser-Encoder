@@ -18,8 +18,13 @@ EXTRA_CORS_ALLOWED_ORIGINS="${EXTRA_CORS_ALLOWED_ORIGINS:-}"
 
 ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 API_IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${API_IMAGE_TAG}"
-S3_WEBSITE_URL="http://${S3_BUCKET}.s3-website.${AWS_REGION}.amazonaws.com"
+S3_WEBSITE_HOST="${S3_BUCKET}.s3-website.${AWS_REGION}.amazonaws.com"
+S3_WEBSITE_URL="http://${S3_WEBSITE_HOST}"
 APP_RUNNER_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/${APP_RUNNER_ECR_ACCESS_ROLE}"
+CLOUDFRONT_COMMENT="${APP_NAME} web"
+CLOUDFRONT_DISTRIBUTION_ID=""
+CLOUDFRONT_DOMAIN=""
+CLOUDFRONT_URL=""
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -165,11 +170,115 @@ build_and_push_api_image() {
 }
 
 compose_cors_origins() {
-  if [[ -n "${EXTRA_CORS_ALLOWED_ORIGINS}" ]]; then
-    printf '%s,%s' "${S3_WEBSITE_URL}" "${EXTRA_CORS_ALLOWED_ORIGINS}"
-  else
-    printf '%s' "${S3_WEBSITE_URL}"
+  local origins="${S3_WEBSITE_URL}"
+  if [[ -n "${CLOUDFRONT_URL}" ]]; then
+    origins+=",${CLOUDFRONT_URL}"
   fi
+  if [[ -n "${EXTRA_CORS_ALLOWED_ORIGINS}" ]]; then
+    origins+=",${EXTRA_CORS_ALLOWED_ORIGINS}"
+  fi
+  printf '%s' "${origins}"
+}
+
+ensure_cloudfront_distribution() {
+  local existing_id
+  existing_id="$(
+    aws cloudfront list-distributions \
+      --query "DistributionList.Items[?Origins.Items[?DomainName=='${S3_WEBSITE_HOST}']].Id | [0]" \
+      --output text
+  )"
+
+  if [[ -n "${existing_id}" && "${existing_id}" != "None" ]]; then
+    CLOUDFRONT_DISTRIBUTION_ID="${existing_id}"
+    CLOUDFRONT_DOMAIN="$(
+      aws cloudfront get-distribution \
+        --id "${existing_id}" \
+        --query 'Distribution.DomainName' \
+        --output text
+    )"
+    CLOUDFRONT_URL="https://${CLOUDFRONT_DOMAIN}"
+    log_step "Reusing CloudFront distribution ${CLOUDFRONT_DISTRIBUTION_ID} (${CLOUDFRONT_URL})"
+    return
+  fi
+
+  log_step "Creating CloudFront distribution for ${S3_WEBSITE_HOST}"
+  cat > "${TEMP_DIR}/cloudfront-config.json" <<EOF
+{
+  "CallerReference": "${APP_NAME}-$(date +%s)",
+  "Comment": "${CLOUDFRONT_COMMENT}",
+  "Enabled": true,
+  "DefaultRootObject": "index.html",
+  "Origins": {
+    "Quantity": 1,
+    "Items": [
+      {
+        "Id": "s3-website-origin",
+        "DomainName": "${S3_WEBSITE_HOST}",
+        "CustomOriginConfig": {
+          "HTTPPort": 80,
+          "HTTPSPort": 443,
+          "OriginProtocolPolicy": "http-only",
+          "OriginSslProtocols": {"Quantity": 1, "Items": ["TLSv1.2"]},
+          "OriginReadTimeout": 30,
+          "OriginKeepaliveTimeout": 5
+        },
+        "CustomHeaders": {"Quantity": 0},
+        "OriginPath": "",
+        "ConnectionAttempts": 3,
+        "ConnectionTimeout": 10
+      }
+    ]
+  },
+  "DefaultCacheBehavior": {
+    "TargetOriginId": "s3-website-origin",
+    "ViewerProtocolPolicy": "redirect-to-https",
+    "AllowedMethods": {
+      "Quantity": 2,
+      "Items": ["GET", "HEAD"],
+      "CachedMethods": {"Quantity": 2, "Items": ["GET", "HEAD"]}
+    },
+    "Compress": true,
+    "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6"
+  },
+  "CustomErrorResponses": {
+    "Quantity": 2,
+    "Items": [
+      {"ErrorCode": 403, "ResponsePagePath": "/index.html", "ResponseCode": "200", "ErrorCachingMinTTL": 0},
+      {"ErrorCode": 404, "ResponsePagePath": "/index.html", "ResponseCode": "200", "ErrorCachingMinTTL": 0}
+    ]
+  },
+  "PriceClass": "PriceClass_100",
+  "ViewerCertificate": {"CloudFrontDefaultCertificate": true},
+  "HttpVersion": "http2",
+  "IsIPV6Enabled": true
+}
+EOF
+
+  CLOUDFRONT_DISTRIBUTION_ID="$(
+    aws cloudfront create-distribution \
+      --distribution-config "file://${TEMP_DIR}/cloudfront-config.json" \
+      --query 'Distribution.Id' \
+      --output text
+  )"
+  CLOUDFRONT_DOMAIN="$(
+    aws cloudfront get-distribution \
+      --id "${CLOUDFRONT_DISTRIBUTION_ID}" \
+      --query 'Distribution.DomainName' \
+      --output text
+  )"
+  CLOUDFRONT_URL="https://${CLOUDFRONT_DOMAIN}"
+}
+
+invalidate_cloudfront() {
+  if [[ -z "${CLOUDFRONT_DISTRIBUTION_ID}" ]]; then
+    return
+  fi
+  log_step "Invalidating CloudFront cache (${CLOUDFRONT_DISTRIBUTION_ID})"
+  aws cloudfront create-invalidation \
+    --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" \
+    --paths "/*" \
+    --query 'Invalidation.Id' \
+    --output text >/dev/null
 }
 
 write_source_configuration() {
@@ -315,6 +424,7 @@ main() {
 
   log_step "Preparing AWS resources in ${AWS_REGION}"
   ensure_s3_bucket
+  ensure_cloudfront_distribution
   ensure_ecr_repository
   ensure_apprunner_access_role
   login_to_ecr
@@ -335,12 +445,15 @@ main() {
 
   build_frontend "${api_base_url}"
   publish_frontend
+  invalidate_cloudfront
 
   printf '\nDeployment complete.\n'
-  printf 'Frontend: %s\n' "${S3_WEBSITE_URL}"
+  printf 'Frontend (CloudFront): %s\n' "${CLOUDFRONT_URL}"
+  printf 'Frontend (S3 direct):  %s\n' "${S3_WEBSITE_URL}"
   printf 'API: %s\n' "${api_base_url}"
   printf 'S3 bucket: %s\n' "${S3_BUCKET}"
-  printf 'App Runner service: %s\n\n' "${APP_RUNNER_SERVICE}"
+  printf 'App Runner service: %s\n' "${APP_RUNNER_SERVICE}"
+  printf 'CloudFront distribution: %s\n\n' "${CLOUDFRONT_DISTRIBUTION_ID}"
 }
 
 main "$@"
