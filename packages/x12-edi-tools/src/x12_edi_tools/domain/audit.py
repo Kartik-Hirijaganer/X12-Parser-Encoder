@@ -85,8 +85,7 @@ class TransactionAudit(BaseModel):
             raise ValueError("duration_ms must be non-negative")
         if measured > 0 and abs(measured - self.duration_ms) > 2000:
             raise ValueError(
-                "duration_ms must be consistent with started_at/completed_at "
-                "(tolerance 2s)"
+                "duration_ms must be consistent with started_at/completed_at (tolerance 2s)"
             )
         return self
 

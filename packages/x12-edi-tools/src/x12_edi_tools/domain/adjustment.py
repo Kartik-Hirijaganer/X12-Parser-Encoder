@@ -85,9 +85,7 @@ class ClaimAdjustmentReasonCode(BaseModel):
     def _validate_format(cls, value: str) -> str:
         value = value.upper()
         if not _CARC_RE.match(value):
-            raise ValueError(
-                f"CARC {value!r} is not a valid Claim Adjustment Reason Code format"
-            )
+            raise ValueError(f"CARC {value!r} is not a valid Claim Adjustment Reason Code format")
         return value
 
 
@@ -103,9 +101,7 @@ class RemittanceAdviceRemarkCode(BaseModel):
     def _validate_format(cls, value: str) -> str:
         value = value.upper()
         if not _RARC_RE.match(value):
-            raise ValueError(
-                f"RARC {value!r} is not a valid Remittance Advice Remark Code format"
-            )
+            raise ValueError(f"RARC {value!r} is not a valid Remittance Advice Remark Code format")
         return value
 
 

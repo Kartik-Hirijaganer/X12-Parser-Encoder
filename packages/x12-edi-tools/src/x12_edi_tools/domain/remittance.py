@@ -20,10 +20,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from x12_edi_tools.domain.adjustment import (
     Adjustment,
-    AdjustmentAmount,
     CARCRARCMessage,
 )
-
 
 MoneyAmount = Annotated[
     Decimal,
@@ -219,9 +217,7 @@ class RemittanceClaim(BaseModel):
     def _reconcile_totals(self) -> RemittanceClaim:
         if self.status_code == ClaimStatusCode.REVERSAL_OF_PREVIOUS_PAYMENT:
             return self
-        adjustment_total = sum(
-            (adj.amount for adj in self.claim_adjustments), Decimal("0")
-        )
+        adjustment_total = sum((adj.amount for adj in self.claim_adjustments), Decimal("0"))
         expected = (
             self.paid_amount.quantize(Decimal("0.01"))
             + self.patient_responsibility.quantize(Decimal("0.01"))

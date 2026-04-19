@@ -58,9 +58,7 @@ class ControlNumbers(BaseModel):
             if not claim_id:
                 raise ValueError("ST control-number map key must not be empty")
             if not control.isdigit():
-                raise ValueError(
-                    f"ST control number for {claim_id!r} must be a numeric string"
-                )
+                raise ValueError(f"ST control number for {claim_id!r} must be a numeric string")
         return value
 
 
@@ -124,13 +122,11 @@ class SubmissionBatch(BaseModel):
         for entry in self.archive_entries:
             if entry.transaction_type != self.transaction_type:
                 raise ValueError(
-                    "archive_entries transaction_type must match the batch "
-                    "transaction_type"
+                    "archive_entries transaction_type must match the batch transaction_type"
                 )
             if entry.interchange_control_number != self.control_numbers.isa:
                 raise ValueError(
-                    "archive_entries interchange_control_number must match "
-                    "control_numbers.isa"
+                    "archive_entries interchange_control_number must match control_numbers.isa"
                 )
         return self
 

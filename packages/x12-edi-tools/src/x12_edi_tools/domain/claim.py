@@ -19,8 +19,8 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from x12_edi_tools.domain.payer import Payer
 from x12_edi_tools.domain.patient import Patient, PatientRelationship, Subscriber
+from x12_edi_tools.domain.payer import Payer
 from x12_edi_tools.domain.provider import (
     AttendingProvider,
     BillingProvider,
@@ -28,7 +28,6 @@ from x12_edi_tools.domain.provider import (
     RenderingProvider,
     ServiceFacility,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared money / quantity types
@@ -149,7 +148,7 @@ class ClaimSupportingInfo(BaseModel):
     category: ClaimSupportingInfoCategory
     code: Annotated[str, Field(min_length=1, max_length=30)]
     amount: MoneyAmount | None = None
-    date: date | None = None
+    occurred_on: date | None = None
     quantity: UnitQuantity | None = None
     present_on_admission: Annotated[str, Field(max_length=1)] | None = None
 
@@ -175,9 +174,7 @@ class ClaimAdjustment(BaseModel):
     def _group_code_upper(cls, value: str) -> str:
         value = value.upper()
         if value not in {"CO", "CR", "OA", "PI", "PR"}:
-            raise ValueError(
-                "group_code must be one of CO, CR, OA, PI, PR (X12 adjustment groups)"
-            )
+            raise ValueError("group_code must be one of CO, CR, OA, PI, PR (X12 adjustment groups)")
         return value
 
 
@@ -302,9 +299,7 @@ class Claim(BaseModel):
     @classmethod
     def _claim_id_basic(cls, value: str) -> str:
         if any(ch in value for ch in ("*", "~", ":", "^", "|")):
-            raise ValueError(
-                "claim_id must not contain X12 delimiter characters (*, ~, :, ^, |)"
-            )
+            raise ValueError("claim_id must not contain X12 delimiter characters (*, ~, :, ^, |)")
         return value
 
     @model_validator(mode="after")
@@ -321,16 +316,13 @@ class Claim(BaseModel):
         expected = list(range(1, len(self.lines) + 1))
         actual = [line.line_number for line in self.lines]
         if actual != expected:
-            raise ValueError(
-                "line_number sequence must be contiguous 1..N in declaration order"
-            )
+            raise ValueError("line_number sequence must be contiguous 1..N in declaration order")
 
         # Total-charge reconciliation (2-decimal).
         line_sum = sum((line.charge_amount for line in self.lines), Decimal("0"))
         if line_sum.quantize(Decimal("0.01")) != self.total_charge.quantize(Decimal("0.01")):
             raise ValueError(
-                f"total_charge {self.total_charge} does not equal sum of line "
-                f"charges {line_sum}"
+                f"total_charge {self.total_charge} does not equal sum of line charges {line_sum}"
             )
 
         # Transaction-specific required fields.
@@ -338,9 +330,7 @@ class Claim(BaseModel):
             if self.type_of_bill is None:
                 raise ValueError("837I claims require type_of_bill")
             if self.attending_provider is None:
-                raise ValueError(
-                    "837I claims require an attending_provider per CG §3.2 (SNIP 5)"
-                )
+                raise ValueError("837I claims require an attending_provider per CG §3.2 (SNIP 5)")
             if self.statement_period is None:
                 raise ValueError("837I claims require statement_period dates")
         else:
@@ -350,9 +340,7 @@ class Claim(BaseModel):
         # Patient is required when subscriber is not the patient.
         sub_relation = self.subscriber.relationship_to_insured
         if sub_relation != PatientRelationship.SELF and self.patient is None:
-            raise ValueError(
-                "patient is required when subscriber.relationship_to_insured != SELF"
-            )
+            raise ValueError("patient is required when subscriber.relationship_to_insured != SELF")
 
         # Admission / discharge coherence when both are present.
         if (

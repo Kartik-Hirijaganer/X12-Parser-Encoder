@@ -106,9 +106,7 @@ class Patient(_Person):
 
     @field_validator("relationship_to_subscriber")
     @classmethod
-    def _reject_self_as_distinct_patient(
-        cls, value: PatientRelationship
-    ) -> PatientRelationship:
+    def _reject_self_as_distinct_patient(cls, value: PatientRelationship) -> PatientRelationship:
         if value == PatientRelationship.SELF:
             raise ValueError(
                 "Patient represents a non-subscriber; use Subscriber directly when "

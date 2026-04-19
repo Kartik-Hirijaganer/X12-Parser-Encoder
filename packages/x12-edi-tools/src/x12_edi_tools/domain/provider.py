@@ -108,14 +108,10 @@ class _ProviderBase(BaseModel):
     def _validate_name_by_entity(self) -> _ProviderBase:
         if self.entity_type == ProviderEntityType.NON_PERSON:
             if not self.organization_name:
-                raise ValueError(
-                    "organization_name is required when entity_type is NON_PERSON"
-                )
+                raise ValueError("organization_name is required when entity_type is NON_PERSON")
         else:
             if not (self.first_name and self.last_name):
-                raise ValueError(
-                    "first_name and last_name are required when entity_type is PERSON"
-                )
+                raise ValueError("first_name and last_name are required when entity_type is PERSON")
         return self
 
 
