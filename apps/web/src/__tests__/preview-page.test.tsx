@@ -38,7 +38,6 @@ describe('PreviewPage', () => {
     expect(screen.getByText('Some member IDs look shorter than expected.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Continue anyway' })).toBeInTheDocument()
   })
-
   it('records the highest generated ISA13 after a split generation response', async () => {
     window.localStorage.setItem(
       SETTINGS_STORAGE_KEY,

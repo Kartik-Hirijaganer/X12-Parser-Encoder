@@ -60,7 +60,6 @@ export function nextIsaControlNumber(last: number | null): number {
   if (last === null || last >= MAX_ISA_CONTROL_NUMBER) return MIN_ISA_CONTROL_NUMBER
   return last + 1
 }
-
 export function highestIsa13(response: GenerateResponse): number | null {
   if (response.archive_entries.length === 0) {
     return parseIsa13(response.control_numbers.isa13)
@@ -89,7 +88,6 @@ function parseIsa13(value: string | null): number | null {
 
   return parsed
 }
-
 export const DEFAULT_SUBMITTER_CONFIG: SubmitterConfig = {
   organizationName: '',
   providerNpi: '',
