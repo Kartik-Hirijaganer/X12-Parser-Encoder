@@ -7,7 +7,8 @@ Refresh the public documentation so it matches shipped behavior.
 1. Review the public surface first:
    - `README.md`
    - `docs/architecture.md`
-   - `docs/frontend-standards.md`
+   - `docs/design-system.md`
+   - `docs/ui-components.md`
    - `packages/x12-edi-tools/README.md`
    - template docs under `apps/api/templates/`
 2. Compare docs to the actual implementation in:

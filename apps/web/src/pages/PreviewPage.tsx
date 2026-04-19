@@ -5,6 +5,7 @@ import type { WarningMessage } from '../types/api'
 import type { PreviewRouteState } from '../types/workflow'
 import { useSettings } from '../hooks/useSettings'
 import { ApiError, ApiTimeoutError, generate270, parse271, validate270 } from '../services/api'
+import { nextIsaControlNumber } from '../utils/constants'
 import { formatDate } from '../utils/formatters'
 import { AppShell } from '../components/layout/AppShell'
 import { Banner } from '../components/ui/Banner'
@@ -16,7 +17,7 @@ import { Spinner } from '../components/ui/Spinner'
 export function PreviewPage() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { settings } = useSettings()
+  const { settings, updateLastIcn } = useSettings()
   const routeState = location.state as PreviewRouteState | null
   const [dismissedCorrectionIndexes, setDismissedCorrectionIndexes] = useState<Record<number, boolean>>({})
   const [showRowErrorDetails, setShowRowErrorDetails] = useState(false)
@@ -54,13 +55,17 @@ export function PreviewPage() {
       try {
         if (previewState.flow === 'generate') {
           setProcessingLabel(`Generating X12 file for ${previewState.response.record_count} records...`)
-          const response = await generate270(settings, previewState.response.patients)
+          const nextIcn = nextIsaControlNumber(settings.lastIsaControlNumber)
+          const response = await generate270(settings, previewState.response.patients, nextIcn)
           navigate('/generate/result', {
             state: {
               filename: previewState.filename,
               response,
             },
           })
+          if (response.control_numbers.isa13) {
+            updateLastIcn(response.control_numbers.isa13)
+          }
           return
         }
 

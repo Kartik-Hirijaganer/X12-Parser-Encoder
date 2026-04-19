@@ -45,12 +45,17 @@ export async function convertUpload(
 export async function generate270(
   settings: SubmitterConfig,
   patients: ConvertResponse['patients'],
+  nextIcn: number,
 ): Promise<GenerateResponse> {
   return requestJson<GenerateResponse>('/generate', {
     method: 'POST',
     headers: jsonHeaders(),
     body: JSON.stringify({
-      config: toApiSubmitterConfig(settings),
+      config: {
+        ...toApiSubmitterConfig(settings),
+        isaControlNumberStart: nextIcn,
+        gsControlNumberStart: nextIcn,
+      },
       patients,
       profile: settings.payerProfile,
     }),

@@ -1,0 +1,273 @@
+# eralchemy DSL source for the 837I / 837P / 835 logical domain model.
+#
+# Regenerate rendered artifacts:
+#   eralchemy -i docs/erd.er -o docs/erd.svg
+#   eralchemy -i docs/erd.er -o docs/erd.mmd   # mermaid variant
+#
+# Cardinality notation:
+#   ?  zero or one
+#   1  exactly one
+#   *  zero or more
+#   +  one or more
+
+# ============================================================================
+# Envelope cluster
+# ============================================================================
+
+[Interchange] {bgcolor: "#e0f2fe"}
+  *interchange_control_number {label: "int"}
+  sender_id {label: "string(15)"}
+  receiver_id {label: "string(15)"}
+  interchange_date {label: "date"}
+  interchange_time {label: "time"}
+  usage_indicator {label: "enum(P,T)"}
+
+[FunctionalGroup] {bgcolor: "#e0f2fe"}
+  *group_control_number {label: "int"}
+  functional_id_code {label: "enum(HC,HP,FA,HR,HI,HB)"}
+  sender_code {label: "string"}
+  receiver_code {label: "string"}
+  version_release {label: "string"}
+
+[TransactionSet] {bgcolor: "#e0f2fe"}
+  *transaction_set_control_number {label: "string"}
+  transaction_set_code {label: "enum(270,271,837,835,999,277,276,278)"}
+  implementation_reference {label: "string"}
+
+# ============================================================================
+# Parties cluster
+# ============================================================================
+
+[Submitter] {bgcolor: "#ede9fe"}
+  *etin {label: "string"}
+  organization_name {label: "string"}
+  contact_name {label: "string"}
+  contact_phone {label: "string"}
+  contact_email {label: "string"}
+
+[Receiver] {bgcolor: "#ede9fe"}
+  *payer_id {label: "string"}
+  organization_name {label: "string"}
+
+[Provider] {bgcolor: "#ede9fe"}
+  *npi {label: "string(10)"}
+  role {label: "enum(BILLING,PAY_TO,RENDERING,ATTENDING,OPERATING,REFERRING,SUPERVISING,ORDERING,SERVICE_FACILITY)"}
+  tax_id {label: "string"}
+  taxonomy_code {label: "string"}
+  organization_name {label: "string"}
+  first_name {label: "string (PHI)"}
+  last_name {label: "string (PHI)"}
+
+[Subscriber] {bgcolor: "#ede9fe"}
+  *member_id {label: "string (PHI)"}
+  first_name {label: "string (PHI)"}
+  last_name {label: "string (PHI)"}
+  dob {label: "date (PHI)"}
+  gender {label: "enum(M,F,U) (PHI)"}
+  relationship_code {label: "enum(18=self,...)"}
+  payer_responsibility {label: "enum(P,S,T)"}
+  group_number {label: "string (PHI)"}
+  plan_name {label: "string"}
+
+[Patient] {bgcolor: "#ede9fe"}
+  *patient_key {label: "derived"}
+  first_name {label: "string (PHI)"}
+  last_name {label: "string (PHI)"}
+  dob {label: "date (PHI)"}
+  gender {label: "enum(M,F,U) (PHI)"}
+  relationship_to_subscriber {label: "enum"}
+
+[Payer] {bgcolor: "#ede9fe"}
+  *payer_id {label: "string"}
+  name {label: "string"}
+  plan_type {label: "enum(MEDICARE,MEDICAID,COMMERCIAL,BCBS,OTHER)"}
+
+[ServiceFacility] {bgcolor: "#ede9fe"}
+  *npi {label: "string"}
+  name {label: "string"}
+
+# ============================================================================
+# Claim cluster (outbound 837I / 837P)
+# ============================================================================
+
+[Claim] {bgcolor: "#dcfce7"}
+  *patient_control_number {label: "string"}
+  claim_type {label: "enum(INSTITUTIONAL,PROFESSIONAL)"}
+  total_charge_amount {label: "decimal"}
+  facility_code {label: "string"}
+  claim_frequency_code {label: "string(1)"}
+  provider_signature_indicator {label: "enum(Y,N)"}
+  assignment_of_benefits {label: "enum(Y,N,W)"}
+  benefits_assignment_cert {label: "enum(Y,N)"}
+  release_of_info_code {label: "enum(Y,I,O)"}
+  statement_from_date {label: "date (837I)"}
+  statement_to_date {label: "date (837I)"}
+  admission_date {label: "datetime (837I)"}
+  discharge_date {label: "date (837I)"}
+  onset_of_illness_date {label: "date (837P)"}
+  place_of_service_code {label: "string (837P)"}
+  type_of_bill {label: "string (837I)"}
+  admission_type_code {label: "string (837I)"}
+  admission_source_code {label: "string (837I)"}
+  patient_status_code {label: "string (837I)"}
+  drg_code {label: "string (837I)"}
+  prior_authorization {label: "string"}
+  payer_claim_control_number {label: "string"}
+
+[Diagnosis] {bgcolor: "#dcfce7"}
+  *code {label: "string (PHI)"}
+  code_qualifier {label: "enum(ABK,ABF,APR,ABJ,BN,BF,BR,BQ,BJ)"}
+  poa_indicator {label: "enum(Y,N,U,W,1)"}
+  ordinal {label: "int"}
+
+[ServiceLine] {bgcolor: "#dcfce7"}
+  *line_number {label: "int"}
+  service_type {label: "enum(SV1,SV2)"}
+  procedure_code {label: "string"}
+  procedure_modifiers {label: "list[string]"}
+  charge_amount {label: "decimal"}
+  unit_basis {label: "enum(UN,MJ,DA)"}
+  unit_count {label: "decimal"}
+  place_of_service_override {label: "string(2) (837P)"}
+  diagnosis_pointers {label: "list[int] (837P)"}
+  revenue_code {label: "string (837I)"}
+  service_date {label: "date"}
+
+[ClaimSupplementalInfo] {bgcolor: "#dcfce7"}
+  *ordinal {label: "int"}
+  segment_id {label: "string"}
+  raw_elements {label: "list[string]"}
+
+[ServiceLineSupplementalInfo] {bgcolor: "#dcfce7"}
+  *ordinal {label: "int"}
+  segment_id {label: "string"}
+  raw_elements {label: "list[string]"}
+
+# ============================================================================
+# Remittance cluster (inbound 835)
+# ============================================================================
+
+[Remittance] {bgcolor: "#fef3c7"}
+  *check_or_eft_trace_number {label: "string"}
+  transaction_handling_code {label: "enum(I,H,C,D,P)"}
+  total_paid_amount {label: "decimal"}
+  credit_debit_flag {label: "enum(C,D)"}
+  payment_method {label: "enum(ACH,CHK,FWT,NON)"}
+  payment_format {label: "enum(CCP,CTX)"}
+  payment_date {label: "date"}
+
+[ClaimPayment] {bgcolor: "#fef3c7"}
+  *patient_control_number {label: "string (correlation key)"}
+  claim_status_code {label: "string"}
+  total_charge_amount {label: "decimal"}
+  total_paid_amount {label: "decimal"}
+  patient_responsibility {label: "decimal"}
+  claim_filing_indicator_code {label: "string"}
+  payer_claim_control_number {label: "string"}
+  facility_code {label: "string"}
+  claim_frequency_code {label: "string"}
+  diagnosis_drg_code {label: "string"}
+
+[ServicePayment] {bgcolor: "#fef3c7"}
+  *ordinal {label: "int"}
+  procedure_code {label: "string"}
+  procedure_modifiers {label: "list[string]"}
+  charge_amount {label: "decimal"}
+  paid_amount {label: "decimal"}
+  revenue_code {label: "string (837I tie)"}
+  paid_units {label: "decimal"}
+  service_date {label: "date"}
+
+[Adjustment] {bgcolor: "#fef3c7"}
+  *ordinal {label: "int"}
+  scope {label: "enum(CLAIM,LINE)"}
+  group_code {label: "enum(CO,CR,OA,PI,PR)"}
+  reason_code {label: "string (CARC)"}
+  amount {label: "decimal"}
+  quantity {label: "decimal"}
+
+[ProviderAdjustment] {bgcolor: "#fef3c7"}
+  *ordinal {label: "int"}
+  provider_id {label: "string"}
+  fiscal_period_date {label: "date"}
+  adjustment_identifier {label: "string"}
+  amount {label: "decimal"}
+
+# ============================================================================
+# Config & Audit cluster
+# ============================================================================
+
+[PayerProfile] {bgcolor: "#fee2e2"}
+  *name {label: "string"}
+  payer_id {label: "string"}
+  version {label: "string"}
+
+[CompanionGuide] {bgcolor: "#fee2e2"}
+  *payer_id {label: "string"}
+  payer_name {label: "string"}
+  transactions {label: "list[enum]"}
+
+[ControlNumberState] {bgcolor: "#fee2e2"}
+  *submitter_id {label: "string"}
+  receiver_id {label: "string"}
+  next_isa_control_number {label: "int"}
+  next_gs_control_number {label: "int"}
+  next_st_control_number {label: "int"}
+
+[CorrelationEvent] {bgcolor: "#fee2e2"}
+  *correlation_id {label: "string"}
+  stage {label: "enum(build,validate,encode,parse,reconcile)"}
+  transaction_code {label: "string"}
+  duration_ms {label: "int"}
+  result {label: "enum(success,warning,error)"}
+  error_code {label: "string (no raw message)"}
+
+# ============================================================================
+# Relationships
+# ============================================================================
+
+# Envelope hierarchy
+Interchange      1--+  FunctionalGroup
+FunctionalGroup  1--+  TransactionSet
+
+# Transaction body polymorphism (distinct 1..1 links per body type)
+TransactionSet   1--+  Claim
+TransactionSet   1--1  Remittance
+
+# Claim -> parties
+Claim            *--1  Submitter
+Claim            *--1  Receiver
+Claim            *--1  Subscriber
+Claim            *--?  Patient
+Claim            *--1  Payer
+Claim            *--+  Provider
+Claim            *--?  ServiceFacility
+
+# Claim body
+Claim            1--+  Diagnosis
+Claim            1--+  ServiceLine
+Claim            1--*  ClaimSupplementalInfo
+ServiceLine      1--*  ServiceLineSupplementalInfo
+
+# Remittance body
+Remittance       1--1  Payer
+Remittance       1--1  Provider
+Remittance       1--+  ClaimPayment
+Remittance       1--*  ProviderAdjustment
+ClaimPayment     1--1  Subscriber
+ClaimPayment     1--*  ServicePayment
+ClaimPayment     1--*  Adjustment
+ServicePayment   1--*  Adjustment
+
+# Correlation (virtual, projection only)
+Claim            ?--?  ClaimPayment
+ServiceLine      ?--?  ServicePayment
+
+# Config
+PayerProfile     1--?  CompanionGuide
+PayerProfile     1--*  Claim
+PayerProfile     1--*  Remittance
+
+# Audit
+CorrelationEvent *--?  Claim
+CorrelationEvent *--?  Remittance
