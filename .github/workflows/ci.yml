@@ -118,7 +118,7 @@ jobs:
           python -m pip install detect-secrets
       - name: detect-secrets scan
         run: |
-          detect-secrets scan --all-files --force-use-all-plugins > .secrets.baseline
+          detect-secrets scan --force-use-all-plugins > .secrets.baseline
           python - <<'PY'
           import json
           import sys

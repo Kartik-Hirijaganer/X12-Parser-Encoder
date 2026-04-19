@@ -31,7 +31,8 @@ X12 is the transaction format used by US healthcare trading partners to exchange
 | `apps/api` | FastAPI service exposing upload, generation, validation, parse, export, health, profile, and pipeline endpoints |
 | `apps/web` | React workbench for settings management, preview, generation, validation, templates, and eligibility dashboards |
 | `docs/architecture.md` | System-level architecture and production boundaries |
-| `docs/frontend-standards.md` | Frontend rules for storage, workflow routing, and shared UI primitives |
+| `docs/design-system.md` | Visual design system, frontend composition rules, storage boundary, and workflow routing |
+| `docs/ui-components.md` | Primitive catalog: props, variants, and usage for every `apps/web/src/ui/` component |
 | `metadata/` | Local-only reference content, intentionally excluded from source control and release artifacts |
 
 ## Installation

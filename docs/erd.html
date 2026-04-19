@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ERD — 837I / 837P / 835 Domain Model</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --bg-muted: #f6f8fa;
+    --bg-elevated: #ffffff;
+    --fg: #1f2328;
+    --fg-muted: #656d76;
+    --fg-faint: #8b949e;
+    --border: #d0d7de;
+    --border-muted: #e1e4e8;
+    --accent: #0969da;
+    --accent-bg: #ddf4ff;
+    --envelope-bg: #e0f2fe;
+    --parties-bg: #ede9fe;
+    --claim-bg: #dcfce7;
+    --remit-bg: #fef3c7;
+    --config-bg: #fee2e2;
+    --shadow: 0 1px 2px rgba(0,0,0,0.06);
+    --code-bg: #f6f8fa;
+    --code-fg: #24292f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117;
+      --bg-muted: #161b22;
+      --bg-elevated: #161b22;
+      --fg: #e6edf3;
+      --fg-muted: #8d96a0;
+      --fg-faint: #6e7681;
+      --border: #30363d;
+      --border-muted: #21262d;
+      --accent: #58a6ff;
+      --accent-bg: rgba(56,139,253,0.12);
+      --envelope-bg: rgba(125,211,252,0.12);
+      --parties-bg: rgba(196,181,253,0.12);
+      --claim-bg: rgba(134,239,172,0.12);
+      --remit-bg: rgba(253,224,71,0.14);
+      --config-bg: rgba(252,165,165,0.14);
+      --shadow: 0 1px 2px rgba(0,0,0,0.4);
+      --code-bg: #161b22;
+      --code-fg: #e6edf3;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  main {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 32px 24px 96px;
+  }
+
+  header.page {
+    margin-bottom: 28px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  header.page .eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+  header.page h1 {
+    margin: 6px 0 4px;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  header.page p.meta {
+    margin: 0;
+    color: var(--fg-muted);
+    font-size: 13px;
+  }
+
+  h2 { font-size: 22px; margin: 40px 0 12px; letter-spacing: -0.005em; }
+  h3 { font-size: 17px; margin: 24px 0 8px; }
+  h4 { font-size: 14px; margin: 16px 0 6px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  p { margin: 0 0 12px; }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  code {
+    font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.88em;
+    background: var(--code-bg);
+    color: var(--code-fg);
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border-muted);
+  }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    padding: 14px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border-muted);
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  pre code {
+    background: transparent;
+    border: none;
+    padding: 0;
+  }
+
+  ul, ol { margin: 0 0 12px; padding-left: 22px; }
+  li { margin-bottom: 4px; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 18px;
+    font-size: 13.5px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  th, td {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-muted);
+    vertical-align: top;
+  }
+  th {
+    background: var(--bg-muted);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--fg-muted);
+  }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    background: var(--accent-bg);
+    border-left: 3px solid var(--accent);
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+
+  .cluster-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+    margin: 16px 0 24px;
+  }
+  .cluster {
+    padding: 14px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+  }
+  .cluster h4 {
+    margin: 0 0 6px;
+    color: var(--fg);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .cluster.envelope { background: var(--envelope-bg); }
+  .cluster.parties  { background: var(--parties-bg); }
+  .cluster.claim    { background: var(--claim-bg); }
+  .cluster.remit    { background: var(--remit-bg); }
+  .cluster.config   { background: var(--config-bg); }
+  .cluster small { color: var(--fg-muted); }
+
+  .diagram-frame {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+    background: var(--bg-elevated);
+    overflow-x: auto;
+  }
+  .diagram-frame object,
+  .diagram-frame img {
+    display: block;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+  .diagram-missing {
+    padding: 24px;
+    color: var(--fg-muted);
+    font-size: 14px;
+    text-align: center;
+    background: var(--bg-muted);
+    border-radius: 8px;
+  }
+
+  .ascii-diagram {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: pre;
+    padding: 16px;
+    background: var(--code-bg);
+    border-radius: 8px;
+    overflow-x: auto;
+    border: 1px solid var(--border-muted);
+  }
+
+  .toc {
+    background: var(--bg-muted);
+    border: 1px solid var(--border-muted);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 0 0 24px;
+    font-size: 14px;
+  }
+  .toc ol { margin: 0; padding-left: 20px; }
+
+  .badge {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--accent-bg);
+    color: var(--accent);
+    border: 1px solid var(--border-muted);
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  .badge.phi { background: color-mix(in oklab, var(--config-bg) 75%, transparent); color: #b91c1c; }
+  @media (prefers-color-scheme: dark) {
+    .badge.phi { color: #fca5a5; }
+  }
+  .badge.envelope { background: var(--envelope-bg); color: #0369a1; }
+  .badge.parties  { background: var(--parties-bg); color: #6d28d9; }
+  .badge.claim    { background: var(--claim-bg); color: #15803d; }
+  .badge.remit    { background: var(--remit-bg); color: #b45309; }
+  .badge.config   { background: var(--config-bg); color: #b91c1c; }
+  @media (prefers-color-scheme: dark) {
+    .badge.envelope { color: #7dd3fc; }
+    .badge.parties  { color: #c4b5fd; }
+    .badge.claim    { color: #86efac; }
+    .badge.remit    { color: #fde68a; }
+    .badge.config   { color: #fca5a5; }
+  }
+
+  footer {
+    margin-top: 48px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    color: var(--fg-muted);
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+<main>
+  <header class="page">
+    <div class="eyebrow">Supporting Artifact</div>
+    <h1>ERD — 837I / 837P / 835 Domain Model</h1>
+    <p class="meta">Logical data model · Version 0.1 · Paired with
+      <a href="./erd.md">erd.md</a> and
+      <a href="./erd.er">erd.er</a> ·
+      Plan: <a href="../.agents/plans/837i-837p-835-implementation-plan.html">implementation-plan.html</a>
+    </p>
+  </header>
+
+  <section class="toc">
+    <strong>Contents</strong>
+    <ol>
+      <li><a href="#purpose">Purpose &amp; Scope</a></li>
+      <li><a href="#clusters">Domain Clusters</a></li>
+      <li><a href="#diagram">Visual Diagram</a></li>
+      <li><a href="#cardinality">Cardinality Reference</a></li>
+      <li><a href="#regenerate">Regenerating the Diagram</a></li>
+      <li><a href="#extensibility">Extensibility Hooks</a></li>
+    </ol>
+  </section>
+
+  <section id="purpose">
+    <h2>1. Purpose &amp; Scope</h2>
+    <p>
+      This ERD describes the <strong>logical</strong> domain model used by the
+      <code>x12-edi-tools</code> Python library to represent ANSI X12 healthcare claim
+      submission (837I / 837P) and remittance advice (835) transactions.
+    </p>
+
+    <div class="callout">
+      <strong>Not a physical database schema.</strong> The library is stateless. No table is
+      persisted by the library itself. The web application never stores PHI in browser
+      storage. The API service never retains uploaded payloads beyond request scope.
+      Downstream consumers may choose to persist this model on their side — the ERD gives
+      them a stable contract to do so.
+    </div>
+
+    <h3>What this ERD covers</h3>
+    <ul>
+      <li>The <strong>outbound</strong> claim submission domain (837I and 837P).</li>
+      <li>The <strong>inbound</strong> remittance advice domain (835).</li>
+      <li>The <strong>correlation</strong> entities that tie 835 back to the originating 837.</li>
+      <li>The <strong>envelope</strong> entities common to all X12 transactions (ISA/GS/ST).</li>
+      <li>The <strong>payer configuration</strong> entities (companion guides, overrides).</li>
+      <li>The <strong>extensibility</strong> hooks for 999, 277CA, 276/277, 278.</li>
+    </ul>
+
+    <h3>What this ERD does not cover</h3>
+    <ul>
+      <li>The existing 270/271 eligibility domain (preserved unchanged, additive only).</li>
+      <li>Any physical storage choices (Postgres, DynamoDB, object layout).</li>
+      <li>Any authentication/authorization schema for the API service.</li>
+    </ul>
+  </section>
+
+  <section id="clusters">
+    <h2>2. Domain Clusters</h2>
+    <p>The domain partitions into five clusters:</p>
+
+    <div class="cluster-grid">
+      <div class="cluster envelope">
+        <h4>Envelope</h4>
+        <small>Interchange · FunctionalGroup · TransactionSet</small>
+      </div>
+      <div class="cluster parties">
+        <h4>Parties</h4>
+        <small>Submitter · Receiver · Provider · Subscriber · Patient · Payer · ServiceFacility</small>
+      </div>
+      <div class="cluster claim">
+        <h4>Claim (outbound)</h4>
+        <small>Claim · Diagnosis · ServiceLine · ClaimSupplementalInfo · ServiceLineSupplementalInfo</small>
+      </div>
+      <div class="cluster remit">
+        <h4>Remittance (inbound)</h4>
+        <small>Remittance · ClaimPayment · ServicePayment · Adjustment · ProviderAdjustment</small>
+      </div>
+      <div class="cluster config">
+        <h4>Config &amp; Audit</h4>
+        <small>PayerProfile · CompanionGuide · ControlNumberState · CorrelationEvent</small>
+      </div>
+    </div>
+
+    <pre class="ascii-diagram">                +-----------------+
+                |  Interchange    |  (ISA/IEA)
+                +--------+--------+
+                         |
+                         | 1..*
+                +--------v--------+
+                | FunctionalGroup |  (GS/GE)
+                +--------+--------+
+                         |
+                         | 1..*
+                +--------v--------+
+                | TransactionSet  |  (ST/SE)  -- 837I / 837P / 835
+                +--------+--------+
+                         |
+          +--------------+---------------+
+          |                              |
+    (837 outbound)                (835 inbound)
+          |                              |
+    +-----v------+                +------v------+
+    |   Claim    |&lt;-- reconciles--| ClaimPayment|
+    +-----+------+                +------+------+
+          | 1..*                         | 1..*
+    +-----v------+                +------v------+
+    | ServiceLine|&lt;-- pays ------| ServicePayment|
+    +------------+                +---------------+
+                                         | 1..*
+                                  +------v------+
+                                  |  Adjustment |
+                                  +-------------+</pre>
+  </section>
+
+  <section id="diagram">
+    <h2>3. Visual Diagram</h2>
+    <p>
+      The canonical, full-fidelity diagram is generated from
+      <a href="./erd.er"><code>erd.er</code></a> using <code>eralchemy</code>.
+      The rendered SVG is embedded below if present. If it is missing, follow the
+      <a href="#regenerate">regeneration instructions</a>.
+    </p>
+    <div class="diagram-frame">
+      <object data="./erd.svg" type="image/svg+xml" aria-label="ERD diagram">
+        <div class="diagram-missing">
+          <strong>erd.svg not yet generated.</strong><br />
+          Run <code>eralchemy -i docs/erd.er -o docs/erd.svg</code> to produce the diagram.
+        </div>
+      </object>
+    </div>
+    <p style="font-size: 13px; color: var(--fg-muted);">
+      Colour legend:
+      <span class="badge envelope">Envelope</span>
+      <span class="badge parties">Parties</span>
+      <span class="badge claim">Claim</span>
+      <span class="badge remit">Remittance</span>
+      <span class="badge config">Config &amp; Audit</span>
+      <span class="badge phi">PHI</span>
+    </p>
+  </section>
+
+  <section id="cardinality">
+    <h2>4. Cardinality Reference</h2>
+    <p>Only the most load-bearing relationships are reproduced here. See
+      <a href="./erd.md#5-cardinality-summary-quick-reference">erd.md §5</a>
+      for the full list, and
+      <a href="./erd.md#4-entity-reference">§4</a>
+      for field-level definitions.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Parent</th><th>Child</th><th>Cardinality</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Interchange</td><td>FunctionalGroup</td><td>1..*</td><td>ISA wraps one or more GS groups.</td></tr>
+        <tr><td>FunctionalGroup</td><td>TransactionSet</td><td>1..*</td><td>GS wraps one or more ST blocks.</td></tr>
+        <tr><td>TransactionSet</td><td>Claim</td><td>1..*</td><td>When transaction_set_code = 837.</td></tr>
+        <tr><td>TransactionSet</td><td>Remittance</td><td>1..1</td><td>When transaction_set_code = 835.</td></tr>
+        <tr><td>Claim</td><td>Subscriber</td><td>1..1</td><td>Required.</td></tr>
+        <tr><td>Claim</td><td>Patient</td><td>0..1</td><td>Absent when subscriber is patient (SBR02 = 18).</td></tr>
+        <tr><td>Claim</td><td>Payer</td><td>1..1</td><td>Receiver of claim.</td></tr>
+        <tr><td>Claim</td><td>Provider</td><td>1..*</td><td>Roles: BILLING (required), PAY_TO, RENDERING, ATTENDING, etc.</td></tr>
+        <tr><td>Claim</td><td>Diagnosis</td><td>1..*</td><td>Principal + up to 11 others (837I allows more).</td></tr>
+        <tr><td>Claim</td><td>ServiceLine</td><td>1..*</td><td>Loop 2400.</td></tr>
+        <tr><td>Remittance</td><td>ClaimPayment</td><td>1..*</td><td>Loop 2100.</td></tr>
+        <tr><td>Remittance</td><td>ProviderAdjustment</td><td>0..*</td><td>PLB segments.</td></tr>
+        <tr><td>ClaimPayment</td><td>ServicePayment</td><td>0..*</td><td>Loop 2110.</td></tr>
+        <tr><td>ClaimPayment</td><td>Adjustment</td><td>0..*</td><td>Claim-level CAS.</td></tr>
+        <tr><td>ServicePayment</td><td>Adjustment</td><td>0..*</td><td>Line-level CAS.</td></tr>
+        <tr><td>Claim</td><td>ClaimPayment</td><td>0..1 ⇋ 0..1</td><td>Virtual correlation via <code>patient_control_number</code>; projection-only.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="regenerate">
+    <h2>5. Regenerating the Diagram</h2>
+    <p>The ERD image (<code>erd.svg</code>) is built from the DSL source
+      (<code>erd.er</code>) using <a href="https://github.com/eralchemy/eralchemy"
+      rel="noopener noreferrer"><code>eralchemy</code></a>.
+    </p>
+
+    <h4>One-time setup</h4>
+    <pre><code>pip install eralchemy
+# eralchemy renders via Graphviz; install it if you do not already have it:
+# macOS:   brew install graphviz
+# Ubuntu:  sudo apt-get install graphviz</code></pre>
+
+    <h4>Render</h4>
+    <pre><code># SVG (preferred — scales cleanly, embedded by erd.html)
+eralchemy -i docs/erd.er -o docs/erd.svg
+
+# PNG
+eralchemy -i docs/erd.er -o docs/erd.png
+
+# Mermaid-compatible source (for embedding in docs that render Mermaid)
+eralchemy -i docs/erd.er -o docs/erd.mmd</code></pre>
+
+    <h4>Committing regenerated artifacts</h4>
+    <p>
+      Commit <code>docs/erd.svg</code> when the logical model changes. The
+      <code>.er</code> source is the authoritative input; the <code>.svg</code>
+      is a pre-rendered view for reviewers who do not have Graphviz installed.
+      Do <em>not</em> hand-edit the SVG.
+    </p>
+  </section>
+
+  <section id="extensibility">
+    <h2>6. Extensibility Hooks</h2>
+    <p>The ERD is shaped to accept additional transaction bodies without reshaping the
+       envelope or party clusters:</p>
+    <table>
+      <thead>
+        <tr><th>Future Transaction</th><th>Proposed Body Entity</th><th>Cluster</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>999 (Implementation Ack)</td><td><code>FunctionalAcknowledgement</code></td><td>Envelope-level</td><td>Acknowledges a GS/GE group.</td></tr>
+        <tr><td>277CA (Claims Ack)</td><td><code>ClaimsAcknowledgement</code></td><td>Claim</td><td>Parsed-only; correlates on <code>patient_control_number</code>.</td></tr>
+        <tr><td>276 (Claim Status Inquiry)</td><td><code>ClaimStatusInquiry</code></td><td>Claim</td><td>Outbound; subset of 837 parties.</td></tr>
+        <tr><td>277 (Claim Status Response)</td><td><code>ClaimStatusResponse</code></td><td>Claim</td><td>Inbound pair to 276.</td></tr>
+        <tr><td>278 (Authorization Req/Resp)</td><td><code>AuthorizationRequest</code>, <code>AuthorizationResponse</code></td><td>Claim</td><td>Distinct body; reuses Provider/Patient/Payer.</td></tr>
+      </tbody>
+    </table>
+    <p>No envelope or party entity requires changes; only a new
+       <code>TransactionSet.body</code> union member.</p>
+  </section>
+
+  <footer>
+    Generated as part of the 837I / 837P / 835 implementation plan deliverables.
+    For field-level definitions and open questions, see
+    <a href="./erd.md">erd.md</a>.
+  </footer>
+</main>
+</body>
+</html>

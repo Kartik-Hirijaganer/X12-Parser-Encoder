@@ -52,6 +52,14 @@ function todayYyyyMmDd(): string {
   return `${today.getFullYear()}${month}${day}`
 }
 
+export const MAX_ISA_CONTROL_NUMBER = 999_999_999
+export const MIN_ISA_CONTROL_NUMBER = 1
+
+export function nextIsaControlNumber(last: number | null): number {
+  if (last === null || last >= MAX_ISA_CONTROL_NUMBER) return MIN_ISA_CONTROL_NUMBER
+  return last + 1
+}
+
 export const DEFAULT_SUBMITTER_CONFIG: SubmitterConfig = {
   organizationName: '',
   providerNpi: '',
@@ -72,4 +80,5 @@ export const DEFAULT_SUBMITTER_CONFIG: SubmitterConfig = {
   defaultServiceTypeCode: '30',
   defaultServiceDate: todayYyyyMmDd(),
   maxBatchSize: 5000,
+  lastIsaControlNumber: null,
 }

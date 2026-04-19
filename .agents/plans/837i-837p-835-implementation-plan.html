@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>837I / 837P / 835 Implementation Plan</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --bg-muted: #f7f8fa;
+    --bg-code: #f1f4f7;
+    --fg: #1c2b33;
+    --fg-muted: #5d6c7b;
+    --fg-faint: #65676b;
+    --border: #dee3e9;
+    --border-strong: #909396;
+    --accent: #0064e0;
+    --accent-bg: #e8f3ff;
+    --warn: #b45309;
+    --warn-bg: #fffbeb;
+    --ok: #007d1e;
+    --err: #c80a28;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "JetBrains Mono", monospace;
+    --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1116;
+      --bg-muted: #161b22;
+      --bg-code: #161b22;
+      --fg: #e6edf3;
+      --fg-muted: #9da7b3;
+      --fg-faint: #768390;
+      --border: #30363d;
+      --border-strong: #484f58;
+      --accent: #4493f8;
+      --accent-bg: #0b2a4a;
+      --warn: #d29922;
+      --warn-bg: #3a2a00;
+      --ok: #3fb950;
+      --err: #f85149;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--fg);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 48px 32px 96px;
+  }
+  @media (max-width: 720px) { .wrap { padding: 24px 16px 64px; } }
+  h1, h2, h3, h4 { line-height: 1.25; font-weight: 600; }
+  h1 { font-size: 2.25rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 1.6rem; margin: 48px 0 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  h3 { font-size: 1.2rem; margin: 32px 0 8px; }
+  h4 { font-size: 1rem; margin: 20px 0 6px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  p { margin: 10px 0; }
+  ul, ol { padding-left: 1.4em; margin: 10px 0; }
+  li { margin: 4px 0; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+  code {
+    font-family: var(--mono);
+    font-size: 0.88em;
+    background: var(--bg-code);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+  pre {
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    line-height: 1.55;
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  blockquote {
+    margin: 12px 0;
+    padding: 8px 16px;
+    border-left: 4px solid var(--accent);
+    background: var(--accent-bg);
+    border-radius: 6px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+    margin: 12px 0;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: var(--bg-muted); font-weight: 600; }
+  tbody tr:nth-child(even) { background: var(--bg-muted); }
+  .meta {
+    color: var(--fg-muted);
+    font-size: 0.92rem;
+  }
+  .toc {
+    background: var(--bg-muted);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 24px 0 32px;
+  }
+  .toc h4 { margin-top: 0; }
+  .toc ol { margin: 4px 0 0; padding-left: 1.2em; }
+  .toc a { color: var(--fg); }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--bg-muted);
+    color: var(--fg-muted);
+    border: 1px solid var(--border);
+  }
+  .badge.ok { background: color-mix(in oklab, var(--ok) 12%, var(--bg)); color: var(--ok); border-color: color-mix(in oklab, var(--ok) 30%, transparent); }
+  .badge.warn { background: var(--warn-bg); color: var(--warn); border-color: color-mix(in oklab, var(--warn) 30%, transparent); }
+  .badge.accent { background: var(--accent-bg); color: var(--accent); border-color: color-mix(in oklab, var(--accent) 30%, transparent); }
+  .callout {
+    border-left: 4px solid var(--warn);
+    background: var(--warn-bg);
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 12px 0;
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .grid-2 { grid-template-columns: 1fr; } }
+  details { border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin: 8px 0; background: var(--bg-muted); }
+  summary { cursor: pointer; font-weight: 600; }
+  .check li { list-style: none; position: relative; padding-left: 22px; }
+  .check li::before { content: "☐"; position: absolute; left: 0; color: var(--fg-muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>837I / 837P / 835 Implementation Plan</h1>
+<p class="meta">
+  <span class="badge accent">Draft v1.0</span>
+  <span class="badge">Target: library 0.2.x → 0.3.0</span>
+  <span class="badge">Owners: Platform / RCM Core</span>
+</p>
+
+<blockquote>
+  <strong>Companion docs.</strong>
+  <ul>
+    <li><a href="../../docs/erd.html">docs/erd.html</a> — logical ERD (generated with eralchemy)</li>
+    <li><a href="../../docs/api/index.html">docs/api/index.html</a> — Swagger UI</li>
+    <li><a href="../../docs/api/openapi.yaml">docs/api/openapi.yaml</a> — OpenAPI source of truth</li>
+    <li><a href="../../docs/architecture.md">docs/architecture.md</a> — current-state architecture</li>
+  </ul>
+</blockquote>
+
+<nav class="toc">
+  <h4>Contents</h4>
+  <ol>
+    <li><a href="#executive-summary">Executive Summary</a></li>
+    <li><a href="#target-architecture">Target Architecture</a></li>
+    <li><a href="#scaffolding">Scaffolding</a></li>
+    <li><a href="#phased-implementation-plan">Phased Implementation Plan</a></li>
+    <li><a href="#appendix-a">Appendix A — Agent Guardrails</a></li>
+    <li><a href="#appendix-b">Appendix B — Phase Tracking</a></li>
+    <li><a href="#appendix-c">Appendix C — Glossary</a></li>
+  </ol>
+</nav>
+
+<h2 id="executive-summary">1. Executive Summary</h2>
+
+<h3>1.1 What is being built</h3>
+<p>Three production-grade EDI transaction sets will be added to the existing <code>x12-edi-tools</code> Python library and the FastAPI workbench.</p>
+<table>
+  <thead>
+    <tr><th>Transaction</th><th>Purpose</th><th>Direction</th><th>Version</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>837I</strong></td><td>Institutional claim submission (home-health, hospital, SNF)</td><td>Outbound (provider → payer)</td><td><code>005010X223A2</code></td></tr>
+    <tr><td><strong>837P</strong></td><td>Professional claim submission (clinician-billed services)</td><td>Outbound</td><td><code>005010X222A1</code></td></tr>
+    <tr><td><strong>835</strong></td><td>Electronic Remittance Advice (payment + adjudication detail)</td><td>Inbound (payer → provider)</td><td><code>005010X221A1</code></td></tr>
+  </tbody>
+</table>
+<p>Each is implemented end-to-end: <strong>typed Pydantic v2 models → parser → encoder → validator (SNIP 1-5) → payer profile overrides → convenience builder/reader → FastAPI routes</strong>. Work is structured so multiple AI agents can operate on non-overlapping files in parallel.</p>
+
+<h3>1.2 Why it matters</h3>
+<p>The library today is eligibility-only (270/271). For a home-health RCM operator, eligibility is a <em>gate</em>, not a revenue event. Claim submission (837I/P) and remittance posting (835) are the backbone of AR, denial management, and cash flow — without them, the product sits adjacent to revenue rather than driving it.</p>
+<ul>
+  <li><strong>837I</strong> — blocking transaction for home-health revenue. Every admission, recertification, and final claim flows through it.</li>
+  <li><strong>835</strong> — how claims turn into cash and how denials are operationally visible. Posting automation requires this.</li>
+  <li><strong>837P</strong> — unlocks companion lines (physician oversight, therapy evaluations) billed alongside 837I episodes.</li>
+</ul>
+
+<h3>1.3 Business value</h3>
+<ul>
+  <li><strong>Revenue unlock</strong> — first-party submission pipeline without a commercial clearinghouse SDK for envelope construction.</li>
+  <li><strong>Denial intelligence</strong> — parsing 835 CAS groups + CARC/RARC codes locally lets us build denial dashboards and payer scorecards without leaking PHI.</li>
+  <li><strong>Posting throughput</strong> — structured 835 ingestion compresses an accountant-hour job to an API call.</li>
+  <li><strong>Compliance surface</strong> — all SNIP 1-5 validation runs pre-flight, reducing payer rejections and TA1/999 rework.</li>
+  <li><strong>Extensibility</strong> — the same scaffolding accommodates 999, 277CA, 276/277, and 278 without re-plumbing envelope, validator, or payer-profile systems.</li>
+</ul>
+
+<h3>1.4 Technical scope</h3>
+<p><strong>In scope:</strong></p>
+<ul>
+  <li>Pydantic v2 domain models for <code>Claim</code>, <code>ClaimLine</code>, <code>Provider</code>, <code>Patient</code>, <code>Payer</code>, <code>Remittance</code>, <code>Adjustment</code>, <code>Acknowledgement</code>, <code>SubmissionBatch</code>.</li>
+  <li>New X12 segments: CLM, CLP, CAS, SVC, HI, SV1, SV2, SV3, HCP, AMT, PWK, CRC, CR1–CR3, CN1, MIA, MOA, DMG/PAT, SBR, OI, MEA, LX, K3, NTE, PLB, BPR, QTY.</li>
+  <li>New loops per implementation guide (2000A/B/C, 2010AA–BB, 2300, 2310A–F, 2320, 2330A–G, 2400, 2410, 2420A–I, 2430, 2440 for 837; 1000A/B, 2000, 2100, 2110 for 835).</li>
+  <li>Transaction classes <code>Transaction837I</code>, <code>Transaction837P</code>, <code>Transaction835</code> following the 270/271 pattern.</li>
+  <li>Convenience functions <code>build_837i</code>, <code>build_837p</code>, <code>read_835</code>.</li>
+  <li>Parser dispatcher recognizing <code>ST01 ∈ {837, 835}</code> and routing to new loop builders.</li>
+  <li>Encoder extension re-using <code>encode_isa</code> / <code>encode_segment</code> primitives.</li>
+  <li>SNIP 1-5 validator rules per transaction plus payer-profile hook points.</li>
+  <li>DC Medicaid companion-guide override pack plus documented pattern for additional payers.</li>
+  <li>FastAPI routers under <code>/api/v1/claims/*</code> and <code>/api/v1/remittance/*</code>.</li>
+  <li>OpenAPI spec + Swagger UI under <code>docs/api/</code>.</li>
+  <li>Logical ERD generated via <code>eralchemy</code>.</li>
+  <li>Hypothesis property-based tests for roundtrip, parser fuzzing, and control-number invariants.</li>
+</ul>
+<p><strong>Out of scope (explicitly):</strong></p>
+<ul>
+  <li>Persistent storage / database adapters — library stays stateless.</li>
+  <li>SFTP / AS2 / trading-partner connectivity — caller's responsibility.</li>
+  <li>Real patient or payer-specific real-world test data — synthetic only per <code>CLAUDE.md</code>.</li>
+  <li>999, 277CA, 276/277, 278 implementations — scaffolded for, not implemented.</li>
+  <li>UI work in <code>apps/web/</code> — tracked separately.</li>
+  <li>Background job queues or async claim pipelines.</li>
+</ul>
+
+<h3>1.5 Recommended implementation order</h3>
+<pre><code>Phase 0 ── Scaffolding & placeholder modules      (1 agent,   1-2 days)
+Phase 1 ── Domain model layer                     (3 agents,  3 days, parallel)
+Phase 2 ── X12 segment & loop expansion           (3 agents,  4 days, parallel after Phase 1)
+Phase 3 ── Transaction builders + parsers         (3 agents,  5 days, parallel)
+Phase 4 ── Validator & SNIP rules                 (3 agents,  3 days, parallel)
+Phase 5 ── Payer profile extension (DC Medicaid)  (1 agent,   2 days)
+Phase 6 ── FastAPI routers + services + schemas   (2 agents,  3 days, parallel)
+Phase 7 ── Convenience layer                      (1 agent,   2 days)
+Phase 8 ── Fixtures, property-based tests, E2E    (3 agents,  3 days, parallel)
+Phase 9 ── Docs: ERD regen, OpenAPI, Swagger UI   (1 agent,   1 day)
+</code></pre>
+
+<h3>1.6 Key risks and assumptions</h3>
+<table>
+  <thead><tr><th>ID</th><th>Risk / Assumption</th><th>Severity</th><th>Mitigation</th></tr></thead>
+  <tbody>
+    <tr><td>R-1</td><td>Implementation-guide ambiguities (e.g., 837I vs 837P CLM05 drift)</td><td>High</td><td>Pin <code>IMPLEMENTATION_REFERENCE</code> per transaction; regression-test against recorded fixtures</td></tr>
+    <tr><td>R-2</td><td>Parser dispatch by <code>ST01</code> mis-routes non-standard envelopes</td><td>Medium</td><td>Preserve GenericSegment fallback; raise <code>TransactionParseError</code> with <code>st_control_number</code></td></tr>
+    <tr><td>R-3</td><td>835 matching to original 837 claims imperfect across payers</td><td>Medium</td><td>Expose unmatched bucket alongside matched; never silently drop</td></tr>
+    <tr><td>R-4</td><td>Decimal precision in monetary fields</td><td>High</td><td>Use <code>Decimal</code> everywhere; serializer renders <code>format(value, "f")</code></td></tr>
+    <tr><td>R-5</td><td>Property-based tests flake on Unicode in free-form fields</td><td>Low</td><td>Constrain Hypothesis strategies to the X12 basic character set</td></tr>
+    <tr><td>R-6</td><td>Payer variability outgrows a single-file override</td><td>Medium</td><td>Per-transaction override modules under <code>payers/&lt;payer&gt;/</code></td></tr>
+    <tr><td>R-7</td><td>PHI logging regression when new segments added</td><td>High</td><td>Route all logging through <code>_logging.build_log_extra</code>; extend lint gate</td></tr>
+    <tr><td>R-8</td><td>Library / API version drift</td><td>Medium</td><td>Keep <code>scripts/check_version_sync.py</code> as CI gate</td></tr>
+    <tr><td>R-9</td><td>Parallel agents touching <code>__init__.py</code></td><td>High</td><td>Public-surface edits only in Phase 0 and Phase 7</td></tr>
+    <tr><td>A-1</td><td>Library stays stateless</td><td>Core</td><td>ERD is logical, not physical</td></tr>
+    <tr><td>A-2</td><td>Caller handles SFTP transport and control-number ledger persistence</td><td>Core</td><td>Expose <code>ControlNumbers</code> on every <code>build_*</code></td></tr>
+    <tr><td>A-3</td><td>Synthetic-only fixtures</td><td>Core</td><td><code>tests/fixtures/</code> conforms to existing policy</td></tr>
+  </tbody>
+</table>
+
+<h3>1.7 Author's opinionated disagreements with the brief</h3>
+<div class="callout">
+  Stated up front so reviewers can overrule before work begins.
+</div>
+<ol>
+  <li><strong>"Claim generation" and "claim export / submission preparation" collapse into one endpoint &mdash; and 837I and 837P share that endpoint.</strong> The library is stateless; generation is the preparation. Separate generate/export endpoints would imply server-side retention. Separate 837I and 837P routes are ceremonial &mdash; the request body already carries <code>claim_type</code> as a discriminator and validation dispatches on it internally. Final shape: <code>POST /claims/generate</code>, accepting a discriminated union of <code>InstitutionalClaim</code> and <code>ProfessionalClaim</code>, returning the X12 payload plus a typed envelope manifest. Mixed batches emit separate GS/GE functional groups so each ST uses the correct implementation reference (<code>005010X223A2</code> vs <code>005010X222A1</code>). <em>Cost accepted:</em> lose free per-type rate limits / metrics &mdash; handled via <code>{txn}</code> metric labels and profile-scoped limits instead.</li>
+  <li><strong>Reconciliation / posting belongs in the caller's domain.</strong> The library projects an 835 into matched/unmatched buckets relative to a caller-supplied list of prior <code>SubmissionBatch</code> control numbers. It does not post or persist.</li>
+  <li><strong>ERDs for a stateless library are logical, not physical.</strong> We use the <code>.er</code> DSL with eralchemy — documentation, not a schema-migration substrate.</li>
+  <li><strong>Payer-specific logic never lives in transaction builders.</strong> Everything payer-specific flows through <code>payers/&lt;payer&gt;/</code>. Inlining payer logic re-creates spaghetti by Q4.</li>
+</ol>
+
+<h2 id="target-architecture">2. Target Architecture</h2>
+
+<h3>2.1 End-state system view</h3>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│                           apps/web (React)                          │
+│            Imports spreadsheets, previews X12, posts 835            │
+└────────────────────────────┬────────────────────────────────────────┘
+                             │ HTTPS JSON
+                             ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    apps/api (FastAPI, stateless)                    │
+│  /api/v1/generate          (existing, 270)                          │
+│  /api/v1/parse             (existing, 271)                          │
+│  /api/v1/validate          (existing)                               │
+│  /api/v1/claims/*          (NEW — unified 837I/P via claim_type)    │
+│  /api/v1/remittance/835/*  (NEW)                                    │
+│  /api/v1/acks/*            (NEW — scaffold for 999/277CA)           │
+│  routers/  →  services/  →  x12_edi_tools (library)                 │
+└────────────────────────────┬────────────────────────────────────────┘
+                             │ in-process Python
+                             ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│              packages/x12-edi-tools (pure-Python library)           │
+│   domain/  →  builders/  ↔  models/  ↔  parser/  →  readers/        │
+│                             ↕                                       │
+│                          validator/                                 │
+│                             ↕                                       │
+│                           payers/                                   │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre>
+
+<h3>2.2 System boundaries</h3>
+<table>
+  <thead><tr><th>Boundary</th><th>Contract</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td>Web ↔ API</td><td>HTTPS + JSON, Pydantic-validated; size-capped</td><td>Existing pattern</td></tr>
+    <tr><td>API ↔ Library</td><td>Pure Python calls; library accepts domain objects or dicts; returns typed <code>Interchange</code>, <code>ParseResult</code>, or projection</td><td>No serialization at this boundary</td></tr>
+    <tr><td>Library ↔ External</td><td>None. Library never opens sockets or writes disk (tests and apps do)</td><td>Preserves framework-agnostic requirement</td></tr>
+    <tr><td>Library internal (domain ↔ X12)</td><td><code>domain/</code> is X12-agnostic; <code>builders/</code> translate domain → wire; <code>readers/</code> project wire → domain</td><td>Enables future non-X12 sources (FHIR Claim, NUCC JSON)</td></tr>
+  </tbody>
+</table>
+
+<h3>2.3 Core modules (post-implementation)</h3>
+<p>Full tree in the <a href="#scaffolding">Scaffolding</a> section. Highlights:</p>
+<ul>
+  <li><code>domain/</code> — DB-free business objects.</li>
+  <li><code>models/segments/</code> — ~35 new segment classes, one file each.</li>
+  <li><code>models/loops/claims/</code> and <code>models/loops/remittance/</code> — loop containers per transaction family.</li>
+  <li><code>models/transactions/transaction_{837i,837p,835}.py</code> — ST/SE-wrapped typed transactions.</li>
+  <li><code>builders/claim_{837i,837p}.py</code> + <code>readers/remittance_835.py</code> — translation layer.</li>
+  <li><code>validator/rules/rules_{837,837i,837p,835}.py</code> — SNIP 4-5 rule modules.</li>
+  <li><code>payers/&lt;payer&gt;/profile_{txn}.py</code> — per-transaction overrides.</li>
+</ul>
+
+<h3>2.4 Shared infrastructure</h3>
+<ul>
+  <li><strong>Envelope construction stays DRY.</strong> <code>builders/_common.py</code> extracts ISA/GS/GE/IEA scaffolding. <code>build_270</code> is refactored in Phase 3 to call it (byte-equal regression test enforced).</li>
+  <li><strong>Parser dispatch is a pure function.</strong> <code>parser/transaction_dispatch.py</code> exposes <code>dispatch(st01, implementation_reference) → TransactionLoopBuilder</code>. Unknown <code>ST01</code> falls back to <code>GenericSegment</code>.</li>
+  <li><strong>Validator layering stays at three tiers:</strong> SNIP 1 structural, SNIP 2-3 syntax + code-set, SNIP 4-5 situational + payer.</li>
+  <li><strong>Logging and correlation IDs</strong> unchanged. Every new code path uses <code>_logging.build_log_extra</code> with documented non-PHI fields only.</li>
+</ul>
+
+<h3>2.5 Payer override strategy</h3>
+<p>Extend the <code>PayerProfile</code> Protocol with four methods:</p>
+<pre><code>class PayerProfile(Protocol):
+    name: str
+
+    # Existing
+    def validate(self, interchange: Interchange) -> Sequence[ValidationError]: ...
+    def get_defaults(self) -> dict[str, object]: ...
+
+    # NEW
+    def get_claim_defaults(self, transaction: str) -> dict[str, object]: ...
+    def get_remit_overrides(self) -> dict[str, object]: ...
+    def validate_claim(self, transaction: Transaction837I | Transaction837P) -> Sequence[ValidationError]: ...
+    def validate_remittance(self, transaction: Transaction835) -> Sequence[ValidationError]: ...
+</code></pre>
+<p>Override precedence (highest wins): caller-supplied overrides → <code>payers/&lt;payer&gt;/profile_&lt;txn&gt;.py</code> → <code>payers/base.py</code> defaults → library SNIP defaults.</p>
+
+<h3>2.6 Validation strategy</h3>
+<p>Every transaction is validated at three checkpoints:</p>
+<ol>
+  <li><strong>Pre-build (domain)</strong> — Pydantic validators reject malformed business objects before X12 emission.</li>
+  <li><strong>Post-build, pre-encode (SNIP 1-3)</strong> — <code>validate(interchange, levels=[1,2,3])</code> against the typed <code>Interchange</code>.</li>
+  <li><strong>Post-encode or on-parse (SNIP 4-5)</strong> — Full validator sweep including payer deltas.</li>
+</ol>
+
+<h3>2.7 Data flow</h3>
+<h4>Outbound (claim submission)</h4>
+<pre><code>POST /api/v1/claims/generate   { claims: [ { claim_type: "INSTITUTIONAL" | "PROFESSIONAL", ... } ] }
+  ▼ GenerateClaimRequest (schemas/claims.py; discriminated union on claim_type)
+  ▼ services/claims.py::generate_claims_response()
+  ▼ builders/claim_837.build_837(claims, config, profile)
+       — partitions by claim_type, dispatches to build_837i / build_837p
+       — mixed batches emit separate GS/GE groups (one per implementation reference)
+  ▼ validator.validate(interchange, levels=[1..5], profile=...)
+  ▼ encoder.encode(interchange, config=config, correlation_id=...)
+  ▼ wraps x12 + ControlNumbers + ArchiveEntry[]
+  ▼ GenerateClaimResponse → client
+</code></pre>
+
+<h4>Inbound (remittance parsing)</h4>
+<pre><code>POST /api/v1/remittance/835/parse (multipart or inline)
+  ▼ services/remittance.py
+  ▼ parser.parse(raw, strict=False, on_error="collect")
+  ▼ readers/remittance_835.read_835(parse_result)
+  ▼ services wraps projection + parse_errors + summary
+  ▼ RemittanceParseResponse → client
+</code></pre>
+
+<h3>2.8 Fit alongside existing 270/271 support</h3>
+<p>Purely additive. No existing public API changes. <code>build_270</code> / <code>read_271</code> / <code>parse</code> / <code>encode</code> / <code>validate</code> signatures are preserved. New public functions join <code>__init__</code> in Phase 7.</p>
+
+<h3>2.9 Architecture documentation source</h3>
+<p>The diagram in 2.1 is authoritative for high-level structure. A detailed module-relationship diagram is rendered by <code>eralchemy</code> from the same DSL that drives the ERD (<code>docs/erd.er</code> → <code>docs/erd.svg</code>). Swagger/OpenAPI is the authoritative HTTP contract (<code>docs/api/openapi.yaml</code>).</p>
+
+<h2 id="scaffolding">3. Scaffolding</h2>
+
+<h3>3.1 Repository file tree (target end-state, files marked)</h3>
+<p>Legend: <code>[E]</code> = exists today, <code>[N]</code> = new, <code>[M]</code> = modified.</p>
+<pre><code>X12-Parser-Encoder/
+├── .agents/plans/
+│   ├── 837i-837p-835-implementation-plan.md           [N]
+│   └── 837i-837p-835-implementation-plan.html         [N]
+├── docs/
+│   ├── architecture.md                                [E]
+│   ├── erd.md                                         [N]
+│   ├── erd.html                                       [N]
+│   ├── erd.er                                         [N]  eralchemy DSL source
+│   ├── erd.svg                                        [N]  generated in CI
+│   └── api/
+│       ├── openapi.yaml                               [N]
+│       └── index.html                                 [N]  Swagger UI
+├── packages/x12-edi-tools/
+│   ├── pyproject.toml                                 [M]
+│   ├── src/x12_edi_tools/
+│   │   ├── __init__.py                                [M]
+│   │   ├── exceptions.py                              [M]
+│   │   ├── config.py                                  [M]
+│   │   ├── common/enums.py                            [M]
+│   │   ├── domain/                                    [N] claim, patient, provider,
+│   │   │                                                    payer, remittance, adjustment,
+│   │   │                                                    acknowledgement, submission_batch, audit
+│   │   ├── models/
+│   │   │   ├── segments/                              [M/N]  ~35 new files, one segment each
+│   │   │   ├── loops/
+│   │   │   │   ├── claims/                            [N]
+│   │   │   │   └── remittance/                        [N]
+│   │   │   └── transactions/
+│   │   │       ├── transaction_837i.py                [N]
+│   │   │       ├── transaction_837p.py                [N]
+│   │   │       └── transaction_835.py                 [N]
+│   │   ├── parser/transaction_dispatch.py             [N]
+│   │   ├── encoder/claim_encoder.py                   [N]
+│   │   ├── builders/                                  [N]  claim_837i, claim_837p, _common
+│   │   ├── readers/                                   [N]  remittance_835, _common
+│   │   ├── validator/rules/                           [N]  rules_837, rules_837i, rules_837p, rules_835
+│   │   ├── payers/base.py                             [M]  extend Protocol
+│   │   └── payers/dc_medicaid/                        [M/N]  constants_837, constants_835,
+│   │                                                          profile_837i, profile_837p, profile_835
+│   └── tests/
+│       ├── fixtures/{claims,remittance}/              [N]
+│       ├── test_domain/                               [N]
+│       ├── test_builders/                             [N]
+│       ├── test_readers/                              [N]
+│       ├── test_transactions/                         [N]
+│       ├── test_validator/                            [M/N]
+│       ├── test_payers/                               [M/N]
+│       ├── test_property/                             [N]
+│       ├── test_smoke_837i.py                         [N]
+│       ├── test_smoke_837p.py                         [N]
+│       └── test_smoke_835.py                          [N]
+└── apps/api/
+    ├── app/routers/{claims,remittance,acks}.py        [N]
+    ├── app/schemas/{claims,remittance,acks}.py        [N]
+    ├── app/services/{claims,remittance,acks}.py       [N]
+    ├── app/core/config.py                             [M]  + enable_acks
+    └── tests/{routers,services}/test_{claims,remittance}*.py  [N]
+</code></pre>
+
+<h3>3.2 Module boundaries and folder ownership</h3>
+<p>Each row is owned by exactly one Phase. Phase boundaries prevent concurrent agents from editing the same file.</p>
+<table>
+  <thead><tr><th>Folder / File</th><th>Owned by Phase</th><th>Modification type</th></tr></thead>
+  <tbody>
+    <tr><td><code>docs/erd.er</code>, <code>docs/api/openapi.yaml</code></td><td>Phase 9</td><td>Regenerate on docs CI job</td></tr>
+    <tr><td><code>src/x12_edi_tools/domain/*</code></td><td>Phase 1</td><td>New files only</td></tr>
+    <tr><td><code>src/x12_edi_tools/models/segments/&lt;new&gt;.py</code></td><td>Phase 2</td><td>New files; one segment per file</td></tr>
+    <tr><td><code>src/x12_edi_tools/models/loops/claims/*.py</code></td><td>Phase 2</td><td>New files</td></tr>
+    <tr><td><code>src/x12_edi_tools/models/loops/remittance/*.py</code></td><td>Phase 2</td><td>New files</td></tr>
+    <tr><td><code>src/x12_edi_tools/models/transactions/transaction_&lt;txn&gt;.py</code></td><td>Phase 3</td><td>New files</td></tr>
+    <tr><td><code>src/x12_edi_tools/parser/transaction_dispatch.py</code></td><td>Phase 3</td><td>New file</td></tr>
+    <tr><td><code>src/x12_edi_tools/encoder/claim_encoder.py</code></td><td>Phase 3</td><td>New file</td></tr>
+    <tr><td><code>src/x12_edi_tools/builders/*</code></td><td>Phase 3</td><td>New files</td></tr>
+    <tr><td><code>src/x12_edi_tools/readers/*</code></td><td>Phase 3</td><td>New files</td></tr>
+    <tr><td><code>src/x12_edi_tools/validator/rules/*</code></td><td>Phase 4</td><td>New files</td></tr>
+    <tr><td><code>src/x12_edi_tools/payers/base.py</code></td><td>Phase 0 + Phase 5</td><td>Protocol extension + implementations</td></tr>
+    <tr><td><code>src/x12_edi_tools/payers/dc_medicaid/*</code></td><td>Phase 5</td><td>New files</td></tr>
+    <tr><td><code>src/x12_edi_tools/convenience.py</code></td><td>Phase 7</td><td>Single agent appends new public functions</td></tr>
+    <tr><td><code>src/x12_edi_tools/__init__.py</code></td><td>Phase 0 + Phase 7</td><td>Reserve slots / fill</td></tr>
+    <tr><td><code>apps/api/app/routers/{claims,remittance}.py</code></td><td>Phase 6</td><td>New files</td></tr>
+    <tr><td><code>apps/api/app/routers/__init__.py</code></td><td>Phase 6</td><td>Single agent merges both</td></tr>
+    <tr><td><code>tests/fixtures/{claims,remittance}</code></td><td>Phase 8</td><td>New directories</td></tr>
+  </tbody>
+</table>
+
+<h3>3.3 Naming conventions</h3>
+<ul>
+  <li><strong>Segments:</strong> <code>models/segments/&lt;lowercase_segment_id&gt;.py</code>; class <code>&lt;UpperCase&gt;Segment</code>; one segment per file.</li>
+  <li><strong>Loops:</strong> <code>models/loops/&lt;family&gt;/loop_&lt;numeric_id&gt;[_&lt;scope&gt;].py</code>; class <code>Loop&lt;NumericId&gt;_&lt;TxnSuffix&gt;</code>.</li>
+  <li><strong>Transactions:</strong> <code>transaction_&lt;txn_lower&gt;.py</code>; class <code>Transaction&lt;TxnUpper&gt;</code>.</li>
+  <li><strong>Builders:</strong> <code>builders/claim_&lt;txn_lower&gt;.py</code>; function <code>build_&lt;txn_lower&gt;</code>.</li>
+  <li><strong>Readers:</strong> <code>readers/&lt;scope&gt;_&lt;txn&gt;.py</code>; function <code>read_&lt;txn&gt;</code>.</li>
+  <li><strong>Domain objects:</strong> Singular, business-language. <code>Claim</code>, not <code>Claim837I</code>. The wire format is implementation detail.</li>
+  <li><strong>Validator rules:</strong> error codes <code>X12-&lt;TXN&gt;-&lt;NNN&gt;</code>.</li>
+  <li><strong>Payer overrides:</strong> <code>payers/&lt;slug&gt;/profile_&lt;txn&gt;.py</code>, <code>constants_&lt;family&gt;.py</code>.</li>
+  <li><strong>Fixtures:</strong> <code>tests/fixtures/&lt;domain&gt;/&lt;txn&gt;/synthetic_&lt;scenario&gt;.x12</code>.</li>
+</ul>
+
+<h3>3.4 Code organization strategy</h3>
+<ul>
+  <li><strong>One concept per file.</strong> Don't bundle <code>SV1</code> and <code>SV2</code>.</li>
+  <li><strong>No cross-file enum leakage.</strong> Shared enums move to <code>common/enums.py</code> only when ≥ 2 segments consume them.</li>
+  <li><strong>No inline loop definitions in transaction files.</strong> Transaction modules stay under ~80 lines.</li>
+  <li><strong>No helper dumping grounds.</strong> <code>_common.py</code> is for envelope construction only.</li>
+  <li><strong>Strict typing throughout.</strong> <code>mypy --strict</code> enforced in CI.</li>
+</ul>
+
+<h3>3.5 Documentation organization strategy</h3>
+<ul>
+  <li><code>docs/architecture.md</code> — high-level diagram + paragraph. Updated once at end of Phase 3.</li>
+  <li><code>docs/erd.md</code> — human-readable ERD discussion + embedded <code>erd.svg</code>.</li>
+  <li><code>docs/erd.er</code> — eralchemy DSL source of truth.</li>
+  <li><code>docs/erd.svg</code> — generated. CI regenerates, pre-commit catches drift.</li>
+  <li><code>docs/erd.html</code> — standalone system-theme wrapper around the SVG.</li>
+  <li><code>docs/api/openapi.yaml</code> — HTTP contract source of truth. Hand-written, CI-validated.</li>
+  <li><code>docs/api/index.html</code> — self-contained Swagger UI.</li>
+</ul>
+<p>Regeneration:</p>
+<pre><code># ERD
+eralchemy -i docs/erd.er -o docs/erd.svg
+# OpenAPI validation
+python -m openapi_spec_validator docs/api/openapi.yaml
+</code></pre>
+
+<h3>3.6 Test fixture organization</h3>
+<ul>
+  <li><code>tests/fixtures/claims/&lt;txn&gt;/*.x12</code> — synthetic outbound claims.</li>
+  <li><code>tests/fixtures/remittance/835/*.x12</code> — synthetic inbound 835s (paid-in-full, single-line denial, mixed adjudication, PLB interest payment, forwarding balance, refund request).</li>
+  <li><code>tests/fixtures/common/envelopes/</code> — envelope-only test fragments.</li>
+  <li>Every fixture has a <code>.expected.json</code> sibling committed after human review.</li>
+  <li>Conftest check asserts synthetic markers on ingest.</li>
+</ul>
+
+<h3>3.7 Payer override folder strategy</h3>
+<ul>
+  <li>Every payer is a sibling under <code>payers/</code>, owned by one agent.</li>
+  <li>One file per transaction override.</li>
+  <li>Constants files hold payer-scoped code sets.</li>
+  <li>Registration via <code>payers/__init__.py::PROFILE_REGISTRY</code>.</li>
+</ul>
+
+<h3>3.8 How scaffolding prevents agent collision</h3>
+<ol>
+  <li><strong>One file per agent per task.</strong> Phase 3 assigns <code>claim_837i.py</code> to Agent D and <code>claim_837p.py</code> to Agent E; they do not touch each other's files.</li>
+  <li><strong><code>__init__.py</code> public-surface edits only in Phases 0 and 7.</strong></li>
+  <li><strong>Segment and loop files are write-once.</strong> Missing segments route through Phase 2 patches, not Phase 3 reach-ins.</li>
+  <li><strong>Per-agent worktrees.</strong> <code>git worktree add ../X12-837I-worktree dev</code>.</li>
+  <li><strong>Fixture isolation.</strong> Phase 8 agents create fixtures under their transaction subfolder only.</li>
+  <li><strong>No cross-layer reach-through.</strong> Routers import services; services import library public surface; routers never import <code>x12_edi_tools.models.segments.clm</code>. Lint-enforced.</li>
+  <li><strong>Deterministic <code>__all__</code> ordering.</strong> Alphabetical. Mechanical.</li>
+</ol>
+
+<h2 id="phased-implementation-plan">4. Phased Implementation Plan</h2>
+
+<details open>
+<summary>Phase 0 — Scaffolding &amp; Placeholder Modules <span class="badge">1 agent · 1-2 days</span></summary>
+<p><strong>Objective:</strong> Create the skeleton so every subsequent phase has an uncontested target.</p>
+<p><strong>Scope:</strong></p>
+<ul>
+  <li>Create all new directories as empty packages with <code>__init__.py</code> stubs.</li>
+  <li>Add placeholder modules raising <code>NotImplementedError</code> so imports resolve.</li>
+  <li>Extend <code>payers/base.py::PayerProfile</code> Protocol with the four new methods.</li>
+  <li>Reserve public-surface slots in <code>__init__.py</code> under a <code>TYPE_CHECKING</code>-gated block.</li>
+  <li>Add <code>eralchemy</code>, <code>openapi-spec-validator</code>, <code>hypothesis</code> to dev extras.</li>
+  <li>Create <code>.agents/plans/</code>, <code>docs/api/</code>, <code>docs/erd.er</code>.</li>
+  <li>Extend <code>Makefile</code> with <code>make docs</code>.</li>
+</ul>
+<p><strong>Deliverables:</strong> Repo compiles, mypy strict passes on empty stubs, <code>make docs</code> works against placeholder content, CI green.</p>
+<p><strong>Ownership:</strong> Single agent. No parallel agents yet — this is the gate.</p>
+<p><strong>Dependencies:</strong> None.</p>
+<p><strong>Risks:</strong> Agent scope creep ("I'll just start 837I while I'm here"). Do not.</p>
+<p><strong>Definition of Done:</strong></p>
+<ul class="check">
+  <li>All directories from Section 3.1 exist with valid <code>__init__.py</code>.</li>
+  <li><code>mypy --strict</code> passes.</li>
+  <li><code>pytest</code> passes unchanged.</li>
+  <li><code>make docs</code> produces <code>erd.svg</code> and validates <code>openapi.yaml</code>.</li>
+  <li>PR merged with "scaffold-only" label.</li>
+</ul>
+<p><strong>Parallelism:</strong> Single-threaded.</p>
+</details>
+
+<details>
+<summary>Phase 1 — Domain Model Layer <span class="badge">3 agents · 3 days · parallel</span></summary>
+<p><strong>Objective:</strong> DB-free business objects for claims, remittances, satellites.</p>
+<p><strong>Scope:</strong> Pydantic v2 models for Claim/ClaimLine, Patient/Subscriber, Provider roles, Payer, Remittance family, Adjustment, Acknowledgement scaffold, SubmissionBatch, TransactionAudit. Decimal precision. ISO date normalization. NPI Luhn. <code>test_domain/</code> unit tests.</p>
+<p><strong>Deliverables:</strong> Nine new files under <code>domain/</code>; 95% coverage.</p>
+<p><strong>Ownership:</strong></p>
+<ul>
+  <li><strong>Agent A:</strong> claim, patient, provider, payer.</li>
+  <li><strong>Agent B:</strong> remittance, adjustment.</li>
+  <li><strong>Agent C:</strong> acknowledgement, submission_batch, audit.</li>
+</ul>
+<p><strong>Dependencies:</strong> Phase 0.</p>
+<p><strong>Risks:</strong> Decimal drift (reject <code>: float</code> in domain). Enum explosion (CARC/RARC stay as validated strings).</p>
+<p><strong>Definition of Done:</strong></p>
+<ul class="check">
+  <li>mypy --strict passes.</li>
+  <li>Coverage ≥ 95% on <code>domain/</code>.</li>
+  <li>No domain file imports from <code>models/</code>, <code>parser/</code>, <code>encoder/</code>.</li>
+</ul>
+<p><strong>Parallelism:</strong> A/B/C fully parallel in isolated worktrees.</p>
+</details>
+
+<details>
+<summary>Phase 2 — X12 Segment &amp; Loop Expansion <span class="badge">3 agents · 4 days · parallel</span></summary>
+<p><strong>Objective:</strong> Every segment and loop class needed by 837I/837P/835.</p>
+<p><strong>Scope:</strong> ~35 new segment files extending <code>X12Segment</code>; ~40 loop files under <code>loops/claims/</code> and <code>loops/remittance/</code>; enum additions in <code>common/enums.py</code>; per-segment round-trip tests.</p>
+<p><strong>Ownership:</strong></p>
+<ul>
+  <li><strong>Agent D:</strong> Claim-scoped segments + claim loops.</li>
+  <li><strong>Agent E:</strong> Shared/cross-cutting segments.</li>
+  <li><strong>Agent F:</strong> Remittance-scoped segments + remittance loops.</li>
+</ul>
+<p><strong>Dependencies:</strong> Phase 0. Can start concurrently with Phase 1.</p>
+<p><strong>Risks:</strong> Composite element parsing with custom delimiters; HI segment with up to 24 composites.</p>
+<p><strong>Definition of Done:</strong></p>
+<ul class="check">
+  <li>Every new segment round-trips for at least one sample.</li>
+  <li>Every new loop passes a construction happy-path test.</li>
+  <li>mypy --strict passes.</li>
+  <li>Coverage ≥ 90% on segments and loops.</li>
+</ul>
+<p><strong>Parallelism:</strong> D/E/F on disjoint files. Single coordination PR for <code>common/enums.py</code> (Agent D owns).</p>
+</details>
+
+<details>
+<summary>Phase 3 — Transaction Builders, Parsers, Readers <span class="badge">3 agents · 5 days · parallel</span></summary>
+<p><strong>Objective:</strong> End-to-end typed transactions + domain ↔ wire translation.</p>
+<p><strong>Scope:</strong> <code>Transaction837I/P/835</code> classes; <code>parser/transaction_dispatch.py</code>; <code>builders/_common.py</code> extracted from <code>build_270</code>; <code>builders/claim_837i.py</code>, <code>builders/claim_837p.py</code>, <code>readers/remittance_835.py</code>; optional <code>encoder/claim_encoder.py</code> for structural specifics.</p>
+<p><strong>Ownership:</strong></p>
+<ul>
+  <li><strong>Agent G:</strong> 837I transaction + builder.</li>
+  <li><strong>Agent H:</strong> 837P transaction + builder.</li>
+  <li><strong>Agent I:</strong> 835 transaction + reader + parser dispatch + 270/271 regression tests.</li>
+</ul>
+<p><strong>Dependencies:</strong> Phases 1 &amp; 2.</p>
+<p><strong>Risks:</strong> Parser dispatch edit to <code>x12_parser.py</code> is a single-file serialization point for Agent I. <code>build_270</code> refactor needs a golden-bytes regression.</p>
+<p><strong>Definition of Done:</strong></p>
+<ul class="check">
+  <li>Round-trip invariant holds per transaction.</li>
+  <li>270/271 regression tests green.</li>
+  <li>Coverage ≥ 75% on builders/readers/transactions.</li>
+</ul>
+</details>
+
+<details>
+<summary>Phase 4 — Validator &amp; SNIP Rules <span class="badge">3 agents · 3 days · parallel</span></summary>
+<p><strong>Objective:</strong> SNIP 1-5 rules for each new transaction.</p>
+<p><strong>Scope:</strong> <code>rules_837.py</code> (shared), <code>rules_837i.py</code>, <code>rules_837p.py</code>, <code>rules_835.py</code>. Extend <code>x12_validator.py</code> to dispatch by transaction. One pass-test + one fail-test per rule with the expected error code.</p>
+<p><strong>Ownership:</strong> Agents J (837 shared + 837I), K (837P), L (835).</p>
+<p><strong>Definition of Done:</strong></p>
+<ul class="check">
+  <li>Error codes namespaced <code>X12-&lt;TXN&gt;-NNN</code>.</li>
+  <li>Coverage ≥ 85% on <code>validator/rules/</code>.</li>
+</ul>
+</details>
+
+<details>
+<summary>Phase 5 — DC Medicaid Payer Profile Extension <span class="badge">1 agent · 2 days</span></summary>
+<p><strong>Objective:</strong> Working DC Medicaid profile for 837I/P and 835 and a documented pattern for additional payers.</p>
+<p><strong>Scope:</strong> Split existing <code>profile.py</code> into <code>profile_270.py</code> (unchanged behavior) and lean re-export shim. Implement <code>profile_837i/837p/835.py</code>, <code>constants_837.py</code>, <code>constants_835.py</code>. Register in <code>payers/dc_medicaid/__init__.py</code>.</p>
+<p><strong>Definition of Done:</strong></p>
+<ul class="check">
+  <li>DC Medicaid 270 tests still pass.</li>
+  <li>Three payer-specific rejection scenarios per new transaction.</li>
+</ul>
+</details>
+
+<details>
+<summary>Phase 6 — FastAPI Routers, Services, Schemas <span class="badge">2 agents · 3 days · parallel</span></summary>
+<p><strong>Objective:</strong> HTTP surface for 837I/P/835.</p>
+<p><strong>Scope:</strong> Schemas, services, routers, acks scaffold (feature-flagged), metrics, OpenAPI spec kept in sync.</p>
+<p><strong>Endpoints:</strong></p>
+<ul>
+  <li><code>POST /api/v1/claims/generate</code> &mdash; unified 837 generate; dispatches to 837I or 837P per-claim via the <code>claim_type</code> discriminator. Mixed batches emit separate GS/GE groups.</li>
+  <li><code>POST /api/v1/claims/validate</code></li>
+  <li><code>POST /api/v1/remittance/835/parse</code></li>
+  <li><code>POST /api/v1/remittance/835/reconcile</code></li>
+</ul>
+<p><strong>Ownership:</strong> Agent M (claims), Agent N (remittance + acks scaffold).</p>
+<p><strong>Risks:</strong> PHI leakage in logs. Response size on large 835 batches — add <code>summary_only=true</code>.</p>
+<p><strong>Definition of Done:</strong></p>
+<ul class="check">
+  <li>OpenAPI spec matches FastAPI auto-generated spec (CI diff-check).</li>
+  <li>85%+ coverage on new router/service code.</li>
+  <li>Prometheus metrics emitted and scrape-verified.</li>
+</ul>
+</details>
+
+<details>
+<summary>Phase 7 — Convenience Layer <span class="badge">1 agent · 2 days</span></summary>
+<p><strong>Objective:</strong> Public surface for the new capabilities.</p>
+<p><strong>Scope:</strong> <code>convenience.build_837i/build_837p/read_835</code>; <code>from_csv(path, template="837i")</code> additive dispatch; <code>__init__.py</code> export additions; README section.</p>
+<p><strong>Definition of Done:</strong></p>
+<ul class="check">
+  <li>All four convenience functions importable from <code>x12_edi_tools</code>.</li>
+  <li>Smoke tests pass.</li>
+</ul>
+</details>
+
+<details>
+<summary>Phase 8 — Fixtures, Property-Based Tests, E2E <span class="badge">3 agents · 3 days · parallel</span></summary>
+<p><strong>Objective:</strong> Production-grade test coverage.</p>
+<p><strong>Scope:</strong> Synthetic fixture pack; Hypothesis strategies per transaction; E2E API tests; golden-bytes regression guard; coverage uplift.</p>
+<p><strong>Definition of Done:</strong></p>
+<ul class="check">
+  <li><code>make coverage</code> ≥ 95% library / 85% API.</li>
+  <li>Hypothesis nightly green for 7 days before release.</li>
+  <li>No PHI-like strings in any fixture (lint check).</li>
+</ul>
+</details>
+
+<details>
+<summary>Phase 9 — Docs, ERD, OpenAPI, Swagger UI <span class="badge">1 agent · 1 day</span></summary>
+<p><strong>Objective:</strong> Ship docs that match the code.</p>
+<p><strong>Scope:</strong> Finalize <code>docs/erd.md</code>, <code>docs/erd.er</code>, <code>docs/erd.svg</code>, <code>docs/erd.html</code>, <code>docs/api/openapi.yaml</code>, <code>docs/api/index.html</code>. CI diff-gate on regeneration. Update <code>docs/architecture.md</code>. <code>CHANGELOG.md</code> entry. Tag <code>v0.3.0</code>.</p>
+<p><strong>Definition of Done:</strong></p>
+<ul class="check">
+  <li><code>docs/erd.svg</code> in sync with <code>erd.er</code>.</li>
+  <li><code>openapi.yaml</code> validates and renders in Swagger UI.</li>
+  <li>Release tag pushed.</li>
+</ul>
+</details>
+
+<h2 id="appendix-a">Appendix A — Agent Execution Guardrails</h2>
+<ol>
+  <li>Read <code>CLAUDE.md</code> and this plan end-to-end before writing any code.</li>
+  <li>Work on a dedicated branch <code>feature/&lt;phase&gt;-&lt;short-desc&gt;</code>.</li>
+  <li>Open a worktree rather than editing in the main checkout.</li>
+  <li>Commit in small, reviewable units — never a single mega-commit per phase.</li>
+  <li>Run <code>make lint &amp;&amp; make typecheck &amp;&amp; make test</code> locally before pushing.</li>
+  <li>Update this plan's tracking section only via an explicit doc PR.</li>
+  <li>Never log raw X12 payloads, member IDs, names, or filenames.</li>
+  <li>Never introduce dependencies without adding them to <code>pyproject.toml</code> and justifying in the PR.</li>
+  <li>If scope grows beyond the phase, stop and file an issue; do not merge cross-phase.</li>
+</ol>
+
+<h2 id="appendix-b">Appendix B — Phase Tracking</h2>
+<table>
+  <thead><tr><th>Phase</th><th>Status</th><th>Branch</th><th>Owner</th><th>Started</th><th>Merged</th></tr></thead>
+  <tbody>
+    <tr><td>0</td><td>Not started</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>1</td><td>Not started</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>2</td><td>Not started</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>3</td><td>Not started</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>4</td><td>Not started</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>5</td><td>Not started</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>6</td><td>Not started</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>7</td><td>Not started</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>8</td><td>Not started</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>9</td><td>Not started</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+  </tbody>
+</table>
+
+<h2 id="appendix-c">Appendix C — Glossary</h2>
+<ul>
+  <li><strong>Interchange</strong> — ISA/IEA-wrapped outer envelope containing one or more functional groups.</li>
+  <li><strong>Functional group</strong> — GS/GE-wrapped group of same-<code>ST01</code> transactions.</li>
+  <li><strong>Transaction</strong> — ST/SE-wrapped payload (e.g., one 837I).</li>
+  <li><strong>Loop</strong> — Ordered segment group within a transaction (e.g., Loop 2300 Claim Information).</li>
+  <li><strong>SNIP</strong> — Strategic National Implementation Process five-level validation taxonomy.</li>
+  <li><strong>TOB</strong> — Type of Bill; four-digit institutional billing code.</li>
+  <li><strong>POS</strong> — Place of Service; two-digit professional service code.</li>
+  <li><strong>CARC</strong> — Claim Adjustment Reason Code (CAS02, 835).</li>
+  <li><strong>RARC</strong> — Remittance Advice Remark Code (LQ02, 835).</li>
+  <li><strong>PLB</strong> — Provider Level Adjustment (835).</li>
+  <li><strong>PSC</strong> — Payer Specific Companion guide.</li>
+</ul>
+
+</div>
+</body>
+</html>

@@ -104,3 +104,20 @@ def test_generate_auto_splits_into_zip_archive(
         assert second_file in zip_file.namelist()
         assert payload["batch_summary_file_name"] in zip_file.namelist()
         assert "manifest.json" in zip_file.namelist()
+
+
+def test_generate_respects_isa_control_number_start(
+    client: TestClient, config_payload: dict[str, object]
+) -> None:
+    config_payload["isaControlNumberStart"] = 42
+    config_payload["gsControlNumberStart"] = 42
+
+    response = client.post(
+        "/api/v1/generate",
+        json={"config": config_payload, "patients": _patients(1)},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["control_numbers"]["isa13"] == "000000042"
+    assert payload["control_numbers"]["gs06"] == "42"

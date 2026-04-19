@@ -69,8 +69,8 @@ def interchange_strategy(draw: st.DrawFn):
         subscriber_name = draw(st.text(alphabet=_NAME_TEXT, min_size=3, max_size=10))
         first_name = draw(st.text(alphabet=_NAME_TEXT, min_size=3, max_size=10))
         member_id = draw(st.text(alphabet=string.digits, min_size=8, max_size=12))
-        date_of_birth = draw(st.dates()).strftime("%Y%m%d")
-        service_date = draw(st.dates()).strftime("%Y%m%d")
+        date_of_birth = draw(st.dates()).isoformat().replace("-", "")
+        service_date = draw(st.dates()).isoformat().replace("-", "")
 
         updated_subscriber = subscriber_loop.model_copy(
             update={

@@ -37,4 +37,5 @@ describe('PreviewPage', () => {
     expect(screen.getByText('Some member IDs look shorter than expected.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Continue anyway' })).toBeInTheDocument()
   })
+
 })

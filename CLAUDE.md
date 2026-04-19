@@ -21,8 +21,12 @@
 ## Frontend
 
 - Use React + TypeScript + Vite.
-- Keep styling token-driven and centralized under `apps/web/src/styles/`.
-- Do not persist patient data in browser storage. Only non-patient configuration belongs there.
+- **Before writing any UI code, read `docs/design-system.md` (visual + composition rules) and `docs/ui-components.md` (primitive API catalog).** These two documents plus `apps/web/src/styles/tokens.css` are the authoritative frontend spec; do not guess from memory.
+- **Token source of truth**: `apps/web/src/styles/tokens.css` is the only place concrete hex values, radii, shadows, fonts, and motion tokens live. Never hardcode hex values, pixel spacing, or arbitrary Tailwind values (`bg-[#...]`, `p-[13px]`). If you need a new value, add it to `tokens.css` first as a named token, then reference the token.
+- **Primitive-first**: every interactive element, table, file input, card, badge, banner, and spinner must use the matching primitive under `apps/web/src/ui/` (`Button`, `Table`, `FileUpload`, `Card`, `Badge`, `Banner`, `Spinner`, `Icons`). Do not hand-roll raw `<button>`, `<table>`, or `<input type="file">`, and do not duplicate an existing primitive with a one-off component.
+- **Storage boundary**: do not persist patient data in `localStorage`, `sessionStorage`, or `IndexedDB`. The only sanctioned `localStorage` key is `x12_submitter_config` for non-PHI submitter configuration.
+- **Every new visual pattern lands as a triplet**: update `docs/design-system.md` (role / rule), update `docs/ui-components.md` (primitive API + usage), and add or extend the primitive's test. If the pattern needs a new token, update `tokens.css` in the same change.
+- **When rules conflict**: `tokens.css` wins for values, `docs/design-system.md` wins for rules and roles, `docs/ui-components.md` wins for primitive APIs. Fix the drift in the same PR rather than working around it.
 
 ## Tooling
 

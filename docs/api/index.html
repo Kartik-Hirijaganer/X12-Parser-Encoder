@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>X12 Workbench API — OpenAPI Reference</title>
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui.css"
+    crossorigin="anonymous"
+  />
+  <link rel="icon" href="data:," />
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #ffffff;
+      --bg-muted: #f6f8fa;
+      --bg-elevated: #ffffff;
+      --fg: #1f2328;
+      --fg-muted: #656d76;
+      --border: #d0d7de;
+      --border-muted: #e1e4e8;
+      --accent: #0969da;
+      --accent-bg: #ddf4ff;
+      --header-bg: #ffffff;
+      --shadow: 0 1px 2px rgba(0,0,0,0.06);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d1117;
+        --bg-muted: #161b22;
+        --bg-elevated: #161b22;
+        --fg: #e6edf3;
+        --fg-muted: #8d96a0;
+        --border: #30363d;
+        --border-muted: #21262d;
+        --accent: #58a6ff;
+        --accent-bg: rgba(56,139,253,0.12);
+        --header-bg: #0d1117;
+        --shadow: 0 1px 2px rgba(0,0,0,0.4);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    header.page {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    header.page .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    header.page .eyebrow {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--fg-muted);
+    }
+    header.page h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.005em;
+    }
+    header.page nav {
+      display: flex;
+      gap: 14px;
+      font-size: 13px;
+    }
+    header.page nav a {
+      color: var(--accent);
+      text-decoration: none;
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-elevated);
+    }
+    header.page nav a:hover {
+      background: var(--accent-bg);
+    }
+
+    .meta {
+      padding: 14px 28px 0;
+      color: var(--fg-muted);
+      font-size: 13px;
+    }
+    .meta strong { color: var(--fg); }
+
+    #swagger-ui {
+      margin-top: 8px;
+    }
+
+    /* ----------------------------------------------------------------
+       Swagger UI dark-mode adjustments.
+       The upstream stylesheet is light-mode only, so we override selectively
+       to match system dark mode. Variables above feed these rules.
+       ---------------------------------------------------------------- */
+    @media (prefers-color-scheme: dark) {
+      body .swagger-ui,
+      body .swagger-ui .info,
+      body .swagger-ui .scheme-container,
+      body .swagger-ui section.models,
+      body .swagger-ui .opblock-tag-section {
+        background: var(--bg);
+        color: var(--fg);
+      }
+      body .swagger-ui .info .title,
+      body .swagger-ui h1,
+      body .swagger-ui h2,
+      body .swagger-ui h3,
+      body .swagger-ui h4,
+      body .swagger-ui h5,
+      body .swagger-ui .opblock-tag,
+      body .swagger-ui .opblock .opblock-summary-path,
+      body .swagger-ui .opblock .opblock-summary-description,
+      body .swagger-ui .opblock .opblock-section-header h4,
+      body .swagger-ui .parameter__name,
+      body .swagger-ui .parameter__type,
+      body .swagger-ui .response-col_status,
+      body .swagger-ui .response-col_links,
+      body .swagger-ui table thead tr td,
+      body .swagger-ui table thead tr th,
+      body .swagger-ui label,
+      body .swagger-ui .tab li,
+      body .swagger-ui .model-title,
+      body .swagger-ui .model,
+      body .swagger-ui .model .property,
+      body .swagger-ui .model .prop-type,
+      body .swagger-ui .model .prop-format,
+      body .swagger-ui .markdown p,
+      body .swagger-ui .markdown li,
+      body .swagger-ui .renderedMarkdown p,
+      body .swagger-ui .renderedMarkdown li {
+        color: var(--fg);
+      }
+      body .swagger-ui .opblock .opblock-section-header {
+        background: var(--bg-muted);
+      }
+      body .swagger-ui .opblock-tag {
+        border-bottom: 1px solid var(--border-muted);
+      }
+      body .swagger-ui .opblock {
+        background: var(--bg-elevated);
+        border-color: var(--border);
+        box-shadow: var(--shadow);
+      }
+      body .swagger-ui .opblock .opblock-summary {
+        border-bottom-color: var(--border-muted);
+      }
+      body .swagger-ui .opblock-body pre.microlight,
+      body .swagger-ui .highlight-code,
+      body .swagger-ui textarea {
+        background: #0b0f14 !important;
+        color: #e6edf3 !important;
+      }
+      body .swagger-ui input[type="text"],
+      body .swagger-ui input[type="password"],
+      body .swagger-ui input[type="search"],
+      body .swagger-ui input[type="email"],
+      body .swagger-ui input[type="file"],
+      body .swagger-ui select,
+      body .swagger-ui textarea {
+        background: var(--bg-elevated);
+        color: var(--fg);
+        border-color: var(--border);
+      }
+      body .swagger-ui .btn {
+        background: var(--bg-elevated);
+        color: var(--fg);
+        border-color: var(--border);
+      }
+      body .swagger-ui .btn.authorize {
+        background: var(--accent);
+        color: #ffffff;
+        border-color: var(--accent);
+      }
+      body .swagger-ui .model-box {
+        background: var(--bg-muted);
+      }
+      body .swagger-ui .topbar { display: none; }
+      body .swagger-ui .info hgroup.main a { color: var(--accent); }
+      body .swagger-ui a { color: var(--accent); }
+      body .swagger-ui .opblock.opblock-get .opblock-summary-method       { background: #1f6feb; }
+      body .swagger-ui .opblock.opblock-post .opblock-summary-method      { background: #238636; }
+      body .swagger-ui .opblock.opblock-put .opblock-summary-method       { background: #bf8700; }
+      body .swagger-ui .opblock.opblock-delete .opblock-summary-method    { background: #da3633; }
+      body .swagger-ui .opblock.opblock-patch .opblock-summary-method     { background: #6f42c1; }
+      body .swagger-ui .opblock-description-wrapper,
+      body .swagger-ui .opblock-external-docs-wrapper,
+      body .swagger-ui .opblock-title_normal {
+        color: var(--fg-muted);
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="page">
+    <div class="brand">
+      <div class="eyebrow">API Reference</div>
+      <h1>X12 Workbench API</h1>
+    </div>
+    <nav>
+      <a href="./openapi.yaml" download>openapi.yaml</a>
+      <a href="../erd.html">ERD</a>
+      <a href="../../.agents/plans/837i-837p-835-implementation-plan.html">Plan</a>
+    </nav>
+  </header>
+
+  <p class="meta">
+    Rendered from <strong><code>docs/api/openapi.yaml</code></strong>.
+    The spec is the authoritative source — this page is a viewer only.
+    The API is stateless; no PHI is persisted. Correlation IDs are echoed in
+    <code>X-Correlation-Id</code>.
+  </p>
+
+  <div id="swagger-ui"></div>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-bundle.js"
+    crossorigin="anonymous"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-standalone-preset.js"
+    crossorigin="anonymous"></script>
+  <script>
+    window.addEventListener("load", function () {
+      window.ui = SwaggerUIBundle({
+        url: "./openapi.yaml",
+        dom_id: "#swagger-ui",
+        deepLinking: true,
+        docExpansion: "list",
+        defaultModelsExpandDepth: 1,
+        defaultModelExpandDepth: 2,
+        tagsSorter: "alpha",
+        operationsSorter: "alpha",
+        filter: true,
+        tryItOutEnabled: false,
+        persistAuthorization: false,
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        plugins: [
+          SwaggerUIBundle.plugins.DownloadUrl
+        ],
+        layout: "StandaloneLayout"
+      });
+    });
+  </script>
+</body>
+</html>

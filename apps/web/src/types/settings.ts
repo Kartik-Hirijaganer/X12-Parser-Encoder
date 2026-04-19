@@ -22,4 +22,5 @@ export interface SubmitterConfig {
   defaultServiceTypeCode: string
   defaultServiceDate: string
   maxBatchSize: number
+  lastIsaControlNumber: number | null
 }

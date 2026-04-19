@@ -8,6 +8,8 @@ import type { SubmitterConfig } from '../types/settings'
 import {
   DEFAULT_PROFILE_NAME,
   DEFAULT_SUBMITTER_CONFIG,
+  MAX_ISA_CONTROL_NUMBER,
+  MIN_ISA_CONTROL_NUMBER,
   REQUIRED_SETTINGS_FIELDS,
   SETTINGS_STORAGE_KEY,
 } from '../utils/constants'
@@ -17,6 +19,7 @@ interface SettingsContextValue {
   hasRequiredSettings: boolean
   replaceSettings: (nextSettings: SubmitterConfig) => void
   importSettings: (rawValue: string) => SubmitterConfig
+  updateLastIcn: (isa13: string) => void
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null)
@@ -33,6 +36,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       settings,
       hasRequiredSettings: REQUIRED_SETTINGS_FIELDS.every((field) => {
         const fieldValue = settings[field]
+        if (fieldValue == null) {
+          return false
+        }
         if (typeof fieldValue === 'number') {
           return fieldValue > 0
         }
@@ -44,6 +50,17 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         const nextSettings = sanitizeSettings(parsed)
         setSettings(nextSettings)
         return nextSettings
+      },
+      updateLastIcn: (isa13: string) => {
+        const parsed = parseInt(isa13, 10)
+        if (
+          !Number.isInteger(parsed) ||
+          parsed < MIN_ISA_CONTROL_NUMBER ||
+          parsed > MAX_ISA_CONTROL_NUMBER
+        ) {
+          return
+        }
+        setSettings((prev) => ({ ...prev, lastIsaControlNumber: parsed }))
       },
     }),
     [settings],
@@ -107,6 +124,12 @@ function sanitizeSettings(rawValue: Record<string, unknown> | SubmitterConfig): 
     maxBatchSize: Number.isFinite(Number(merged.maxBatchSize))
       ? Math.max(1, Number(merged.maxBatchSize))
       : 5000,
+    lastIsaControlNumber:
+      Number.isInteger(merged.lastIsaControlNumber) &&
+      (merged.lastIsaControlNumber as number) >= MIN_ISA_CONTROL_NUMBER &&
+      (merged.lastIsaControlNumber as number) <= MAX_ISA_CONTROL_NUMBER
+        ? (merged.lastIsaControlNumber as number)
+        : null,
   }
 }
 
