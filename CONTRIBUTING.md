@@ -32,7 +32,7 @@ Before opening a pull request:
 ## Documentation Rules
 
 - Update `README.md` and `docs/architecture.md` when public behavior changes.
-- Update `docs/frontend-standards.md` when frontend storage or workflow rules change.
+- Update `docs/design-system.md` when visual rules, storage boundary, or workflow routing change, and `docs/ui-components.md` when primitive APIs change.
 - Document tricky parser, encoder, and validator invariants close to the code.
 - Avoid boilerplate comments on obvious control flow.
 

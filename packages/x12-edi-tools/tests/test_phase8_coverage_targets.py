@@ -16,7 +16,6 @@ from x12_edi_tools import (
     EligibilitySegment,
     ImportResult,
     PatientRecord,
-    SnipLevel,
     X12ParseError,
 )
 from x12_edi_tools.common.enums import (
@@ -53,18 +52,12 @@ from x12_edi_tools.models import (
     EBSegment,
     EQSegment,
     FunctionalGroup,
-    GESegment,
-    GSSegment,
     GenericSegment,
+    GSSegment,
     HLSegment,
-    IEASegment,
     Interchange,
     ISASegment,
     LESegment,
-    LSSegment,
-    N3Segment,
-    N4Segment,
-    NM1Segment,
     Loop2000A_270,
     Loop2000A_271,
     Loop2000B_270,
@@ -75,20 +68,28 @@ from x12_edi_tools.models import (
     Loop2100B_270,
     Loop2100C_270,
     Loop2110C_271,
+    LSSegment,
+    N3Segment,
+    N4Segment,
+    NM1Segment,
     PERSegment,
     PRVSegment,
     REFSegment,
     SESegment,
     STSegment,
-    TRNSegment,
     Transaction270,
-    Transaction271,
+    TRNSegment,
     X12Segment,
 )
 from x12_edi_tools.parser import isa_parser, x12_parser
 from x12_edi_tools.parser._exceptions import ParserComponentError
 from x12_edi_tools.parser.isa_parser import detect_delimiters, parse_isa_segment
 from x12_edi_tools.parser.loop_builder import (
+    _append_270_ref,
+    _append_271_aaa,
+    _append_271_ref,
+    _build_270_hierarchy,
+    _build_271_hierarchy,
     _Loop2000A270State,
     _Loop2000A271State,
     _Loop2000B270State,
@@ -103,11 +104,6 @@ from x12_edi_tools.parser.loop_builder import (
     _Loop2100C271State,
     _Loop2110C270State,
     _Loop2110C271State,
-    _append_270_ref,
-    _append_271_aaa,
-    _append_271_ref,
-    _build_270_hierarchy,
-    _build_271_hierarchy,
     build_transaction,
 )
 from x12_edi_tools.parser.segment_parser import parse_segment, render_raw_segment
@@ -200,7 +196,9 @@ def test_convenience_tabular_parsers_cover_empty_rows_and_txt_sniffing() -> None
 
     workbook = Workbook()
     sheet = workbook.active
-    sheet.append(["last_name", "first_name", "date_of_birth", "gender", "member_id", "service_date"])
+    sheet.append(
+        ["last_name", "first_name", "date_of_birth", "gender", "member_id", "service_date"]
+    )
     sheet.append([None, None, None, None, None, None])
     sheet.append(["SMITH", "JOHN", "19850115", "M", "12345678", "20260415"])
     empty_workbook = Workbook()
@@ -275,14 +273,20 @@ def test_convenience_row_normalization_covers_service_type_and_missing_field_err
 
 def test_convenience_date_and_patient_coercion_helpers_cover_error_branches() -> None:
     corrections: list[object] = []
-    assert _normalize_date("   ", field_name="service_date", row_number=1, corrections=corrections) is None
+    assert (
+        _normalize_date("   ", field_name="service_date", row_number=1, corrections=corrections)
+        is None
+    )
     assert _parse_flexible_date("20260230") is None
     assert _provider_prv_segment("207Q00000X") is not None
-    assert _provider_per_segment(
-        contact_name="HELP DESK",
-        contact_phone=None,
-        contact_email="help@example.com",
-    ) is not None
+    assert (
+        _provider_per_segment(
+            contact_name="HELP DESK",
+            contact_phone=None,
+            contact_email="help@example.com",
+        )
+        is not None
+    )
 
     with pytest.raises(Exception, match="failed validation"):
         _coerce_patients([{"last_name": "SMITH"}])
@@ -292,10 +296,7 @@ def test_convenience_date_and_patient_coercion_helpers_cover_error_branches() ->
 
 
 def test_convenience_projection_and_status_helpers_cover_remaining_paths() -> None:
-    subscriber_loop = (
-        read_271(FIXTURES / "271_ls_le_wrapper.x12")
-        .results
-    )
+    subscriber_loop = read_271(FIXTURES / "271_ls_le_wrapper.x12").results
     assert subscriber_loop
 
     parsed = x12_parser.parse(read_fixture("271_ls_le_wrapper.x12"), strict=False).interchange
@@ -342,11 +343,13 @@ def test_segment_encoder_and_model_validators_cover_remaining_small_branches() -
     with pytest.raises(ValidationError):
         ISASegment.model_validate(
             build_isa_segment().model_dump(mode="python")
-            | {"interchange_control_number": "ABC123456"}
+            | {"interchange_control_number": "ABCDEFGHI"}
         )
 
 
-def test_parser_helpers_cover_edge_cases_and_lower_level_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_parser_helpers_cover_edge_cases_and_lower_level_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     fixture = read_fixture("270_realtime_single.x12")
 
     with pytest.raises(X12ParseError, match="Invalid ISA delimiters"):
@@ -435,9 +438,13 @@ def test_parse_can_surface_nonstandard_guard_errors(
 
 
 def test_parse_can_surface_missing_ge_and_missing_group_errors() -> None:
-    missing_ge = read_fixture("270_realtime_single.x12").replace("GE*1*1~\n", "").replace(
-        "IEA*1*000000001~\n",
-        "",
+    missing_ge = (
+        read_fixture("270_realtime_single.x12")
+        .replace("GE*1*1~\n", "")
+        .replace(
+            "IEA*1*000000001~\n",
+            "",
+        )
     )
     with pytest.raises(X12ParseError, match="before a GE trailer"):
         x12_parser.parse(missing_ge)
@@ -468,7 +475,12 @@ def test_loop_builder_270_hierarchy_populates_optional_provider_and_ref_segments
             ),
             2,
         ),
-        pair(REFSegment(reference_identification_qualifier="2U", reference_identification="PAYERREF"), 3),
+        pair(
+            REFSegment(
+                reference_identification_qualifier="2U", reference_identification="PAYERREF"
+            ),
+            3,
+        ),
         pair(
             HLSegment(
                 hierarchical_id_number="2",
@@ -506,8 +518,15 @@ def test_loop_builder_270_hierarchy_populates_optional_provider_and_ref_segments
             7,
         ),
         pair(N3Segment(address_information_1="123 MAIN ST"), 8),
-        pair(N4Segment(city_name="WASHINGTON", state_or_province_code="DC", postal_code="20001"), 9),
-        pair(REFSegment(reference_identification_qualifier="G2", reference_identification="PROVIDERREF"), 10),
+        pair(
+            N4Segment(city_name="WASHINGTON", state_or_province_code="DC", postal_code="20001"), 9
+        ),
+        pair(
+            REFSegment(
+                reference_identification_qualifier="G2", reference_identification="PROVIDERREF"
+            ),
+            10,
+        ),
         pair(
             HLSegment(
                 hierarchical_id_number="3",
@@ -544,9 +563,19 @@ def test_loop_builder_270_hierarchy_populates_optional_provider_and_ref_segments
             ),
             14,
         ),
-        pair(REFSegment(reference_identification_qualifier="SY", reference_identification="111223333"), 15),
+        pair(
+            REFSegment(
+                reference_identification_qualifier="SY", reference_identification="111223333"
+            ),
+            15,
+        ),
         pair(EQSegment(service_type_code="30"), 16),
-        pair(REFSegment(reference_identification_qualifier="EJ", reference_identification="INQUIRYREF"), 17),
+        pair(
+            REFSegment(
+                reference_identification_qualifier="EJ", reference_identification="INQUIRYREF"
+            ),
+            17,
+        ),
         pair(
             DTPSegment(
                 date_time_qualifier="291",
@@ -601,7 +630,12 @@ def test_loop_builder_271_hierarchy_routes_aaa_ref_and_address_segments_by_conte
             ),
             4,
         ),
-        pair(REFSegment(reference_identification_qualifier="2U", reference_identification="PAYERREF"), 5),
+        pair(
+            REFSegment(
+                reference_identification_qualifier="2U", reference_identification="PAYERREF"
+            ),
+            5,
+        ),
         pair(
             HLSegment(
                 hierarchical_id_number="2",
@@ -639,8 +673,15 @@ def test_loop_builder_271_hierarchy_routes_aaa_ref_and_address_segments_by_conte
             9,
         ),
         pair(N3Segment(address_information_1="123 MAIN ST"), 10),
-        pair(N4Segment(city_name="WASHINGTON", state_or_province_code="DC", postal_code="20001"), 11),
-        pair(REFSegment(reference_identification_qualifier="G2", reference_identification="PROVIDERREF"), 12),
+        pair(
+            N4Segment(city_name="WASHINGTON", state_or_province_code="DC", postal_code="20001"), 11
+        ),
+        pair(
+            REFSegment(
+                reference_identification_qualifier="G2", reference_identification="PROVIDERREF"
+            ),
+            12,
+        ),
         pair(
             HLSegment(
                 hierarchical_id_number="3",
@@ -686,7 +727,9 @@ def test_loop_builder_271_hierarchy_routes_aaa_ref_and_address_segments_by_conte
             17,
         ),
         pair(N3Segment(address_information_1="456 OAK ST"), 18),
-        pair(N4Segment(city_name="WASHINGTON", state_or_province_code="DC", postal_code="20002"), 19),
+        pair(
+            N4Segment(city_name="WASHINGTON", state_or_province_code="DC", postal_code="20002"), 19
+        ),
         pair(
             DMGSegment(
                 date_time_period_format_qualifier="D8",
@@ -695,7 +738,12 @@ def test_loop_builder_271_hierarchy_routes_aaa_ref_and_address_segments_by_conte
             ),
             20,
         ),
-        pair(REFSegment(reference_identification_qualifier="SY", reference_identification="111223333"), 21),
+        pair(
+            REFSegment(
+                reference_identification_qualifier="SY", reference_identification="111223333"
+            ),
+            21,
+        ),
         pair(
             EBSegment(
                 eligibility_or_benefit_information="1",
@@ -712,7 +760,10 @@ def test_loop_builder_271_hierarchy_routes_aaa_ref_and_address_segments_by_conte
             ),
             23,
         ),
-        pair(REFSegment(reference_identification_qualifier="1L", reference_identification="PLAN123"), 24),
+        pair(
+            REFSegment(reference_identification_qualifier="1L", reference_identification="PLAN123"),
+            24,
+        ),
         pair(
             DTPSegment(
                 date_time_qualifier="291",
@@ -933,14 +984,20 @@ def test_loop_builder_error_paths_cover_incomplete_and_unsupported_transactions(
                     2,
                 ),
                 pair(GenericSegment(segment_id="ZZ", raw_elements=["X"]), 3),
-                pair(SESegment(number_of_included_segments=4, transaction_set_control_number="0001"), 4),
+                pair(
+                    SESegment(number_of_included_segments=4, transaction_set_control_number="0001"),
+                    4,
+                ),
             ],
             element_separator="*",
         )
     assert unsupported.value.error == "unsupported_transaction"
 
     incomplete_270 = [
-        pair(STSegment(transaction_set_identifier_code="270", transaction_set_control_number="0001"), 1),
+        pair(
+            STSegment(transaction_set_identifier_code="270", transaction_set_control_number="0001"),
+            1,
+        ),
         pair(
             BHTSegment(
                 hierarchical_structure_code="0022",
@@ -999,7 +1056,10 @@ def test_loop_builder_error_paths_cover_incomplete_and_unsupported_transactions(
         build_transaction(incomplete_270, element_separator="*")
 
     incomplete_271 = [
-        pair(STSegment(transaction_set_identifier_code="271", transaction_set_control_number="0001"), 1),
+        pair(
+            STSegment(transaction_set_identifier_code="271", transaction_set_control_number="0001"),
+            1,
+        ),
         pair(
             BHTSegment(
                 hierarchical_structure_code="0022",
@@ -1062,7 +1122,10 @@ def test_snip2_helpers_cover_missing_envelope_and_structure_errors() -> None:
     envelope_issues = validate_snip2(
         Interchange.model_construct(
             isa=None,
-            functional_groups=[object(), FunctionalGroup.model_construct(gs=None, transactions=[], ge=None)],
+            functional_groups=[
+                object(),
+                FunctionalGroup.model_construct(gs=None, transactions=[], ge=None),
+            ],
             iea=None,
             delimiters=Delimiters(),
         )
@@ -1135,9 +1198,11 @@ def test_snip2_helpers_cover_missing_envelope_and_structure_errors() -> None:
                     loop_2100b=None,
                     loop_2000c=[
                         object(),
-                        Loop2000C_271.model_construct(hl=None, trn=None, loop_2100c=None, loop_2110c=[]),
+                        Loop2000C_271.model_construct(
+                            hl=None, trn=None, loop_2100c=None, loop_2110c=[]
+                        ),
                     ],
-                )
+                ),
             ],
         ),
         "FG[0].TX[1]",
@@ -1172,7 +1237,9 @@ def test_snip2_transaction_content_helper_covers_invalid_st_and_bht_codes() -> N
             time="1200",
         ),
         loop_2000a=None,
-        se=SESegment.model_construct(number_of_included_segments=8, transaction_set_control_number="0001"),
+        se=SESegment.model_construct(
+            number_of_included_segments=8, transaction_set_control_number="0001"
+        ),
     )
     issues = _validate_transaction_required_content(invalid_transaction, tx_context)
     assert issue_codes(issues) >= {
@@ -1189,10 +1256,13 @@ def test_snip4_helpers_cover_missing_hl_refs_sequences_and_dtp_formats() -> None
     interchange = build_interchange()
     transaction = interchange.functional_groups[0].transactions[0]
     transaction.loop_2000a.hl = HLSegment.model_construct(
-        **(transaction.loop_2000a.hl.model_dump(mode="python") | {
-            "hierarchical_level_code": "21",
-            "hierarchical_parent_id_number": "9",
-        })
+        **(
+            transaction.loop_2000a.hl.model_dump(mode="python")
+            | {
+                "hierarchical_level_code": "21",
+                "hierarchical_parent_id_number": "9",
+            }
+        )
     )
     transaction.loop_2000a.loop_2000b[0].loop_2000c[0].hl = HLSegment.model_construct(
         **(
@@ -1236,7 +1306,9 @@ def test_snip5_validation_covers_271_specific_semantic_and_code_set_errors() -> 
     provider_loop.nm1 = NM1Segment.model_construct(
         **(provider_loop.nm1.model_dump(mode="python") | {"id_code": "1234567890"})
     )
-    provider_loop.n4 = N4Segment(city_name="WASHINGTON", state_or_province_code="XX", postal_code="20001")
+    provider_loop.n4 = N4Segment(
+        city_name="WASHINGTON", state_or_province_code="XX", postal_code="20001"
+    )
 
     subscriber_loop = transaction.loop_2000a.loop_2000b[0].loop_2000c[0]
     subscriber_loop.loop_2100c.dmg = DMGSegment.model_construct(

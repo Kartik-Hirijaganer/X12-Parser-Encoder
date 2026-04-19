@@ -60,7 +60,7 @@ def test_delimiters_validate_character_width_and_aliases() -> None:
 @pytest.mark.parametrize(
     ("field", "value", "expected"),
     [
-        ("provider_npi", "ABC1234567", "provider_npi must contain only digits"),
+        ("provider_npi", "NOTNUMERIC", "provider_npi must contain only digits"),
         ("provider_entity_type", "3", "provider_entity_type must be '1' or '2'"),
         ("usage_indicator", "X", "usage_indicator must be 'T' or 'P'"),
         ("acknowledgment_requested", "9", "acknowledgment_requested must be '0' or '1'"),

@@ -1063,7 +1063,8 @@ X12-Parser-Encoder/
 ├── docs/                               # Architecture, API docs, payer-pack docs
 │   ├── architecture.md
 │   ├── payer-packs.md                  # How to add a new payer profile
-│   ├── frontend-standards.md           # UI conventions, design system rules
+│   ├── design-system.md                # Visual + composition source of truth
+│   ├── ui-components.md                # Primitive catalog (Button, Table, …)
 │   ├── template-spec.md               # Import template column definitions
 │   └── deployment.md
 ├── .pre-commit-config.yaml
@@ -1109,7 +1110,7 @@ X12-Parser-Encoder/
 - `.github/ISSUE_TEMPLATE/`, `PULL_REQUEST_TEMPLATE.md`
 - `.claude/commands/` (bump-version, update-docs, check-coverage)
 - `CHANGELOG.md`
-- `docs/frontend-standards.md`
+- `docs/design-system.md` + `docs/ui-components.md`
 
 ### Verification
 - `cd packages/x12-edi-tools && pip install -e ".[dev]"` succeeds
@@ -1676,9 +1677,9 @@ def validate(
 
 ### Design System
 
-**Visual spec**: `DESIGN.md` at the project root — a Meta (Store)-inspired design system adapted for this healthcare workbench. AI agents MUST read `DESIGN.md` before writing any UI code.
+**Visual + composition spec**: `docs/design-system.md` — a Meta (Store)-inspired design system adapted for this healthcare workbench. AI agents MUST read `docs/design-system.md` (roles, rules) and `docs/ui-components.md` (primitive API catalog) before writing any UI code.
 
-**Token implementation**: `apps/web/src/styles/tokens.css` using Tailwind v4's `@theme` directive. Tokens are derived from `DESIGN.md` Section 9 ("Agent Prompt Guide → Tailwind v4 Token Mapping").
+**Token implementation**: `apps/web/src/styles/tokens.css` using Tailwind v4's `@theme` directive — this file is the sole source of truth for concrete hex values. `docs/design-system.md` describes what each token is *for*; it never restates hex values.
 
 ```css
 @theme {
@@ -1753,8 +1754,8 @@ def validate(
 }
 ```
 
-**Rules for agents** (enforced via CLAUDE.md + `docs/frontend-standards.md`):
-0. **Read `DESIGN.md` before writing any UI code.** It is the visual spec — tokens.css is the implementation. If they conflict, DESIGN.md wins and tokens.css must be updated to match.
+**Rules for agents** (enforced via CLAUDE.md + `docs/design-system.md`):
+0. **Read `docs/design-system.md` and `docs/ui-components.md` before writing any UI code.** design-system.md describes the roles and rules; tokens.css is the authoritative source for concrete values. If they conflict, tokens.css wins for values and design-system.md wins for rules — both must be updated together.
 1. All colors, spacing, radius, shadows, motion, font stacks, font sizes, and semantic tokens live in `tokens.css` — no inline hex values, no one-off Tailwind values without first promoting them to tokens
 2. No inline `style={}` except truly dynamic values
 3. All interactive elements use `ui/Button.tsx` — no ad-hoc buttons
@@ -1762,7 +1763,7 @@ def validate(
 5. All file inputs use `ui/FileUpload.tsx`
 6. Feature components compose ui/ components — never duplicate primitives
 7. Pages compose feature components — pages contain layout, not UI logic
-8. Any new visual pattern must update `docs/frontend-standards.md` and the relevant primitive test
+8. Any new visual pattern must update `docs/design-system.md` (rules) and `docs/ui-components.md` (primitive API), plus the relevant primitive test
 9. UI copy, workflow changes, and public API changes must also update `README.md`
 
 ### UI Screens
@@ -2069,7 +2070,7 @@ These are important for a public release but should not block product developmen
 - `.github/ISSUE_TEMPLATE/bug_report.md`, `.github/ISSUE_TEMPLATE/feature_request.md`
 - `.github/PULL_REQUEST_TEMPLATE.md`
 - `CHANGELOG.md` with initial `[Unreleased]` section
-- `docs/frontend-standards.md` with UI rules for agents
+- `docs/design-system.md` + `docs/ui-components.md` with UI rules and primitive catalog for agents
 
 ### Property-Based Testing (Hypothesis)
 Deferred from Phases 2-3 to here. Now that parser and encoder are stable, add Hypothesis tests for:
