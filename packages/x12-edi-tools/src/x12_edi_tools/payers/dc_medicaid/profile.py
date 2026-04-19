@@ -41,14 +41,25 @@ from x12_edi_tools.validator.base import (
     parse_date_yyyymmdd,
     subtract_months,
 )
+from x12_edi_tools.validator.context import (
+    MemberRegistryLookup,
+    ProviderRegistryLookup,
+    ValidationContext,
+)
 
 
 class DCMedicaidProfile(PayerProfile):
     """DC Medicaid profile pack for 270/271 eligibility transactions."""
 
     name = PROFILE_NAME
+    snip7_enabled: bool = False
 
-    def validate(self, interchange: Interchange) -> list[ValidationError]:
+    def validate(
+        self,
+        interchange: Interchange,
+        *,
+        context: ValidationContext | None = None,
+    ) -> list[ValidationError]:
         issues: list[ValidationError] = []
 
         issues.extend(self._validate_envelope_values(interchange))
@@ -78,6 +89,28 @@ class DCMedicaidProfile(PayerProfile):
             "default_service_type_code": DEFAULT_SERVICE_TYPE_CODE,
             "max_batch_size": MAX_BATCH_TRANSACTIONS,
         }
+
+    def build_validation_context(
+        self,
+        *,
+        provider_lookup: ProviderRegistryLookup | None = None,
+        member_lookup: MemberRegistryLookup | None = None,
+        correlation_id: str | None = None,
+    ) -> ValidationContext:
+        # Phase 5 will override this to raise PayerConfigurationError when either
+        # lookup is None (CG \u00a73.2). Phase 0 returns a permissive context so the
+        # 270/271 test suite continues to pass without SNIP 7 wiring.
+        return ValidationContext(
+            provider_lookup=provider_lookup,
+            member_lookup=member_lookup,
+            correlation_id=correlation_id,
+        )
+
+    def get_claim_defaults(self, transaction: str) -> dict[str, object]:
+        raise NotImplementedError("Phase 5 \u2014 DC Medicaid claim defaults")
+
+    def get_remit_overrides(self) -> dict[str, object]:
+        raise NotImplementedError("Phase 5 \u2014 DC Medicaid remittance overrides")
 
     def _validate_envelope_values(self, interchange: Interchange) -> list[ValidationError]:
         issues: list[ValidationError] = []

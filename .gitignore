@@ -208,6 +208,8 @@ __marimo__/
 
 # Monorepo local-only and frontend artifacts
 metadata/
+# Proprietary companion-guide content must stay local-only (plan §3.9).
+docs/full_text.txt
 node_modules/
 apps/web/node_modules/
 apps/web/dist/

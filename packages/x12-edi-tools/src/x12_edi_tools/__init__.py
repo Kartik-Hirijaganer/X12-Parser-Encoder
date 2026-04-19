@@ -1,5 +1,7 @@
 """Public package surface for the X12 library."""
 
+from typing import TYPE_CHECKING
+
 from x12_edi_tools import payers
 from x12_edi_tools.__about__ import __version__
 from x12_edi_tools.common import Delimiters
@@ -38,6 +40,25 @@ from x12_edi_tools.models import (
 )
 from x12_edi_tools.parser import ParseResult, parse
 from x12_edi_tools.validator import SnipLevel, ValidationError, ValidationResult, validate
+
+# Phase 0 reservation \u2014 the public surface for 837I/837P/835 lands in Phase 7.
+# These names are imported under TYPE_CHECKING only so static analysis stays in
+# sync as downstream phases land each contract. They are intentionally excluded
+# from ``__all__`` until Phase 7 flips them to runtime imports.
+if TYPE_CHECKING:  # pragma: no cover - import guard
+    from x12_edi_tools.config import (  # noqa: F401  (Phase 7 export)
+        ClaimBuildOptions,
+        PartitioningStrategy,
+    )
+    from x12_edi_tools.exceptions import (  # noqa: F401  (Phase 7 export)
+        ClaimValidationError,
+        RemittanceParseError,
+    )
+    from x12_edi_tools.validator.context import (  # noqa: F401  (Phase 4/7 export)
+        MemberRegistryLookup,
+        ProviderRegistryLookup,
+        ValidationContext,
+    )
 
 __all__ = [
     "AAAError",
