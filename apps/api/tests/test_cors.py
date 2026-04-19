@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from fastapi.testclient import TestClient
-
 from app.core.config import settings
 from app.main import create_app
+from fastapi.testclient import TestClient
 
 
 def test_cors_preflight_allows_configured_origin(monkeypatch) -> None:
-    origin = "http://x12-parser-encoder-web-306980977180-us-east-2.s3-website.us-east-2.amazonaws.com"
+    origin = (
+        "http://x12-parser-encoder-web-306980977180-us-east-2.s3-website.us-east-2.amazonaws.com"
+    )
 
     monkeypatch.setattr(settings, "cors_allowed_origins", [origin])
     monkeypatch.setattr(settings, "serve_frontend", False)

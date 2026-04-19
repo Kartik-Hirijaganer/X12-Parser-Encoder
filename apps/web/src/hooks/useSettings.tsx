@@ -36,6 +36,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       settings,
       hasRequiredSettings: REQUIRED_SETTINGS_FIELDS.every((field) => {
         const fieldValue = settings[field]
+        if (fieldValue == null) {
+          return false
+        }
         if (typeof fieldValue === 'number') {
           return fieldValue > 0
         }
