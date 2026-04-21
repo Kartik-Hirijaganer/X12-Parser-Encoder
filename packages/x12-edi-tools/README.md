@@ -10,8 +10,12 @@
 ## Install
 
 ```bash
-pip install x12-edi-tools
+pip install -e "./packages/x12-edi-tools[all]"
 ```
+
+Run that command from the repository root. The API app and Docker images install this package from the local source tree.
+
+Note: the distribution name `x12-edi-tools` is also used by an unrelated third-party project on PyPI. For this repository, install from the checked-out `packages/x12-edi-tools` path instead of running `pip install x12-edi-tools`.
 
 ## Public API
 
