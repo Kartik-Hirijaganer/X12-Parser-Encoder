@@ -349,7 +349,11 @@ def test_build_270_service_date_range_uses_rd8_format() -> None:
 
     encoded = encode(build_270(patients, config=config))
 
-    assert "DTP*291*RD8*20260401-20260430~" in encoded
+    dmg_index = encoded.index("DMG*D8*19850115*M~")
+    dtp_index = encoded.index("DTP*291*RD8*20260401-20260430~")
+    eq_index = encoded.index("EQ*30~")
+    assert dmg_index < dtp_index < eq_index
+    assert "EQ*30~DTP*291*RD8*20260401-20260430~" not in encoded
 
 
 def test_build_270_rejects_unknown_profile() -> None:

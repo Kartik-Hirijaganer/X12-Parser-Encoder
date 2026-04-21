@@ -210,6 +210,7 @@ __marimo__/
 metadata/
 # Proprietary companion-guide content must stay local-only (plan §3.9).
 docs/full_text.txt
+docs/test-files/
 node_modules/
 apps/web/node_modules/
 apps/web/dist/

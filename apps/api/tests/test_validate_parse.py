@@ -36,6 +36,29 @@ def test_validate_wrong_isa08_returns_suggestion(client: TestClient) -> None:
     assert any(issue["code"] == "DCM_INVALID_ISA08" for issue in payload["issues"])
 
 
+def test_validate_legacy_270_dtp_placement_returns_blocking_error(client: TestClient) -> None:
+    invalid = fixture_text("270_realtime_single.x12").replace(
+        "DTP*291*D8*20260412~\nEQ*30~",
+        "EQ*30~\nDTP*291*D8*20260412~",
+    )
+
+    response = client.post(
+        "/api/v1/validate",
+        files={"file": ("legacy-dtp.x12", invalid.encode("utf-8"), "text/plain")},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    placement_issue = next(
+        issue for issue in payload["issues"] if issue["code"] == "DCM_270_DTP291_REQUIRES_2100C"
+    )
+    assert payload["is_valid"] is False
+    assert placement_issue["level"] == "snip5"
+    assert placement_issue["suggestion"] == (
+        "Move DTP*291 before the EQ segment so it is in Loop 2100C."
+    )
+
+
 def test_validate_garbled_text_returns_error(client: TestClient) -> None:
     response = client.post(
         "/api/v1/validate",
