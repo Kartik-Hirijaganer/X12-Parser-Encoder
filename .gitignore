@@ -207,6 +207,7 @@ marimo/_lsp/
 __marimo__/
 
 # Monorepo local-only and frontend artifacts
+.DS_Store
 metadata/
 # Proprietary companion-guide content must stay local-only (plan §3.9).
 docs/full_text.txt
