@@ -39,6 +39,13 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Resolve image tags
+        id: image
+        run: |
+          repository="$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+          image="ghcr.io/${repository}"
+          echo "version=${image}:${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          echo "latest=${image}:latest" >> "$GITHUB_OUTPUT"
       - name: Build and push container
         uses: docker/build-push-action@v6
         with:
@@ -46,8 +53,8 @@ jobs:
           file: docker/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:${{ github.ref_name }}
-            ghcr.io/${{ github.repository }}:latest
+            ${{ steps.image.outputs.version }}
+            ${{ steps.image.outputs.latest }}
       - name: Generate release notes from changelog
         run: python scripts/changelog_excerpt.py "${GITHUB_REF_NAME#v}" > release-notes.md
       - name: Create GitHub release
