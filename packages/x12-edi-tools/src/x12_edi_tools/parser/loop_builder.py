@@ -176,12 +176,14 @@ class _Loop2100C270State:
     nm1: NM1Segment
     dmg: DMGSegment | None = None
     ref_segments: list[REFSegment] = field(default_factory=list)
+    dtp_segments: list[DTPSegment] = field(default_factory=list)
 
     def build(self) -> Loop2100C_270:
         return Loop2100C_270(
             nm1=self.nm1,
             dmg=self.dmg,
             ref_segments=list(self.ref_segments),
+            dtp_segments=list(self.dtp_segments),
         )
 
 
@@ -528,8 +530,16 @@ def _build_270_hierarchy(
                     error="unexpected_dtp",
                 )
             if current_2110c is None:
-                current_2110c = _Loop2110C270State()
-                current_2000c.loop_2110c.append(current_2110c)
+                target_2100c = current_2000c.loop_2100c
+                if target_2100c is None:
+                    _raise_builder_error(
+                        token,
+                        element_separator=element_separator,
+                        message="DTP must appear after the 2100C NM1 segment",
+                        error="unexpected_dtp",
+                    )
+                target_2100c.dtp_segments.append(segment)
+                continue
             current_2110c.dtp_segments.append(segment)
             continue
 

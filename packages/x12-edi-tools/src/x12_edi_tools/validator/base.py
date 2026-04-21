@@ -344,6 +344,9 @@ def _iter_loop_2100c_270(loop: Loop2100C_270) -> Iterator[X12Segment]:
     for ref_segment in as_list(loop.ref_segments):
         if isinstance(ref_segment, X12Segment):
             yield ref_segment
+    for dtp_segment in as_list(getattr(loop, "dtp_segments", [])):
+        if isinstance(dtp_segment, X12Segment):
+            yield dtp_segment
 
 
 def _iter_loop_2110c_270(loop: Loop2110C_270) -> Iterator[X12Segment]:

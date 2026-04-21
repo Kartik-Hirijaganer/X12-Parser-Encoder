@@ -9,6 +9,7 @@ from test_phase1_models import build_interchange, build_isa_segment
 from x12_edi_tools import Delimiters, SubmitterConfig, encode, parse
 from x12_edi_tools.encoder import encode_isa, encode_segment
 from x12_edi_tools.models.base import GenericSegment
+from x12_edi_tools.models.segments import DTPSegment, REFSegment
 
 FIXTURES = Path(__file__).parent / "fixtures"
 VALID_ROUNDTRIP_FIXTURES = [
@@ -205,3 +206,30 @@ def test_encode_uses_configured_control_number_starts_when_provided() -> None:
         reparsed.interchange.functional_groups[0].transactions[0].st.transaction_set_control_number
         == "0099"
     )
+
+
+def test_encode_emits_2100c_dtp_after_ref_and_before_first_eq() -> None:
+    interchange = build_interchange()
+    transaction = interchange.functional_groups[0].transactions[0]
+    subscriber_loop = transaction.loop_2000a.loop_2000b[0].loop_2000c[0]
+    subscriber_loop.loop_2100c.ref_segments = [
+        REFSegment(
+            reference_identification_qualifier="SY",
+            reference_identification="123456789",
+        )
+    ]
+    subscriber_loop.loop_2100c.dtp_segments = [
+        DTPSegment(
+            date_time_qualifier="291",
+            date_time_period_format_qualifier="D8",
+            date_time_period="20260416",
+        )
+    ]
+    subscriber_loop.loop_2110c[0].dtp_segments = []
+
+    encoded = encode(interchange)
+
+    ref_index = encoded.index("REF*SY*123456789~")
+    dtp_index = encoded.index("DTP*291*D8*20260416~")
+    eq_index = encoded.index("EQ*30~")
+    assert ref_index < dtp_index < eq_index

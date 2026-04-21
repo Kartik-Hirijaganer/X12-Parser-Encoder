@@ -524,7 +524,7 @@ def test_snip5_covers_dates_gender_and_service_type_rules() -> None:
             "gender_code": "X",
         }
     )
-    updated_dtp = inquiry_loop.dtp_segments[0].model_copy(
+    updated_dtp = subscriber_loop.loop_2100c.dtp_segments[0].model_copy(
         update={
             "date_time_period_format_qualifier": "RD8",
             "date_time_period": "20260101-bad",
@@ -547,7 +547,10 @@ def test_snip5_covers_dates_gender_and_service_type_rules() -> None:
                                     subscriber_loop.model_copy(
                                         update={
                                             "loop_2100c": subscriber_loop.loop_2100c.model_copy(
-                                                update={"dmg": updated_dmg}
+                                                update={
+                                                    "dmg": updated_dmg,
+                                                    "dtp_segments": [updated_dtp],
+                                                }
                                             ),
                                             "loop_2110c": [
                                                 inquiry_loop.model_copy(
@@ -557,7 +560,6 @@ def test_snip5_covers_dates_gender_and_service_type_rules() -> None:
                                                                 update={"service_type_code": "ZZ"}
                                                             )
                                                         ],
-                                                        "dtp_segments": [updated_dtp],
                                                     }
                                                 )
                                             ],

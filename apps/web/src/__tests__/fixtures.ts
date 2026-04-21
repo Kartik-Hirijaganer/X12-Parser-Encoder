@@ -135,7 +135,7 @@ export const parseResponseFixture: ParseResponse = {
 export const generateResponseFixture: GenerateResponse = {
   x12_content: 'ISA*00*...~',
   zip_content_base64: null,
-  download_file_name: 'ACME123456_270_20260412_000000001.x12',
+  download_file_name: 'ACME123456_270_20260412_000000001.txt',
   batch_summary_text: `Submission Batch Summary
 ========================
 Generated at: 2026-04-12 21:00
@@ -149,7 +149,7 @@ Service date range: 2026-04-12
 
 Control numbers
 ---------------
-- ACME123456_270_20260412_000000001.x12: ISA13 000000001, GS06 1, ST02 0001-0002
+- ACME123456_270_20260412_000000001.txt: ISA13 000000001, GS06 1, ST02 0001-0002
 
 Submission reminder
 -------------------
@@ -167,7 +167,7 @@ Keep the generated filename and ISA13 control number together for audit trail ma
   },
   archive_entries: [
     {
-      file_name: 'ACME123456_270_20260412_000000001.x12',
+      file_name: 'ACME123456_270_20260412_000000001.txt',
       record_range_start: 1,
       record_range_end: 2,
       control_numbers: {

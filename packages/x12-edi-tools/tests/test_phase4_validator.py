@@ -37,10 +37,6 @@ def first_subscriber_loop(interchange):
     return interchange.functional_groups[0].transactions[0].loop_2000a.loop_2000b[0].loop_2000c[0]
 
 
-def first_inquiry_loop(interchange):
-    return first_subscriber_loop(interchange).loop_2110c[0]
-
-
 def first_provider_loop(interchange):
     return interchange.functional_groups[0].transactions[0].loop_2000a.loop_2000b[0].loop_2100b
 
@@ -191,10 +187,10 @@ def test_snip5_invalid_state_code_reports_error() -> None:
 
 def test_snip5_invalid_calendar_date_reports_error() -> None:
     interchange = build_interchange()
-    inquiry = first_inquiry_loop(interchange)
-    inquiry.dtp_segments[0] = inquiry.dtp_segments[0].model_copy(
-        update={"date_time_period": "20260230"}
-    )
+    subscriber_loop = first_subscriber_loop(interchange)
+    subscriber_loop.loop_2100c.dtp_segments[0] = subscriber_loop.loop_2100c.dtp_segments[
+        0
+    ].model_copy(update={"date_time_period": "20260230"})
 
     result = validate(interchange, levels={SnipLevel.SNIP5})
 
@@ -232,10 +228,10 @@ def test_dc_medicaid_batch_limit_reports_error() -> None:
 
 def test_dc_medicaid_future_service_date_reports_error() -> None:
     interchange = build_interchange()
-    inquiry = first_inquiry_loop(interchange)
-    inquiry.dtp_segments[0] = inquiry.dtp_segments[0].model_copy(
-        update={"date_time_period": "20260413"}
-    )
+    subscriber_loop = first_subscriber_loop(interchange)
+    subscriber_loop.loop_2100c.dtp_segments[0] = subscriber_loop.loop_2100c.dtp_segments[
+        0
+    ].model_copy(update={"date_time_period": "20260413"})
 
     result = validate(interchange, levels={SnipLevel.SNIP1}, profile="dc_medicaid")
 
@@ -244,14 +240,37 @@ def test_dc_medicaid_future_service_date_reports_error() -> None:
 
 def test_dc_medicaid_service_date_older_than_13_months_reports_error() -> None:
     interchange = build_interchange()
-    inquiry = first_inquiry_loop(interchange)
-    inquiry.dtp_segments[0] = inquiry.dtp_segments[0].model_copy(
-        update={"date_time_period": "20240229"}
-    )
+    subscriber_loop = first_subscriber_loop(interchange)
+    subscriber_loop.loop_2100c.dtp_segments[0] = subscriber_loop.loop_2100c.dtp_segments[
+        0
+    ].model_copy(update={"date_time_period": "20240229"})
 
     result = validate(interchange, levels={SnipLevel.SNIP1}, profile="dc_medicaid")
 
     assert "DCM_SERVICE_DATE_TOO_OLD" in issue_codes(result)
+
+
+def test_dc_medicaid_270_rejects_2110c_dtp291_without_2100c_subscriber_date() -> None:
+    legacy_shape = read_fixture("270_realtime_single.x12").replace(
+        "DTP*291*D8*20260412~\nEQ*30~",
+        "EQ*30~\nDTP*291*D8*20260412~",
+    )
+    interchange = parse(legacy_shape).interchange
+
+    result = validate(interchange, profile="dc_medicaid")
+
+    placement_issue = next(
+        issue for issue in result.issues if issue.code == "DCM_270_DTP291_REQUIRES_2100C"
+    )
+    assert result.is_valid is False
+    assert placement_issue.level == SnipLevel.SNIP5
+    assert placement_issue.segment_id == "DTP"
+    assert placement_issue.element == "01"
+    assert "Subscriber Eligibility/Benefit Date" in placement_issue.message
+    assert "Subscriber Date" in placement_issue.message
+    assert placement_issue.suggestion == (
+        "Move DTP*291 before the EQ segment so it is in Loop 2100C."
+    )
 
 
 def test_dc_medicaid_dependent_hl_reports_error() -> None:

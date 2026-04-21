@@ -1,3 +1,4 @@
+import type { GenerateResponse } from '../types/api'
 import type { SubmitterConfig } from '../types/settings'
 
 export const APP_VERSION = __APP_VERSION__
@@ -58,6 +59,35 @@ export const MIN_ISA_CONTROL_NUMBER = 1
 export function nextIsaControlNumber(last: number | null): number {
   if (last === null || last >= MAX_ISA_CONTROL_NUMBER) return MIN_ISA_CONTROL_NUMBER
   return last + 1
+}
+
+export function highestIsa13(response: GenerateResponse): number | null {
+  if (response.archive_entries.length === 0) {
+    return parseIsa13(response.control_numbers.isa13)
+  }
+
+  const archiveIsaValues = response.archive_entries
+    .map((entry) => parseIsa13(entry.control_numbers.isa13))
+    .filter((value): value is number => value !== null)
+
+  return archiveIsaValues.length > 0 ? Math.max(...archiveIsaValues) : null
+}
+
+function parseIsa13(value: string | null): number | null {
+  if (!value || !/^\d+$/.test(value)) {
+    return null
+  }
+
+  const parsed = Number(value)
+  if (
+    !Number.isInteger(parsed) ||
+    parsed < MIN_ISA_CONTROL_NUMBER ||
+    parsed > MAX_ISA_CONTROL_NUMBER
+  ) {
+    return null
+  }
+
+  return parsed
 }
 
 export const DEFAULT_SUBMITTER_CONFIG: SubmitterConfig = {

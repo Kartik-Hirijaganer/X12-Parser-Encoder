@@ -1085,6 +1085,13 @@ def _build_transaction(
                                     gender_code=GenderCode(patient.gender),
                                 ),
                                 ref_segments=subscriber_ref_segments,
+                                dtp_segments=[
+                                    DTPSegment(
+                                        date_time_qualifier="291",
+                                        date_time_period_format_qualifier=dtp_period_format,
+                                        date_time_period=dtp_period,
+                                    )
+                                ],
                             ),
                             loop_2110c=[
                                 Loop2110C_270(
@@ -1093,13 +1100,6 @@ def _build_transaction(
                                             service_type_code=ServiceTypeCode(
                                                 patient.service_type_code
                                             )
-                                        )
-                                    ],
-                                    dtp_segments=[
-                                        DTPSegment(
-                                            date_time_qualifier="291",
-                                            date_time_period_format_qualifier=dtp_period_format,
-                                            date_time_period=dtp_period,
                                         )
                                     ],
                                 )

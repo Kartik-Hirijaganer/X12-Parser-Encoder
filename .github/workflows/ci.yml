@@ -133,5 +133,7 @@ jobs:
           PY
       - name: Check local-only content
         run: python scripts/check_no_proprietary_content.py
+      - name: Check repo hygiene (companion guide)
+        run: python scripts/check_repo_hygiene.py
       - name: Check version sync
         run: python scripts/check_version_sync.py
