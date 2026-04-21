@@ -137,7 +137,8 @@ docker run --rm -p 8000:8000 x12-parser-encoder
 - AWS deploys are handled by `scripts/deploy_aws.sh` and the `Deploy` GitHub Actions workflow:
   - React frontend: S3 static website with CloudFront in front.
   - FastAPI backend: Docker image in ECR, served by App Runner.
-- Required GitHub Actions secret: `AWS_ROLE_TO_ASSUME`.
+- Required GitHub Actions configuration: set `AWS_ROLE_TO_ASSUME` to the IAM role ARN,
+  or set `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` for key-based AWS auth.
 - Optional GitHub Actions variables override script defaults: `AWS_REGION`, `AWS_ACCOUNT_ID`,
   `APP_NAME`, `S3_BUCKET`, `ECR_REPOSITORY`, `APP_RUNNER_SERVICE`, and
   `APP_RUNNER_ECR_ACCESS_ROLE`.

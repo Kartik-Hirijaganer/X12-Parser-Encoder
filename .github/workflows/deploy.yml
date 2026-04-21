@@ -30,6 +30,10 @@ jobs:
       APP_RUNNER_SERVICE: ${{ vars.APP_RUNNER_SERVICE || 'x12-parser-encoder-api' }}
       APP_RUNNER_ECR_ACCESS_ROLE: ${{ vars.APP_RUNNER_ECR_ACCESS_ROLE || 'x12-parser-encoder-apprunner-ecr-access' }}
       API_IMAGE_TAG: main-${{ github.sha }}
+      AWS_ROLE_TO_ASSUME: ${{ vars.AWS_ROLE_TO_ASSUME || secrets.AWS_ROLE_TO_ASSUME }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -39,11 +43,28 @@ jobs:
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
 
-      - name: Configure AWS credentials
+      - name: Configure AWS credentials with OIDC role
+        if: ${{ env.AWS_ROLE_TO_ASSUME != '' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Configure AWS credentials with access keys
+        if: ${{ env.AWS_ROLE_TO_ASSUME == '' && env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ env.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Skip AWS deploy when credentials are missing
+        if: ${{ env.AWS_ROLE_TO_ASSUME == '' && (env.AWS_ACCESS_KEY_ID == '' || env.AWS_SECRET_ACCESS_KEY == '') }}
+        run: |
+          echo "::notice::AWS deployment skipped because no Actions AWS credentials are configured."
+          echo "Configure AWS_ROLE_TO_ASSUME as a repository variable or secret, or configure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY as repository secrets."
+
       - name: Deploy to AWS
+        if: ${{ env.AWS_ROLE_TO_ASSUME != '' || (env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != '') }}
         run: bash scripts/deploy_aws.sh
