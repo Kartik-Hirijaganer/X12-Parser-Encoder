@@ -11,6 +11,7 @@ from x12_edi_tools.models.loops import (
     Loop2000B_271,
     Loop2000C_270,
     Loop2000C_271,
+    Loop2110C_270,
 )
 from x12_edi_tools.models.segments import AAASegment, DTPSegment, EBSegment, EQSegment
 from x12_edi_tools.models.transactions import (
@@ -32,6 +33,7 @@ from x12_edi_tools.payers.dc_medicaid.constants import (
     RECEIVER_ID_QUALIFIER,
     VALID_SERVICE_TYPE_CODES,
 )
+from x12_edi_tools.payers.dc_medicaid.profile_270 import validate_270_dtp_placement
 from x12_edi_tools.payers.dc_medicaid.search_criteria import evaluate_search_criteria
 from x12_edi_tools.validator.base import (
     ValidationError,
@@ -41,14 +43,25 @@ from x12_edi_tools.validator.base import (
     parse_date_yyyymmdd,
     subtract_months,
 )
+from x12_edi_tools.validator.context import (
+    MemberRegistryLookup,
+    ProviderRegistryLookup,
+    ValidationContext,
+)
 
 
 class DCMedicaidProfile(PayerProfile):
     """DC Medicaid profile pack for 270/271 eligibility transactions."""
 
     name = PROFILE_NAME
+    snip7_enabled: bool = False
 
-    def validate(self, interchange: Interchange) -> list[ValidationError]:
+    def validate(
+        self,
+        interchange: Interchange,
+        *,
+        context: ValidationContext | None = None,
+    ) -> list[ValidationError]:
         issues: list[ValidationError] = []
 
         issues.extend(self._validate_envelope_values(interchange))
@@ -78,6 +91,28 @@ class DCMedicaidProfile(PayerProfile):
             "default_service_type_code": DEFAULT_SERVICE_TYPE_CODE,
             "max_batch_size": MAX_BATCH_TRANSACTIONS,
         }
+
+    def build_validation_context(
+        self,
+        *,
+        provider_lookup: ProviderRegistryLookup | None = None,
+        member_lookup: MemberRegistryLookup | None = None,
+        correlation_id: str | None = None,
+    ) -> ValidationContext:
+        # Phase 5 will override this to raise PayerConfigurationError when either
+        # lookup is None (CG \u00a73.2). Phase 0 returns a permissive context so the
+        # 270/271 test suite continues to pass without SNIP 7 wiring.
+        return ValidationContext(
+            provider_lookup=provider_lookup,
+            member_lookup=member_lookup,
+            correlation_id=correlation_id,
+        )
+
+    def get_claim_defaults(self, transaction: str) -> dict[str, object]:
+        raise NotImplementedError("Phase 5 \u2014 DC Medicaid claim defaults")
+
+    def get_remit_overrides(self) -> dict[str, object]:
+        raise NotImplementedError("Phase 5 \u2014 DC Medicaid remittance overrides")
 
     def _validate_envelope_values(self, interchange: Interchange) -> list[ValidationError]:
         issues: list[ValidationError] = []
@@ -186,6 +221,24 @@ class DCMedicaidProfile(PayerProfile):
                     self._validate_search_criteria(
                         subscriber_loop,
                         location=f"{prefix}.Loop2000B[{receiver_index}].Loop2000C[{subscriber_index}]",
+                    )
+                )
+                issues.extend(
+                    validate_270_dtp_placement(
+                        subscriber_loop,
+                        location=(
+                            f"{prefix}.Loop2000B[{receiver_index}].Loop2000C[{subscriber_index}]"
+                        ),
+                        profile=self.name,
+                    )
+                )
+                issues.extend(
+                    self._validate_2100c_dates(
+                        subscriber_loop,
+                        anchor_date=anchor_date,
+                        location=(
+                            f"{prefix}.Loop2000B[{receiver_index}].Loop2000C[{subscriber_index}]"
+                        ),
                     )
                 )
                 for inquiry_index, inquiry_loop in enumerate(as_list(subscriber_loop.loop_2110c)):
@@ -389,9 +442,35 @@ class DCMedicaidProfile(PayerProfile):
             )
         ]
 
+    def _validate_2100c_dates(
+        self,
+        subscriber_loop: Loop2000C_270,
+        *,
+        anchor_date: date,
+        location: str,
+    ) -> list[ValidationError]:
+        return self._validate_dtp_date_bounds(
+            subscriber_loop.loop_2100c.dtp_segments,
+            anchor_date=anchor_date,
+            location=f"{location}.Loop2100C",
+        )
+
     def _validate_2110c_dates(
         self,
-        inquiry_loop: object,
+        inquiry_loop: Loop2110C_270,
+        *,
+        anchor_date: date,
+        location: str,
+    ) -> list[ValidationError]:
+        return self._validate_dtp_date_bounds(
+            inquiry_loop.dtp_segments,
+            anchor_date=anchor_date,
+            location=location,
+        )
+
+    def _validate_dtp_date_bounds(
+        self,
+        dtp_segments: list[DTPSegment],
         *,
         anchor_date: date,
         location: str,
@@ -399,9 +478,7 @@ class DCMedicaidProfile(PayerProfile):
         issues: list[ValidationError] = []
         earliest_allowed = subtract_months(anchor_date, 13)
 
-        for dtp_index, dtp in enumerate(as_list(getattr(inquiry_loop, "dtp_segments", []))):
-            if not isinstance(dtp, DTPSegment):
-                continue
+        for dtp_index, dtp in enumerate(dtp_segments):
             if normalize_str(getattr(dtp, "date_time_period_format_qualifier", None)) != "D8":
                 continue
             service_date_text = normalize_str(getattr(dtp, "date_time_period", None))

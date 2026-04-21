@@ -89,16 +89,17 @@ def interchange_strategy(draw: st.DrawFn):
                         "dmg": subscriber_loop.loop_2100c.dmg.model_copy(
                             update={"date_time_period": date_of_birth}
                         ),
+                        "dtp_segments": [
+                            subscriber_loop.loop_2100c.dtp_segments[0].model_copy(
+                                update={"date_time_period": service_date}
+                            )
+                        ],
                     }
                 ),
                 "loop_2110c": [
                     subscriber_loop.loop_2110c[0].model_copy(
                         update={
-                            "dtp_segments": [
-                                subscriber_loop.loop_2110c[0]
-                                .dtp_segments[0]
-                                .model_copy(update={"date_time_period": service_date})
-                            ],
+                            "dtp_segments": [],
                             "eq_segments": [
                                 subscriber_loop.loop_2110c[0]
                                 .eq_segments[0]

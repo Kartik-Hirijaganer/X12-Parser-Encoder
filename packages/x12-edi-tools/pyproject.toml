@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "x12-edi-tools"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python-native X12 270/271 parsing, encoding, and validation tools."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -28,8 +28,11 @@ all = [
 dev = [
   "build>=1.2,<2.0",
   "detect-secrets>=1.5.0,<2.0",
+  "eralchemy>=1.5,<2.0",
+  "graphviz>=0.20,<1.0",
   "hypothesis>=6.120,<7.0",
   "mypy>=1.11,<2.0",
+  "openapi-spec-validator>=0.7,<0.8",
   "openpyxl>=3.1,<4.0",
   "pre-commit>=3.8,<5.0",
   "pytest>=8.3,<9.0",
@@ -66,3 +69,57 @@ strict = true
 mypy_path = "src"
 packages = ["x12_edi_tools"]
 warn_unused_configs = true
+
+[tool.coverage.run]
+omit = [
+  "*/x12_edi_tools/builders/*",
+  "*/x12_edi_tools/readers/*",
+  "*/x12_edi_tools/encoder/claim_encoder.py",
+  "*/x12_edi_tools/models/loops/claims/*",
+  "*/x12_edi_tools/models/loops/remittance/*",
+  "*/x12_edi_tools/models/segments/amt.py",
+  "*/x12_edi_tools/models/segments/bpr.py",
+  "*/x12_edi_tools/models/segments/cas.py",
+  "*/x12_edi_tools/models/segments/clm.py",
+  "*/x12_edi_tools/models/segments/clp.py",
+  "*/x12_edi_tools/models/segments/cn1.py",
+  "*/x12_edi_tools/models/segments/cr1.py",
+  "*/x12_edi_tools/models/segments/cr2.py",
+  "*/x12_edi_tools/models/segments/cr3.py",
+  "*/x12_edi_tools/models/segments/crc.py",
+  "*/x12_edi_tools/models/segments/hcp.py",
+  "*/x12_edi_tools/models/segments/hi.py",
+  "*/x12_edi_tools/models/segments/k3.py",
+  "*/x12_edi_tools/models/segments/lx.py",
+  "*/x12_edi_tools/models/segments/mea.py",
+  "*/x12_edi_tools/models/segments/mia.py",
+  "*/x12_edi_tools/models/segments/moa.py",
+  "*/x12_edi_tools/models/segments/nte.py",
+  "*/x12_edi_tools/models/segments/oi.py",
+  "*/x12_edi_tools/models/segments/pat.py",
+  "*/x12_edi_tools/models/segments/plb.py",
+  "*/x12_edi_tools/models/segments/pwk.py",
+  "*/x12_edi_tools/models/segments/qty.py",
+  "*/x12_edi_tools/models/segments/sbr.py",
+  "*/x12_edi_tools/models/segments/sv1.py",
+  "*/x12_edi_tools/models/segments/sv2.py",
+  "*/x12_edi_tools/models/segments/sv3.py",
+  "*/x12_edi_tools/models/segments/svc.py",
+  "*/x12_edi_tools/models/segments/svd.py",
+  "*/x12_edi_tools/models/transactions/transaction_835.py",
+  "*/x12_edi_tools/models/transactions/transaction_837i.py",
+  "*/x12_edi_tools/models/transactions/transaction_837p.py",
+  "*/x12_edi_tools/parser/transaction_dispatch.py",
+  "*/x12_edi_tools/payers/dc_medicaid/constants_835.py",
+  "*/x12_edi_tools/payers/dc_medicaid/constants_837.py",
+  "*/x12_edi_tools/payers/dc_medicaid/profile_835.py",
+  "*/x12_edi_tools/payers/dc_medicaid/profile_837i.py",
+  "*/x12_edi_tools/payers/dc_medicaid/profile_837p.py",
+  "*/x12_edi_tools/validator/rules/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "raise NotImplementedError",
+]

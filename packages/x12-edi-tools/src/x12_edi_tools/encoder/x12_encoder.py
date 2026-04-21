@@ -343,6 +343,7 @@ def _iter_loop_2100c_270(loop: Loop2100C_270) -> Iterable[X12Segment]:
     if loop.dmg is not None:
         yield loop.dmg
     yield from loop.ref_segments
+    yield from loop.dtp_segments
 
 
 def _iter_loop_2110c_270(loop: Loop2110C_270) -> Iterable[X12Segment]:

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from x12_edi_tools import ParseResult, parse
+from x12_edi_tools import ParseResult, encode, parse
 from x12_edi_tools.common.types import SegmentToken
 from x12_edi_tools.exceptions import X12ParseError
 from x12_edi_tools.models import GenericSegment, NM1Segment
@@ -18,6 +18,11 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 def read_fixture(name: str) -> str:
     return (FIXTURES / name).read_text(encoding="utf-8")
+
+
+def first_270_subscriber_loop(raw: str):
+    transaction = parse(raw).interchange.functional_groups[0].transactions[0]
+    return transaction.loop_2000a.loop_2000b[0].loop_2000c[0]
 
 
 def test_detect_delimiters_extracts_standard_isa_values() -> None:
@@ -95,6 +100,31 @@ def test_parse_270_single_returns_expected_envelope_and_subscriber_fields() -> N
     assert result.interchange.isa.receiver_id.strip() == "DCMEDICAID"
     assert subscriber.last_name == "DOE"
     assert subscriber.first_name == "PATIENT"
+
+
+def test_parse_270_routes_pre_eq_dtp_to_2100c_subscriber_date() -> None:
+    raw = read_fixture("270_realtime_single.x12")
+
+    subscriber_loop = first_270_subscriber_loop(raw)
+    encoded = encode(parse(raw).interchange)
+
+    assert subscriber_loop.loop_2100c.dtp_segments[0].date_time_qualifier == "291"
+    assert subscriber_loop.loop_2110c[0].dtp_segments == []
+    assert "DMG*D8*19900101*F~DTP*291*D8*20260412~EQ*30~" in encoded
+
+
+def test_parse_270_preserves_post_eq_dtp_in_2110c_for_archived_files() -> None:
+    raw = read_fixture("270_realtime_single.x12").replace(
+        "DTP*291*D8*20260412~\nEQ*30~",
+        "EQ*30~\nDTP*291*D8*20260412~",
+    )
+
+    subscriber_loop = first_270_subscriber_loop(raw)
+    encoded = encode(parse(raw).interchange)
+
+    assert subscriber_loop.loop_2100c.dtp_segments == []
+    assert subscriber_loop.loop_2110c[0].dtp_segments[0].date_time_qualifier == "291"
+    assert "EQ*30~DTP*291*D8*20260412~" in encoded
 
 
 def test_parse_270_batch_multi_preserves_multiple_transaction_sets() -> None:

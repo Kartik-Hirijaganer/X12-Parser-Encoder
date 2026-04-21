@@ -18,7 +18,7 @@ ECR_REPOSITORY ?= $(APP_NAME)-api
 APP_RUNNER_SERVICE ?= $(APP_NAME)-api
 APP_RUNNER_ECR_ACCESS_ROLE ?= $(APP_NAME)-apprunner-ecr-access
 
-.PHONY: install lint typecheck format test test-lib test-api test-web coverage-lib coverage-api coverage-web coverage build-lib check-version-sync check-oss rebuild deploy clean
+.PHONY: install lint typecheck format test test-lib test-api test-web coverage-lib coverage-api coverage-web coverage build-lib check-version-sync check-oss check-hygiene docs rebuild deploy clean
 
 $(VENV_PYTHON):
 	$(PYTHON) -m venv $(VENV_DIR)
@@ -77,6 +77,23 @@ check-version-sync: $(VENV_PYTHON)
 
 check-oss: $(VENV_PYTHON)
 	PATH="$(VENV_BIN):$$PATH" $(VENV_PYTHON) scripts/check_no_proprietary_content.py
+
+check-hygiene: $(VENV_PYTHON)
+	PATH="$(VENV_BIN):$$PATH" $(VENV_PYTHON) scripts/check_repo_hygiene.py
+
+docs: $(VENV_PYTHON)
+	PATH="$(VENV_BIN):$$PATH" $(VENV_PYTHON) -m openapi_spec_validator docs/api/openapi.yaml
+	@if [ ! -f docs/erd.er ]; then \
+		echo "docs/erd.er not present; skipping ERD regeneration"; \
+	elif ! command -v dot >/dev/null 2>&1; then \
+		echo "graphviz ('dot') binary not installed; skipping ERD render. Install with 'brew install graphviz' or 'apt-get install graphviz'."; \
+	elif ! PATH="$(VENV_BIN):$$PATH" $(VENV_PYTHON) -c "import graphviz" >/dev/null 2>&1 && \
+	     ! PATH="$(VENV_BIN):$$PATH" $(VENV_PYTHON) -c "import pygraphviz" >/dev/null 2>&1; then \
+		echo "Python 'graphviz' or 'pygraphviz' not installed in venv; skipping ERD render. Run 'make install' to pick up dev extras."; \
+	else \
+		PATH="$(VENV_BIN):$$PATH" eralchemy -i docs/erd.er -o docs/erd.svg && \
+		echo "Regenerated docs/erd.svg"; \
+	fi
 
 rebuild:
 	$(DOCKER_COMPOSE) down --remove-orphans

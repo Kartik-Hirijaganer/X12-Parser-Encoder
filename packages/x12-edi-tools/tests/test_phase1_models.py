@@ -156,16 +156,16 @@ def build_loop_2000c_270() -> Loop2000C_270:
                 date_time_period="19900101",
                 gender_code=GenderCode.FEMALE,
             ),
+            dtp_segments=[
+                DTPSegment(
+                    date_time_qualifier="291",
+                    date_time_period_format_qualifier="D8",
+                    date_time_period="20260412",
+                ),
+            ],
         ),
         loop_2110c=[
             Loop2110C_270(
-                dtp_segments=[
-                    DTPSegment(
-                        date_time_qualifier="291",
-                        date_time_period_format_qualifier="D8",
-                        date_time_period="20260412",
-                    ),
-                ],
                 eq_segments=[
                     EQSegment(service_type_code=ServiceTypeCode.HEALTH_BENEFIT_PLAN_COVERAGE)
                 ],

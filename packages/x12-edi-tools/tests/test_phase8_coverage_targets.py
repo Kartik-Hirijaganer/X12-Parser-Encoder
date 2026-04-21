@@ -1276,12 +1276,14 @@ def test_snip4_helpers_cover_missing_hl_refs_sequences_and_dtp_formats() -> None
         "SNIP4_ROOT_PARENT_NOT_ALLOWED",
     }
 
-    transaction.loop_2000a.loop_2000b[0].loop_2000c[0].loop_2110c[0].dtp_segments = [
+    transaction.loop_2000a.loop_2000b[0].loop_2000c[0].loop_2100c.dtp_segments = [
         DTPSegment.model_construct(
             date_time_qualifier="291",
             date_time_period_format_qualifier="ZZ",
             date_time_period="20260412",
         ),
+    ]
+    transaction.loop_2000a.loop_2000b[0].loop_2000c[0].loop_2110c[0].dtp_segments = [
         DTPSegment.model_construct(
             date_time_qualifier="291",
             date_time_period_format_qualifier="D8",
@@ -1289,10 +1291,14 @@ def test_snip4_helpers_cover_missing_hl_refs_sequences_and_dtp_formats() -> None
         ),
     ]
     dtp_issues = _validate_dtp_formats(transaction, 0, 0)
-    assert issue_codes(dtp_issues) >= {
+    dtp_codes = issue_codes(dtp_issues)
+    dtp_locations = {issue.location for issue in dtp_issues}
+    assert dtp_codes >= {
         "SNIP4_UNSUPPORTED_DTP_FORMAT",
         "SNIP4_DTP_FORMAT_MISMATCH",
     }
+    assert any("Loop2100C.DTP" in location for location in dtp_locations)
+    assert any("Loop2110C" in location for location in dtp_locations)
 
 
 def test_snip5_validation_covers_271_specific_semantic_and_code_set_errors() -> None:
@@ -1386,6 +1392,42 @@ def test_dc_medicaid_profile_private_helpers_cover_remaining_validation_paths() 
         location="Loop2110C[0]",
     )
     assert date_issues == []
+
+    interchange = build_interchange()
+    subscriber_loop = (
+        interchange.functional_groups[0].transactions[0].loop_2000a.loop_2000b[0].loop_2000c[0]
+    )
+    subscriber_loop.loop_2100c.dtp_segments = [
+        DTPSegment.model_construct(
+            date_time_qualifier="291",
+            date_time_period_format_qualifier="D8",
+            date_time_period="20280101",
+        ),
+        DTPSegment.model_construct(
+            date_time_qualifier="291",
+            date_time_period_format_qualifier="D8",
+            date_time_period="20200101",
+        ),
+        DTPSegment.model_construct(
+            date_time_qualifier="291",
+            date_time_period_format_qualifier="D8",
+            date_time_period="not-a-date",
+        ),
+        DTPSegment.model_construct(
+            date_time_qualifier="291",
+            date_time_period_format_qualifier="RD8",
+            date_time_period="20260101-20260131",
+        ),
+    ]
+    bounds_issues = profile._validate_2100c_dates(
+        subscriber_loop,
+        anchor_date=date(2026, 4, 12),
+        location="Loop2000C[0]",
+    )
+    assert {issue.code for issue in bounds_issues} == {
+        "DCM_FUTURE_SERVICE_DATE",
+        "DCM_SERVICE_DATE_TOO_OLD",
+    }
 
     service_type_issues = profile._validate_2110c_service_types(
         Loop2110C_271.model_construct(

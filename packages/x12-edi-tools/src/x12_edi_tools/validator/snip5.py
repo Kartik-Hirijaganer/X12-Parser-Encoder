@@ -193,13 +193,19 @@ def _validate_transaction_codes(
                 ):
                     if not isinstance(subscriber_loop, Loop2000C_270):
                         continue
+                    subscriber_prefix = (
+                        f"{prefix}.Loop2000B[{receiver_index}].Loop2000C[{subscriber_index}]"
+                    )
                     issues.extend(
                         _validate_dmg(
-                            getattr(getattr(subscriber_loop, "loop_2100c", None), "dmg", None),
-                            location=(
-                                f"{prefix}.Loop2000B[{receiver_index}].Loop2000C"
-                                f"[{subscriber_index}].Loop2100C.DMG"
-                            ),
+                            subscriber_loop.loop_2100c.dmg,
+                            location=f"{subscriber_prefix}.Loop2100C.DMG",
+                        )
+                    )
+                    issues.extend(
+                        _validate_2110c_codes(
+                            subscriber_loop.loop_2100c,
+                            location=f"{subscriber_prefix}.Loop2100C",
                         )
                     )
                     for inquiry_index, inquiry_loop in enumerate(
@@ -208,10 +214,7 @@ def _validate_transaction_codes(
                         issues.extend(
                             _validate_2110c_codes(
                                 inquiry_loop,
-                                location=(
-                                    f"{prefix}.Loop2000B[{receiver_index}].Loop2000C"
-                                    f"[{subscriber_index}].Loop2110C[{inquiry_index}]"
-                                ),
+                                location=(f"{subscriber_prefix}.Loop2110C[{inquiry_index}]"),
                             )
                         )
         return issues

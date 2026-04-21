@@ -390,6 +390,16 @@ def _collect_dtp_refs(
             for subscriber_index, subscriber_loop in enumerate(as_list(receiver_loop.loop_2000c)):
                 if not isinstance(subscriber_loop, Loop2000C_270):
                     continue
+                subscriber_prefix = (
+                    f"{prefix}.Loop2000B[{receiver_index}].Loop2000C[{subscriber_index}]"
+                )
+                for dtp_index, dtp in enumerate(subscriber_loop.loop_2100c.dtp_segments):
+                    refs.append(
+                        (
+                            f"{subscriber_prefix}.Loop2100C.DTP[{dtp_index}]",
+                            dtp,
+                        )
+                    )
                 for inquiry_index, inquiry_loop in enumerate(as_list(subscriber_loop.loop_2110c)):
                     for dtp_index, dtp in enumerate(
                         as_list(getattr(inquiry_loop, "dtp_segments", []))
@@ -397,8 +407,7 @@ def _collect_dtp_refs(
                         if isinstance(dtp, DTPSegment):
                             refs.append(
                                 (
-                                    f"{prefix}.Loop2000B[{receiver_index}].Loop2000C"
-                                    f"[{subscriber_index}].Loop2110C[{inquiry_index}].DTP"
+                                    f"{subscriber_prefix}.Loop2110C[{inquiry_index}].DTP"
                                     f"[{dtp_index}]",
                                     dtp,
                                 )

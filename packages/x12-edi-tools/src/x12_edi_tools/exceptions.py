@@ -25,6 +25,14 @@ class X12ValidationError(X12Error):
     """Raised when a typed X12 model fails semantic validation."""
 
 
+class ClaimValidationError(X12ValidationError):
+    """Raised when an 837I or 837P claim fails domain or wire-format validation."""
+
+
+class RemittanceParseError(X12ParseError):
+    """Raised when an 835 remittance payload cannot be projected into domain objects."""
+
+
 @dataclass(slots=True)
 class TransactionParseError:
     """Transaction-scoped parse failure used by ``on_error='collect'`` paths."""

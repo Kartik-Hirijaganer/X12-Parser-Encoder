@@ -5,7 +5,7 @@ import type { WarningMessage } from '../types/api'
 import type { PreviewRouteState } from '../types/workflow'
 import { useSettings } from '../hooks/useSettings'
 import { ApiError, ApiTimeoutError, generate270, parse271, validate270 } from '../services/api'
-import { nextIsaControlNumber } from '../utils/constants'
+import { highestIsa13, nextIsaControlNumber } from '../utils/constants'
 import { formatDate } from '../utils/formatters'
 import { AppShell } from '../components/layout/AppShell'
 import { Banner } from '../components/ui/Banner'
@@ -63,8 +63,9 @@ export function PreviewPage() {
               response,
             },
           })
-          if (response.control_numbers.isa13) {
-            updateLastIcn(response.control_numbers.isa13)
+          const highestIcn = highestIsa13(response)
+          if (highestIcn !== null) {
+            updateLastIcn(highestIcn.toString().padStart(9, '0'))
           }
           return
         }

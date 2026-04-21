@@ -253,6 +253,8 @@ def _build_interchanges(
     interchanges: list[Interchange] = []
     trace_numbers = count(start=1)
     transaction_numbers = count(start=1)
+    isa_start = config.isa_control_number_start or 1
+    gs_start = config.gs_control_number_start or 1
 
     for batch_index, batch in enumerate(_chunks(patients, config.max_batch_size), start=1):
         transactions = [
@@ -268,6 +270,8 @@ def _build_interchanges(
             )
             for patient in batch
         ]
+        isa_control_number = f"{isa_start + batch_index - 1:09d}"
+        gs_control_number = str(gs_start + batch_index - 1)
 
         isa = ISASegment(
             authorization_information_qualifier="00",
@@ -282,7 +286,7 @@ def _build_interchanges(
             interchange_time=time_hhmm,
             repetition_separator="^",
             control_version_number="00501",
-            interchange_control_number="000000001",
+            interchange_control_number=isa_control_number,
             acknowledgment_requested=AcknowledgmentRequested(config.acknowledgment_requested),
             usage_indicator=UsageIndicator(config.usage_indicator),
             component_element_separator=":",
@@ -293,17 +297,17 @@ def _build_interchanges(
             application_receiver_code=config.payer_id,
             date=date_yyyymmdd,
             time=time_hhmm,
-            group_control_number=str(batch_index),
+            group_control_number=gs_control_number,
             responsible_agency_code="X",
             version_release_industry_identifier_code=IMPLEMENTATION_REFERENCE,
         )
         ge = GESegment(
             number_of_transaction_sets_included=len(transactions),
-            group_control_number=str(batch_index),
+            group_control_number=gs_control_number,
         )
         iea = IEASegment(
             number_of_included_functional_groups=1,
-            interchange_control_number="000000001",
+            interchange_control_number=isa_control_number,
         )
         typed_transactions = cast(list[Transaction270 | Transaction271], transactions)
         interchanges.append(
@@ -421,6 +425,13 @@ def _build_transaction(
                                     gender_code=GenderCode(patient.gender),
                                 ),
                                 ref_segments=subscriber_ref_segments,
+                                dtp_segments=[
+                                    DTPSegment(
+                                        date_time_qualifier="291",
+                                        date_time_period_format_qualifier=dtp_period_format,
+                                        date_time_period=dtp_period,
+                                    )
+                                ],
                             ),
                             loop_2110c=[
                                 Loop2110C_270(
@@ -429,13 +440,6 @@ def _build_transaction(
                                             service_type_code=ServiceTypeCode(
                                                 patient.service_type_code
                                             )
-                                        )
-                                    ],
-                                    dtp_segments=[
-                                        DTPSegment(
-                                            date_time_qualifier="291",
-                                            date_time_period_format_qualifier=dtp_period_format,
-                                            date_time_period=dtp_period,
                                         )
                                     ],
                                 )
@@ -526,7 +530,7 @@ def _build_document_file_name(
 ) -> str:
     return (
         f"{_sanitize_filename_token(trading_partner_id)}_270_{generation_date}_"
-        f"{isa_control_number or 'unknown'}.x12"
+        f"{isa_control_number or 'unknown'}.txt"
     )
 
 

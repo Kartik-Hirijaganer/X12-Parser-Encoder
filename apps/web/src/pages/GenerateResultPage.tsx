@@ -32,7 +32,7 @@ export function GenerateResultPage() {
   const { response } = routeState
   const primaryDownloadName =
     response.download_file_name ??
-    (response.split_count > 1 ? 'eligibility_batch.zip' : 'eligibility_270.x12')
+    (response.split_count > 1 ? 'eligibility_batch.zip' : 'eligibility_270.txt')
   const batchSummaryFileName = response.batch_summary_file_name ?? 'submission_summary.txt'
 
   return (
