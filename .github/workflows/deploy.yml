@@ -6,71 +6,44 @@ on:
       - main
     paths:
       - "apps/**"
+      - "packages/**"
       - "docker/**"
+      - "scripts/deploy_aws.sh"
+      - "Makefile"
+      - "VERSION"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
-    inputs:
-      target:
-        description: "Deployment target"
-        required: true
-        default: image-only
-        type: choice
-        options:
-          - image-only
-          - cloud-run
-          - render
 
 permissions:
   contents: read
   id-token: write
-  packages: write
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-2' }}
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID || '306980977180' }}
+      APP_NAME: ${{ vars.APP_NAME || 'x12-parser-encoder' }}
+      S3_BUCKET: ${{ vars.S3_BUCKET }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'x12-parser-encoder-api' }}
+      APP_RUNNER_SERVICE: ${{ vars.APP_RUNNER_SERVICE || 'x12-parser-encoder-api' }}
+      APP_RUNNER_ECR_ACCESS_ROLE: ${{ vars.APP_RUNNER_ECR_ACCESS_ROLE || 'x12-parser-encoder-apprunner-ecr-access' }}
+      API_IMAGE_TAG: main-${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
-      - name: Resolve deploy target
-        id: target
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "value=${{ github.event.inputs.target }}" >> "$GITHUB_OUTPUT"
-          elif [ -n "${{ vars.DEPLOY_TARGET }}" ]; then
-            echo "value=${{ vars.DEPLOY_TARGET }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=image-only" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Resolve image tag
-        id: image
-        run: |
-          repository="$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
-          echo "tag=ghcr.io/${repository}:main-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
+
+      - uses: actions/setup-node@v4
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and push deploy image
-        uses: docker/build-push-action@v6
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          context: .
-          file: docker/Dockerfile
-          push: true
-          tags: ${{ steps.image.outputs.tag }}
-      - name: Authenticate to Google Cloud
-        if: steps.target.outputs.value == 'cloud-run'
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-      - name: Deploy to Cloud Run
-        if: steps.target.outputs.value == 'cloud-run'
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          service: ${{ vars.CLOUD_RUN_SERVICE }}
-          region: ${{ vars.CLOUD_RUN_REGION }}
-          image: ${{ steps.image.outputs.tag }}
-      - name: Trigger Render deploy
-        if: steps.target.outputs.value == 'render'
-        run: curl --fail --silent --show-error -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy to AWS
+        run: bash scripts/deploy_aws.sh

@@ -134,10 +134,17 @@ docker run --rm -p 8000:8000 x12-parser-encoder
 
 ### Web + API
 
-- Vercel plus Render: deploy the React app and API separately for demo environments without PHI.
-- Cloud Run: deploy the containerized API and static frontend together for production-style environments with external identity boundaries and metrics scraping.
+- AWS deploys are handled by `scripts/deploy_aws.sh` and the `Deploy` GitHub Actions workflow:
+  - React frontend: S3 static website with CloudFront in front.
+  - FastAPI backend: Docker image in ECR, served by App Runner.
+- Required GitHub Actions secret: `AWS_ROLE_TO_ASSUME`.
+- Optional GitHub Actions variables override script defaults: `AWS_REGION`, `AWS_ACCOUNT_ID`,
+  `APP_NAME`, `S3_BUCKET`, `ECR_REPOSITORY`, `APP_RUNNER_SERVICE`, and
+  `APP_RUNNER_ECR_ACCESS_ROLE`.
 
-The GitHub workflows in `.github/workflows/` cover CI, release publishing, and configurable deploy automation.
+`Deploy` and `Release` are intentionally separate workflows. `Deploy` updates the running AWS
+application for users. `Release` runs only for `v*.*.*` tags and publishes distributable artifacts
+such as the Python package and GitHub release notes; it does not deploy the hosted AWS app.
 
 ## PHI Handling Notes
 
