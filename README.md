@@ -1,7 +1,5 @@
 # X12 Parser Encoder
 
-[![PyPI version](https://img.shields.io/pypi/v/x12-edi-tools.svg)](https://pypi.org/project/x12-edi-tools/)
-[![Python versions](https://img.shields.io/pypi/pyversions/x12-edi-tools.svg)](https://pypi.org/project/x12-edi-tools/)
 [![Coverage](docs/coverage-badge.svg)](docs/coverage.md)
 [![CI](https://github.com/Kartik-Hirijaganer/X12-Parser-Encoder/actions/workflows/ci.yml/badge.svg)](https://github.com/Kartik-Hirijaganer/X12-Parser-Encoder/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/Kartik-Hirijaganer/X12-Parser-Encoder.svg)](LICENSE)
@@ -37,24 +35,32 @@ X12 is the transaction format used by US healthcare trading partners to exchange
 
 ## Installation
 
-### Library
-
-```bash
-pip install x12-edi-tools
-```
-
-Optional extras:
-
-```bash
-pip install "x12-edi-tools[excel]"
-pip install "x12-edi-tools[pandas]"
-pip install "x12-edi-tools[all]"
-```
-
 ### From Source
 
 ```bash
 make install
+```
+
+This installs the local `packages/x12-edi-tools` library in editable mode along with the FastAPI app and web dependencies.
+
+To install only the local Python library from a checkout:
+
+```bash
+pip install -e "./packages/x12-edi-tools[all]"
+```
+
+### Package Name Note
+
+This repository includes its own in-tree Python package at `packages/x12-edi-tools`, imported as `x12_edi_tools` by the API app. The package name `x12-edi-tools` is also used by an unrelated third-party project on PyPI, so do not use `pip install x12-edi-tools` when setting up this repository unless the package publishing strategy has been updated.
+
+The Docker images and local `make install` target install the library from this repository path, not from PyPI.
+
+Optional local extras use the same path-based install form:
+
+```bash
+pip install -e "./packages/x12-edi-tools[excel]"
+pip install -e "./packages/x12-edi-tools[pandas]"
+pip install -e "./packages/x12-edi-tools[all]"
 ```
 
 ## Quick Start
