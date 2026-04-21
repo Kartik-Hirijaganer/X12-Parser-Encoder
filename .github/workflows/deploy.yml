@@ -39,6 +39,11 @@ jobs:
           else
             echo "value=cloud-run" >> "$GITHUB_OUTPUT"
           fi
+      - name: Resolve image tag
+        id: image
+        run: |
+          repository="$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+          echo "tag=ghcr.io/${repository}:main-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -51,7 +56,7 @@ jobs:
           context: .
           file: docker/Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository }}:main-${{ github.sha }}
+          tags: ${{ steps.image.outputs.tag }}
       - name: Authenticate to Google Cloud
         if: steps.target.outputs.value == 'cloud-run'
         uses: google-github-actions/auth@v2
@@ -64,7 +69,7 @@ jobs:
         with:
           service: ${{ vars.CLOUD_RUN_SERVICE }}
           region: ${{ vars.CLOUD_RUN_REGION }}
-          image: ghcr.io/${{ github.repository }}:main-${{ github.sha }}
+          image: ${{ steps.image.outputs.tag }}
       - name: Trigger Render deploy
         if: steps.target.outputs.value == 'render'
         run: curl --fail --silent --show-error -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
