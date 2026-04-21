@@ -13,9 +13,10 @@ on:
       target:
         description: "Deployment target"
         required: true
-        default: cloud-run
+        default: image-only
         type: choice
         options:
+          - image-only
           - cloud-run
           - render
 
@@ -37,7 +38,7 @@ jobs:
           elif [ -n "${{ vars.DEPLOY_TARGET }}" ]; then
             echo "value=${{ vars.DEPLOY_TARGET }}" >> "$GITHUB_OUTPUT"
           else
-            echo "value=cloud-run" >> "$GITHUB_OUTPUT"
+            echo "value=image-only" >> "$GITHUB_OUTPUT"
           fi
       - name: Resolve image tag
         id: image
