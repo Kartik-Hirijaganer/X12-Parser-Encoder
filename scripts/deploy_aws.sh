@@ -10,6 +10,7 @@ ECR_REPOSITORY="${ECR_REPOSITORY:-${APP_NAME}-api}"
 APP_RUNNER_SERVICE="${APP_RUNNER_SERVICE:-${APP_NAME}-api}"
 APP_RUNNER_ECR_ACCESS_ROLE="${APP_RUNNER_ECR_ACCESS_ROLE:-${APP_NAME}-apprunner-ecr-access}"
 API_IMAGE_TAG="${API_IMAGE_TAG:-$(date -u +%Y%m%d%H%M%S)-$(git rev-parse --short HEAD 2>/dev/null || echo local)}"
+DOCKER_PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"
 RATE_LIMIT_ENABLED="${RATE_LIMIT_ENABLED:-true}"
 REQUESTS_PER_MINUTE="${REQUESTS_PER_MINUTE:-60}"
 CONCURRENT_UPLOAD_LIMIT="${CONCURRENT_UPLOAD_LIMIT:-5}"
@@ -165,7 +166,11 @@ login_to_ecr() {
 
 build_and_push_api_image() {
   log_step "Building and pushing API image ${API_IMAGE_URI}"
-  docker build -f "${REPO_ROOT}/docker/Dockerfile" -t "${API_IMAGE_URI}" "${REPO_ROOT}"
+  docker build \
+    --platform "${DOCKER_PLATFORM}" \
+    -f "${REPO_ROOT}/docker/Dockerfile" \
+    -t "${API_IMAGE_URI}" \
+    "${REPO_ROOT}"
   docker push "${API_IMAGE_URI}" >/dev/null
 }
 
