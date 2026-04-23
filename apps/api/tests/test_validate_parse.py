@@ -36,7 +36,7 @@ def test_validate_wrong_isa08_returns_suggestion(client: TestClient) -> None:
     assert any(issue["code"] == "DCM_INVALID_ISA08" for issue in payload["issues"])
 
 
-def test_validate_legacy_270_dtp_placement_returns_blocking_error(client: TestClient) -> None:
+def test_validate_270_dtp_placement_returns_blocking_error(client: TestClient) -> None:
     invalid = fixture_text("270_realtime_single.x12").replace(
         "DTP*291*D8*20260412~\nEQ*30~",
         "EQ*30~\nDTP*291*D8*20260412~",
@@ -54,6 +54,8 @@ def test_validate_legacy_270_dtp_placement_returns_blocking_error(client: TestCl
     )
     assert payload["is_valid"] is False
     assert placement_issue["level"] == "snip5"
+    assert placement_issue["transaction_index"] == 0
+    assert placement_issue["transaction_control_number"] == "0001"
     assert placement_issue["suggestion"] == (
         "Move DTP*291 before the EQ segment so it is in Loop 2100C."
     )

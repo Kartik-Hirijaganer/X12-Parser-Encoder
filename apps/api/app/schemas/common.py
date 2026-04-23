@@ -212,6 +212,8 @@ class ValidationIssue(ApiModel):
     element: str | None = None
     suggestion: str | None = None
     profile: str | None = None
+    transaction_index: int | None = None
+    transaction_control_number: str | None = None
 
 
 class ProfileInfo(ApiModel):
@@ -223,6 +225,7 @@ class ProfileInfo(ApiModel):
 class EligibilitySegment(ApiModel):
     eligibility_code: str
     service_type_code: str | None = None
+    service_type_codes: list[str] = Field(default_factory=list)
     coverage_level_code: str | None = None
     insurance_type_code: str | None = None
     plan_coverage_description: str | None = None
@@ -234,8 +237,11 @@ class EligibilitySegment(ApiModel):
 class BenefitEntity(ApiModel):
     loop_identifier: str | None = None
     qualifier: str | None = None
-    identifier: str
+    identifier: str | None = None
     description: str | None = None
+    entity_identifier_code: str | None = None
+    name: str | None = None
+    contacts: list[str] = Field(default_factory=list)
 
 
 class AAAError(ApiModel):
@@ -250,6 +256,7 @@ class EligibilitySummary(ApiModel):
     active: int
     inactive: int
     error: int
+    not_found: int = 0
     unknown: int
 
 
@@ -257,6 +264,9 @@ class EligibilityResult(ApiModel):
     member_name: str
     member_id: str | None = None
     overall_status: str
+    status_reason: str | None = None
+    st_control_number: str | None = None
+    trace_number: str | None = None
     eligibility_segments: list[EligibilitySegment] = Field(default_factory=list)
     benefit_entities: list[BenefitEntity] = Field(default_factory=list)
     aaa_errors: list[AAAError] = Field(default_factory=list)

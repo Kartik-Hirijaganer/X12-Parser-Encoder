@@ -16,6 +16,7 @@ from x12_edi_tools.models.loops import (
     Loop2100C_271,
     Loop2110C_270,
     Loop2110C_271,
+    Loop2120C_271,
 )
 from x12_edi_tools.models.segments import (
     AAASegment,
@@ -79,6 +80,7 @@ __all__ = [
     "Loop2100C_271",
     "Loop2110C_270",
     "Loop2110C_271",
+    "Loop2120C_271",
     "N3Segment",
     "N4Segment",
     "NM1Segment",

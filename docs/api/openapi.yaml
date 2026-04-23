@@ -425,6 +425,14 @@ components:
         payer_scope:
           type: string
           description: Payer profile that emitted this issue, if payer-specific.
+        transaction_index:
+          type: integer
+          nullable: true
+          description: Zero-based transaction index for transaction-scoped issues.
+        transaction_control_number:
+          type: string
+          nullable: true
+          description: ST02 transaction set control number for transaction-scoped issues.
 
     HealthStatus:
       type: object

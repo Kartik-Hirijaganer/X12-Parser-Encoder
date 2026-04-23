@@ -19,6 +19,7 @@ from x12_edi_tools.models.transactions import Interchange, Transaction270, Trans
 from x12_edi_tools.validator.base import (
     SnipLevel,
     ValidationError,
+    annotate_transaction_issues,
     as_list,
     issue,
     iter_transactions,
@@ -49,24 +50,33 @@ def validate_snip4(interchange: Interchange) -> list[ValidationError]:
     for tx_context in iter_transactions(interchange):
         transaction = tx_context.transaction
         issues.extend(
-            _validate_hl_structure(
-                transaction,
-                tx_context.functional_group_index,
-                tx_context.transaction_index,
+            annotate_transaction_issues(
+                _validate_hl_structure(
+                    transaction,
+                    tx_context.functional_group_index,
+                    tx_context.transaction_index,
+                ),
+                tx_context,
             )
         )
         issues.extend(
-            _validate_nm1_contexts(
-                transaction,
-                tx_context.functional_group_index,
-                tx_context.transaction_index,
+            annotate_transaction_issues(
+                _validate_nm1_contexts(
+                    transaction,
+                    tx_context.functional_group_index,
+                    tx_context.transaction_index,
+                ),
+                tx_context,
             )
         )
         issues.extend(
-            _validate_dtp_formats(
-                transaction,
-                tx_context.functional_group_index,
-                tx_context.transaction_index,
+            annotate_transaction_issues(
+                _validate_dtp_formats(
+                    transaction,
+                    tx_context.functional_group_index,
+                    tx_context.transaction_index,
+                ),
+                tx_context,
             )
         )
 
