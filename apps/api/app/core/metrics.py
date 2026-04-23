@@ -83,6 +83,15 @@ SEGMENT_COUNT = Histogram(
     labelnames=("path", "operation"),
     buckets=_COUNT_BUCKETS,
 )
+PARSER_ACCOUNTING_MISMATCH_TOTAL = Counter(
+    "parser_accounting_mismatch_total",
+    (
+        "Parse responses where source transactions do not reconcile with parsed "
+        "results and parser issues."
+    ),
+    labelnames=("path",),
+)
+PARSER_ACCOUNTING_MISMATCH_TOTAL.labels(path="/api/v1/parse")
 
 
 def metric_path_for_request(request: Request) -> str:
