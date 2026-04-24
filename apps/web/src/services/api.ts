@@ -89,6 +89,14 @@ export async function exportEligibilityWorkbook(payload: ExportWorkbookRequest):
   })
 }
 
+export async function exportValidationWorkbook(payload: ValidateResponse): Promise<Blob> {
+  return requestBlob('/export/validation/xlsx', {
+    method: 'POST',
+    headers: jsonHeaders(),
+    body: JSON.stringify(payload),
+  })
+}
+
 export async function fetchProfiles(): Promise<ProfilesResponse> {
   return requestJson<ProfilesResponse>('/profiles')
 }

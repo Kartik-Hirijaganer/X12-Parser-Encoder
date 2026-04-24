@@ -34,6 +34,8 @@ tags:
     description: Liveness and readiness probes.
   - name: eligibility
     description: 270/271 eligibility submission and response parsing (existing).
+  - name: export
+    description: Excel workbook exports for parsed eligibility and validation results.
   - name: claims
     description: 837I and 837P claim generation and validation.
   - name: remittance
@@ -101,7 +103,18 @@ paths:
       tags: [eligibility]
       summary: Parse a 271 eligibility response
       operationId: parseEligibility271
-      description: Parses an EDI 271 response and returns the domain object.
+      description: |
+        Parses an EDI 271 response and returns a dashboard-oriented projection.
+        Applies tolerant-first inbound parsing: unknown EB01/NM101 codes are
+        preserved verbatim and composite EB03 values are split on the interchange
+        repetition separator.
+
+        When the parser cannot fully recover a transaction, the affected entries
+        are listed in `parser_issues[]` alongside the recovered results.
+        Accounting mismatches (`parsed_result_count + parser_issue_count !=
+        source_transaction_count`) are surfaced as partial success (HTTP 200) and
+        increment the `parser_accounting_mismatch_total` counter; they are never
+        returned as HTTP 5xx.
       requestBody:
         required: true
         content:
@@ -113,10 +126,89 @@ paths:
             schema: { $ref: "#/components/schemas/RawX12Request" }
       responses:
         "200":
-          description: Parsed 271 response.
+          description: Parsed 271 response (may include partial results and parser issues).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Parse271Response" }
+        "400": { $ref: "#/components/responses/ValidationProblem" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+
+  /eligibility/validate:
+    post:
+      tags: [eligibility]
+      summary: Validate a 270 eligibility request
+      operationId: validateEligibility270
+      description: |
+        Runs the validator against an uploaded 270 payload and returns a
+        patient-centric projection. Every `ValidationIssue` whose rule iterates
+        transactions carries `transaction_index` + `transaction_control_number`,
+        which are bucketed into `patients[]` so consumers can surface per-patient
+        status without re-walking issue arrays.
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string
+              description: Raw 270 EDI text.
+          application/json:
+            schema: { $ref: "#/components/schemas/RawX12Request" }
+      responses:
+        "200":
+          description: Validation report with patient-level projection.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Validate270Response" }
+        "400": { $ref: "#/components/responses/ValidationProblem" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+
+  /export/xlsx:
+    post:
+      tags: [export]
+      summary: Export parsed eligibility results as an Excel workbook
+      operationId: exportEligibilityWorkbook
+      description: |
+        Builds an `.xlsx` workbook from a parsed eligibility response projection.
+        The workbook includes Summary and Eligibility Results sheets, plus Parser
+        Issues when `parser_issue_count` is greater than zero.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExportWorkbookRequest" }
+      responses:
+        "200":
+          description: Excel workbook containing parsed eligibility results.
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        "400": { $ref: "#/components/responses/ValidationProblem" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+
+  /export/validation/xlsx:
+    post:
+      tags: [export]
+      summary: Export validation results as an Excel workbook
+      operationId: exportValidationWorkbook
+      description: |
+        Builds an `.xlsx` workbook from a 270 validation response projection.
+        The workbook contains Summary, Per-Patient, and Issues sheets with row
+        counts matching the supplied `patients[]` and `issues[]` arrays.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Validate270Response" }
+      responses:
+        "200":
+          description: Excel workbook containing patient-level validation results.
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
         "400": { $ref: "#/components/responses/ValidationProblem" }
         "413": { $ref: "#/components/responses/PayloadTooLarge" }
 
@@ -782,17 +874,205 @@ components:
 
     Parse271Response:
       type: object
-      required: [eligibility_results]
+      required:
+        - filename
+        - source_transaction_count
+        - parsed_result_count
+        - parser_issue_count
+        - parser_issues
+        - transaction_count
+        - summary
+        - results
       properties:
-        eligibility_results:
+        filename: { type: string }
+        payer_name: { type: string, nullable: true }
+        source_transaction_count:
+          type: integer
+          minimum: 0
+          description: Number of ST*271 transactions detected in the uploaded interchange.
+        parsed_result_count:
+          type: integer
+          minimum: 0
+          description: Number of eligibility results projected onto the response.
+        parser_issue_count:
+          type: integer
+          minimum: 0
+          description: Number of parser-scope issues surfaced alongside recovered rows.
+        parser_issues:
           type: array
-          items:
-            type: object
-            description: Domain shape from x12_edi_tools.read_271.
-        warnings:
+          items: { $ref: "#/components/schemas/ParserIssue" }
+        transaction_count:
+          type: integer
+          minimum: 0
+          deprecated: true
+          description: |
+            Deprecated alias of `source_transaction_count`. Will be removed in the
+            next minor release; prefer `source_transaction_count`.
+        summary: { $ref: "#/components/schemas/EligibilitySummary" }
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/EligibilityResult" }
+
+    ParserIssue:
+      type: object
+      required: [message]
+      properties:
+        transaction_index:
+          type: integer
+          nullable: true
+          description: Zero-based ST ordinal the issue belongs to, when known.
+        transaction_control_number:
+          type: string
+          nullable: true
+          description: ST02 of the transaction the issue belongs to, when known.
+        segment_id: { type: string, nullable: true }
+        location: { type: string, nullable: true }
+        message: { type: string }
+        severity:
+          type: string
+          enum: [error, warning]
+          default: error
+
+    EligibilitySummary:
+      type: object
+      required: [total, active, inactive, error, not_found, unknown]
+      properties:
+        total: { type: integer, minimum: 0 }
+        active: { type: integer, minimum: 0 }
+        inactive: { type: integer, minimum: 0 }
+        error: { type: integer, minimum: 0 }
+        not_found:
+          type: integer
+          minimum: 0
+          description: Count of subscribers returned with AAA*75 (subscriber not found).
+        unknown:
+          type: integer
+          minimum: 0
+          description: Count of subscribers with only supplemental EB01 codes.
+
+    EligibilityResult:
+      type: object
+      required: [member_name, overall_status]
+      properties:
+        member_name: { type: string }
+        member_id: { type: string, nullable: true }
+        overall_status:
+          type: string
+          enum: [active, inactive, error, not_found, unknown]
+        status_reason: { type: string, nullable: true }
+        st_control_number: { type: string, nullable: true }
+        trace_number: { type: string, nullable: true }
+        eligibility_segments:
+          type: array
+          items: { $ref: "#/components/schemas/EligibilitySegment" }
+        benefit_entities:
+          type: array
+          items: { $ref: "#/components/schemas/BenefitEntity" }
+        aaa_errors:
+          type: array
+          items: { $ref: "#/components/schemas/AAAError" }
+
+    EligibilitySegment:
+      type: object
+      required: [eligibility_code]
+      properties:
+        eligibility_code: { type: string }
+        service_type_code: { type: string, nullable: true }
+        service_type_codes:
+          type: array
+          items: { type: string }
+          description: Composite EB03 values split on the interchange repetition separator.
+        coverage_level_code: { type: string, nullable: true }
+        insurance_type_code: { type: string, nullable: true }
+        plan_coverage_description: { type: string, nullable: true }
+        monetary_amount: { type: string, nullable: true }
+        quantity: { type: string, nullable: true }
+        in_plan_network_indicator: { type: string, nullable: true }
+
+    BenefitEntity:
+      type: object
+      properties:
+        loop_identifier: { type: string, nullable: true }
+        qualifier: { type: string, nullable: true }
+        identifier: { type: string, nullable: true }
+        description: { type: string, nullable: true }
+        entity_identifier_code:
+          type: string
+          nullable: true
+          description: 2120C NM1*01 (P3, P5, 1I, …).
+        name: { type: string, nullable: true }
+        contacts:
+          type: array
+          items: { type: string }
+
+    AAAError:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        follow_up_action_code: { type: string, nullable: true }
+        suggestion: { type: string, nullable: true }
+
+    Validate270Response:
+      type: object
+      required: [filename, is_valid, error_count, warning_count, issues, patients]
+      properties:
+        filename: { type: string }
+        is_valid: { type: boolean }
+        error_count: { type: integer, minimum: 0 }
+        warning_count: { type: integer, minimum: 0 }
+        issues:
           type: array
           items: { $ref: "#/components/schemas/ValidationIssue" }
-        correlation_id: { type: string }
+          description: Flat issue list preserved for back-compat.
+        patients:
+          type: array
+          items: { $ref: "#/components/schemas/PatientValidationRow" }
+        summary: { $ref: "#/components/schemas/ValidationSummary" }
+
+    ExportWorkbookRequest:
+      type: object
+      required: [summary, results, parser_issue_count, parser_issues]
+      properties:
+        filename: { type: string, nullable: true }
+        payer_name: { type: string, nullable: true }
+        summary: { $ref: "#/components/schemas/EligibilitySummary" }
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/EligibilityResult" }
+        parser_issue_count:
+          type: integer
+          minimum: 0
+        parser_issues:
+          type: array
+          items: { $ref: "#/components/schemas/ParserIssue" }
+
+    PatientValidationRow:
+      type: object
+      required: [index, member_name, status, error_count, warning_count]
+      properties:
+        index: { type: integer, minimum: 0 }
+        transaction_control_number: { type: string, nullable: true }
+        member_name: { type: string }
+        member_id: { type: string, nullable: true }
+        service_date: { type: string, nullable: true }
+        status:
+          type: string
+          enum: [valid, invalid]
+        error_count: { type: integer, minimum: 0 }
+        warning_count: { type: integer, minimum: 0 }
+        issues:
+          type: array
+          items: { $ref: "#/components/schemas/ValidationIssue" }
+
+    ValidationSummary:
+      type: object
+      required: [total_patients, valid_patients, invalid_patients]
+      properties:
+        total_patients: { type: integer, minimum: 0 }
+        valid_patients: { type: integer, minimum: 0 }
+        invalid_patients: { type: integer, minimum: 0 }
 
     # ------------------------------------------------------------------
     # Request/response envelopes — 837

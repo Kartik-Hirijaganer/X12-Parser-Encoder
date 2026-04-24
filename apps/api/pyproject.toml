@@ -34,6 +34,9 @@ packages = ["app"]
 [tool.pytest.ini_options]
 addopts = "-ra"
 testpaths = ["tests"]
+markers = [
+  "metadata_smoke: requires local PHI-bearing metadata files via X12_METADATA_DIR",
+]
 
 [tool.ruff]
 line-length = 100

@@ -84,17 +84,47 @@ export interface ValidationIssue {
   profile: string | null
 }
 
+export interface ParserIssue {
+  transaction_index: number | null
+  transaction_control_number: string | null
+  segment_id: string | null
+  location: string | null
+  message: string
+  severity: 'error' | 'warning'
+}
+
+export interface ValidationSummary {
+  total_patients: number
+  valid_patients: number
+  invalid_patients: number
+}
+
+export interface PatientValidationRow {
+  index: number
+  transaction_control_number: string | null
+  member_name: string
+  member_id: string | null
+  service_date: string | null
+  status: 'valid' | 'invalid'
+  error_count: number
+  warning_count: number
+  issues: ValidationIssue[]
+}
+
 export interface ValidateResponse {
   filename: string
   is_valid: boolean
   error_count: number
   warning_count: number
   issues: ValidationIssue[]
+  patients: PatientValidationRow[]
+  summary: ValidationSummary | null
 }
 
 export interface EligibilitySegment {
   eligibility_code: string
   service_type_code: string | null
+  service_type_codes: string[]
   coverage_level_code: string | null
   insurance_type_code: string | null
   plan_coverage_description: string | null
@@ -106,8 +136,11 @@ export interface EligibilitySegment {
 export interface BenefitEntity {
   loop_identifier: string | null
   qualifier: string | null
-  identifier: string
+  identifier: string | null
   description: string | null
+  entity_identifier_code: string | null
+  name: string | null
+  contacts: string[]
 }
 
 export interface AAAError {
@@ -122,6 +155,7 @@ export interface EligibilitySummary {
   active: number
   inactive: number
   error: number
+  not_found: number
   unknown: number
 }
 
@@ -129,6 +163,9 @@ export interface EligibilityResult {
   member_name: string
   member_id: string | null
   overall_status: string
+  status_reason: string | null
+  st_control_number: string | null
+  trace_number: string | null
   eligibility_segments: EligibilitySegment[]
   benefit_entities: BenefitEntity[]
   aaa_errors: AAAError[]
@@ -136,6 +173,10 @@ export interface EligibilityResult {
 
 export interface ParseResponse {
   filename: string
+  source_transaction_count: number
+  parsed_result_count: number
+  parser_issue_count: number
+  parser_issues: ParserIssue[]
   transaction_count: number
   summary: EligibilitySummary
   payer_name: string | null
@@ -166,4 +207,6 @@ export interface ExportWorkbookRequest {
   payer_name: string | null
   summary: EligibilitySummary
   results: EligibilityResult[]
+  parser_issue_count: number
+  parser_issues: ParserIssue[]
 }

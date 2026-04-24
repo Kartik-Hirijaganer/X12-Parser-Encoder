@@ -41,6 +41,8 @@ export function EligibilityDashboardPage() {
         payer_name: dashboardState.response.payer_name,
         summary: dashboardState.response.summary,
         results: dashboardState.response.results,
+        parser_issue_count: dashboardState.response.parser_issue_count,
+        parser_issues: dashboardState.response.parser_issues,
       })
       downloadBlob(workbook, 'eligibility_results.xlsx')
     } catch (caughtError) {
@@ -54,6 +56,12 @@ export function EligibilityDashboardPage() {
       title="Eligibility Results Dashboard"
     >
       {error ? <Banner variant="error">{error}</Banner> : null}
+      {dashboardState.response.parser_issue_count > 0 ? (
+        <Banner title="Parser Issues" variant="warning">
+          {dashboardState.response.parser_issue_count} transaction(s) could not be fully parsed. The table
+          shows all recovered rows and the export includes parser issue details.
+        </Banner>
+      ) : null}
       <EligibilityDashboard
         onExport={() => void handleExport()}
         results={dashboardState.response.results}

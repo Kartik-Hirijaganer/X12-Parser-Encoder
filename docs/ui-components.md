@@ -15,6 +15,8 @@
 | Primitive | File | Purpose |
 |---|---|---|
 | [`Button`](#button) | [`ui/Button.tsx`](../apps/web/src/components/ui/Button.tsx) | The one button component. Renders `<button>` or `<a>` depending on `href`. |
+| [`Input`](#input) | [`ui/Input.tsx`](../apps/web/src/components/ui/Input.tsx) | Token-driven text, search, and scalar form fields. |
+| [`Select`](#select) | [`ui/Select.tsx`](../apps/web/src/components/ui/Select.tsx) | Token-driven native dropdown with a shared chevron treatment. |
 | [`Card`](#card) | [`ui/Card.tsx`](../apps/web/src/components/ui/Card.tsx) | Surface container: content card (flat) or action card (interactive). |
 | [`Badge`](#badge) | [`ui/Badge.tsx`](../apps/web/src/components/ui/Badge.tsx) | Status pill with active / inactive / warning / notfound / snip variants. |
 | [`Banner`](#banner) | [`ui/Banner.tsx`](../apps/web/src/components/ui/Banner.tsx) | Inline page-level notification with icon and optional dismiss. |
@@ -84,6 +86,85 @@ import { DownloadIcon } from '../components/ui/Icons'
 - Min touch target: 44px height (`min-h-11`).
 - Disabled state uses `disabled` attribute, not pointer-events tricks — screen readers announce correctly.
 - Icon-only buttons must pass `aria-label`.
+
+---
+
+## Input
+
+**Path:** [`apps/web/src/components/ui/Input.tsx`](../apps/web/src/components/ui/Input.tsx)
+
+Native `<input>` wrapper for text, search, date-like, and scalar form fields. Feature code owns labels and helper text; the primitive owns the control styling and state treatment.
+
+### Props
+
+```ts
+type InputProps = InputHTMLAttributes<HTMLInputElement>
+```
+
+### Usage
+
+```tsx
+import { Input } from '../components/ui/Input'
+
+<label className="flex flex-col gap-2 text-sm font-medium text-[var(--color-text-primary)]">
+  Search
+  <Input
+    type="search"
+    value={search}
+    onChange={(event) => setSearch(event.currentTarget.value)}
+    placeholder="Search member, ID, plan, reason, or trace"
+  />
+</label>
+
+<Input disabled value="Settings locked" />
+```
+
+### Accessibility
+
+- Pair with a visible `<label>` or an `aria-label`.
+- Use `disabled` for unavailable controls so browsers and assistive tech expose the state correctly.
+- Use native `type` values for keyboard and autofill behavior; do not simulate text fields with divs.
+
+---
+
+## Select
+
+**Path:** [`apps/web/src/components/ui/Select.tsx`](../apps/web/src/components/ui/Select.tsx)
+
+Native `<select>` wrapper for compact option sets. It keeps browser keyboard behavior and applies the shared field styling plus a consistent chevron.
+
+### Props
+
+```ts
+type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
+  wrapperClassName?: string
+}
+```
+
+### Usage
+
+```tsx
+import { Select } from '../components/ui/Select'
+
+<label className="flex flex-col gap-2 text-sm font-medium text-[var(--color-text-primary)]">
+  Filter
+  <Select value={filter} onChange={(event) => setFilter(event.currentTarget.value)}>
+    <option value="all">All</option>
+    <option value="active">Active</option>
+  </Select>
+</label>
+
+<Select wrapperClassName="max-w-xs" aria-label="Status">
+  <option value="valid">Valid</option>
+  <option value="invalid">Invalid</option>
+</Select>
+```
+
+### Accessibility
+
+- Prefer a visible label; use `aria-label` only for compact tool surfaces where surrounding text already gives context.
+- Keep option labels short and concrete.
+- Use the native `disabled` attribute for unavailable dropdowns.
 
 ---
 
@@ -387,7 +468,7 @@ Stroke-based inline SVG icon set. All icons share a common `IconBase` (stroke 1.
 
 ### Available icons
 
-`UploadIcon` · `DocumentIcon` · `ShieldIcon` · `SearchIcon` · `SettingsIcon` · `ChevronRightIcon` · `DownloadIcon` · `CopyIcon` · `InfoIcon` · `WarningIcon` · `CheckIcon` · `CloseIcon`.
+`UploadIcon` · `DocumentIcon` · `ShieldIcon` · `SearchIcon` · `SettingsIcon` · `ChevronRightIcon` · `ChevronDownIcon` · `DownloadIcon` · `CopyIcon` · `InfoIcon` · `WarningIcon` · `CheckIcon` · `CloseIcon`.
 
 ### Props
 
@@ -430,4 +511,5 @@ Before creating a new file in `components/ui/`:
 
 | Version | Date | Change |
 |---|---|---|
+| 1.1 | 2026-04-24 | Added Input and Select primitives for shared form controls. |
 | 1.0 | 2026-04-17 | Initial catalog. Covers all 8 primitives currently in `components/ui/`. |

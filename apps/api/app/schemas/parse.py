@@ -25,7 +25,14 @@ class ParseResponse(ApiModel):
     parsed_result_count: int
     parser_issue_count: int
     parser_issues: list[ParserIssue] = Field(default_factory=list)
-    transaction_count: int
+    transaction_count: int = Field(
+        ...,
+        deprecated="Use source_transaction_count",
+        description=(
+            "Deprecated alias of source_transaction_count. Will be removed in the next minor "
+            "release; prefer source_transaction_count."
+        ),
+    )
     summary: EligibilitySummary
     payer_name: str | None = None
     results: list[EligibilityResult] = Field(default_factory=list)

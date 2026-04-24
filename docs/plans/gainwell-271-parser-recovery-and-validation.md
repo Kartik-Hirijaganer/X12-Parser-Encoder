@@ -26,9 +26,9 @@ The project adopts this as a standing rule for **all** companion-guide-sensitive
 **Descoped per reviewer answer:** `999/824` ingestion, `/ack/result` page, lifecycle correlator, and DC Medicaid profile rule hardening (old V1.D). They do not help the "13 vs 153" fix land faster and materially widen scope. Captured under "Descoped / future" at the end of this document for resumption, not as critical-path work.
 
 ### Expected outcome for the April 22, 2026 Gainwell file
-The three real files are committed locally at [metadata/DCTPID000783_270_20260422_000000001.txt](metadata/DCTPID000783_270_20260422_000000001.txt), [metadata/Upload-DCTPID000783-DCMEDICAID-20260422-…-999.edi](metadata/), and [metadata/Upload-271-Response-DCTPID000783-20260422-…-005010X279A1.edi](metadata/). An empirical raw-segment scan (`awk` over the `~` record separator) gives the ground truth — the "After fix" column must match these numbers exactly for acceptance:
+The three real files are available locally under [metadata/DCTPID000783_270_20260422_000000001.txt](metadata/DCTPID000783_270_20260422_000000001.txt), [metadata/Upload-DCTPID000783-DCMEDICAID-20260422-…-999.edi](metadata/), and [metadata/Upload-271-Response-DCTPID000783-20260422-…-005010X279A1.edi](metadata/). They are PHI-bearing smoke inputs, not committed fixtures. An empirical raw-segment scan (`awk` over the `~` record separator) gives the real-file smoke oracle:
 
-| Metric | Raw scan (ground truth) | Before fix (what user sees) | After fix (must match raw) |
+| Metric | Real-file raw scan (smoke-only ground truth) | Before fix (what user sees) | Real-file smoke after fix |
 |---|---|---|---|
 | `ST*270` transactions submitted | **153** | — | — |
 | `AK9` acknowledged transactions | **153 / 153 (`AK9*A`)** | — | — |
@@ -51,6 +51,21 @@ The three real files are committed locally at [metadata/DCTPID000783_270_2026042
 | Excel export rows | — | 13 (parser row-loss symptom, not an export bug) | **153 once parser is fixed** |
 
 The active/unknown split (`140 / 0` vs `136 / 4`) depends on whether a handful of transactions carry only supplemental `EB01` codes with no `1` anywhere; the classifier handles that deterministically. What is non-negotiable is `source_transaction_count == parsed_result_count == 153` and zero silent drops.
+
+R10 recheck: the local PHI-bearing 271 was re-scanned before closing P7. The raw `AAA` distribution is `AAA*71 = 4`, `AAA*73 = 9`, `AAA*75 = 0`, so the real-file oracle above is correct and the fixture should not be regenerated to remove its synthetic `AAA*75` branch coverage.
+
+The committed redacted fixture is a separate automated regression oracle. It intentionally includes one synthetic `AAA*75` transaction so the `not_found` classifier branch stays covered even though the real April 22 271 has no `AAA*75`.
+
+| Metric | Redacted fixture expectation (automated gate) |
+|---|---|
+| `ST*271` transactions returned | **153** |
+| `source_transaction_count` / `parsed_result_count` | **153 / 153** |
+| `parser_issue_count` | **0** |
+| `AAA*71` (invalid information) | **4** |
+| `AAA*73` (invalid DOB) | **8** |
+| `AAA*75` (subscriber not found) | **1** |
+| **Expected dashboard summary** | **active 136, inactive 0, error 12, not_found 1, unknown 4** |
+| Excel export rows | **153** |
 
 ### Scope corrections captured from review
 - **Parser recovery is one slice, not three.** Collapsing the previous `G1.A / G1.B / G1.C` into a single owned `P1` task removes fake parallelism across shared files (`eb.py`, `nm1.py`, `segment_parser.py`, `loop_builder.py`). Full-file acceptance against the real 271 is a post-merge gate on `P1`, not a mid-slice assertion.
@@ -275,11 +290,8 @@ Each phase below is the detailed contract backing the table above. Use the phase
 4. **Encoder round-trip** in `encoder/transaction_271.py`: when encoding a 2110C with `loop_2120c`, emit `LS … NM1 … PER* … LE` in order so parse → encode → parse preserves the shape.
 
 **Tests:**
-- `packages/x12-edi-tools/tests/parser/test_eb_tolerant.py` — `EB*R*IND`, `EB*L*IND`, `EB*MC*IND`, `EB*B*IND` parse successfully; raw value preserved.
-- `packages/x12-edi-tools/tests/parser/test_eb03_composite.py` — single, 3-element, and 10-element composites; `service_type_codes[0] == service_type_code`.
-- `packages/x12-edi-tools/tests/parser/test_loop_2120c.py` — P5 with 1 PER, P5 with 2 PER, P3 and 1I entity codes, 4-PER input capped at 3.
-- `packages/x12-edi-tools/tests/encoder/test_loop_2120c_roundtrip.py` — parse → encode → parse returns the same structure.
-- Fixture-level assertion: the P0 redacted fixture parses to **153 transactions with 0 collected errors**.
+- `packages/x12-edi-tools/tests/parser/test_gainwell_271_parser_recovery.py` — aggregate parser-recovery coverage: `EB*R*IND`, `EB*L*IND`, `EB*MC*IND`, `EB*B*IND` parse successfully with raw values preserved; single, 3-element, and 10-element `EB03` composites populate `service_type_codes`; `P5`, `P3`, and `1I` 2120C entity codes route correctly; 4-PER input is capped at 3; the P0 redacted fixture parses to **153 transactions with 0 collected errors**.
+- `packages/x12-edi-tools/tests/encoder/test_gainwell_271_roundtrip.py` — parse → encode → parse preserves the Gainwell fixture shape, while outbound encoding remains strict for unknown `EB01`, `NM101`, and `EB03` service type codes.
 
 **Demo:** `python -c "from x12_edi_tools.parser import parse; r = parse(open('metadata/Upload-271-Response-DCTPID000783-20260422-4251655-005010X279A1.edi').read(), strict=False, on_error='collect'); print(len(r.interchange.functional_groups[0].transactions), len(r.errors))"` prints `153 0`. (Do not commit `metadata/`.)
 
@@ -480,6 +492,8 @@ Each phase below is the detailed contract backing the table above. Use the phase
 - `packages/x12-edi-tools/tests/fixtures/gainwell_271_redacted.edi` — expanded to cover every construct from the real file.
 - `packages/x12-edi-tools/tests/parser/test_gainwell_271_regression.py` (**new**) — parse fixture → 1 result per `ST*271`, zero collected errors.
 - `apps/api/tests/test_parse_gainwell_regression.py` (**new**) — POST fixture → `source_transaction_count == parsed_result_count`, summary matches expected counts, `parser_issue_count == 0`.
+- `apps/api/tests/test_parse_gainwell_metadata_smoke.py` (**new**) — opt-in `metadata_smoke` test. When `X12_METADATA_DIR` points at the local PHI-bearing `metadata/` directory, POST the real April 22 271 and assert the real-file smoke oracle. Skipped in CI when the file is absent.
+- `apps/web/src/components/features/FilterBar.tsx` (**new**) — shared filter/search/action layout used by the eligibility dashboard and validation patients tab.
 - `apps/web/src/__tests__/gainwell-regression.test.tsx` (**new**) — mount with fixture API response; 5 cards; expected row counts per filter; export payload contains all rows.
 - `docs/api/openapi.yaml` — regenerated.
 
@@ -521,6 +535,7 @@ cd apps/web && npm run dev                        # Terminal B
 #    → Expand an active row: status_reason "Coverage on file" + 2120C plan-sponsor block with PER contacts
 #    → Expand an AAA*71 or AAA*73 row: status_reason derived from the AAA code
 #    → Export Excel: 153 rows; Parser Issues sheet absent
+#    → Optional smoke: cd apps/api && X12_METADATA_DIR=../../metadata pytest tests/test_parse_gainwell_metadata_smoke.py -m metadata_smoke
 # 3. Simulate mismatch (unit-test harness only — do not mangle metadata/):
 #    → Response is 200 with partial results + parser_issues[]; counter increments
 ```
