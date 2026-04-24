@@ -22,12 +22,12 @@ export function ActionCard({
 }) {
   return (
     <Card className="flex h-full flex-col gap-5" variant="action">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-action-50)] text-[var(--color-action-500)]">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--color-action-50)] text-[var(--color-action-500)]">
         {icon}
       </div>
       <div>
-        <h3 className="text-[20px] font-semibold text-[var(--color-text-primary)]">{title}</h3>
-        <p className="mt-2 text-[14px] leading-6 text-[var(--color-text-secondary)]">{description}</p>
+        <h3 className="text-xl font-semibold text-[var(--color-text-primary)]">{title}</h3>
+        <p className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">{description}</p>
       </div>
       <div className="mt-auto flex flex-col gap-3">
         <FileUpload

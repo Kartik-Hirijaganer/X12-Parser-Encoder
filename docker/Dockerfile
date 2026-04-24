@@ -36,7 +36,7 @@ COPY --from=web-builder /workspace/apps/web/dist /srv/app/apps/web/dist
 
 RUN pip install --upgrade pip \
     && pip install --no-cache-dir /srv/app/packages/x12-edi-tools[all] \
-    && pip install --no-cache-dir /srv/app/apps/api
+    && pip install --no-cache-dir /srv/app/apps/api[server]
 
 RUN chown -R appuser:appuser /srv/app
 

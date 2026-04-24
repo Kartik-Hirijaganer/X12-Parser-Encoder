@@ -217,5 +217,17 @@ apps/web/node_modules/
 apps/web/dist/
 apps/web/coverage/
 *.tsbuildinfo
+
+# Terraform
+.terraform/
+**/.terraform/
+terraform.tfstate
+terraform.tfstate.*
+*.tfvars
+!*.tfvars.example
+backend.hcl
+!backend.hcl.example
+crash.log
+crash.*.log
 # Added by code-review-graph
 .code-review-graph/

@@ -1,0 +1,18 @@
+sequenceDiagram
+  participant Browser
+  participant CloudFront
+  participant FunctionUrl as Lambda Function URL
+  participant Lambda
+  participant FastAPI
+  participant Library as x12-edi-tools
+  participant Logs as CloudWatch Logs
+
+  Browser->>CloudFront: POST /api/v1/parse
+  CloudFront->>FunctionUrl: Forward request with X-Origin-Verify
+  FunctionUrl->>Lambda: Invoke published live alias
+  Lambda->>FastAPI: Mangum ASGI adapter
+  FastAPI->>FastAPI: Correlation ID, size check, origin-secret check
+  FastAPI->>Library: Parse / encode / validate payload in memory
+  Library-->>FastAPI: Typed result
+  FastAPI->>Logs: JSON log + EMF metric without PHI
+  FastAPI-->>Browser: JSON response + X-Correlation-ID

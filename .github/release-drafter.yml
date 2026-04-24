@@ -1,0 +1,45 @@
+name-template: "v$RESOLVED_VERSION"
+tag-template: "v$RESOLVED_VERSION"
+tag-prefix: "v"
+categories:
+  - title: "Breaking Changes"
+    labels:
+      - breaking
+  - title: "Features"
+    labels:
+      - feat
+  - title: "Fixes"
+    labels:
+      - fix
+  - title: "Documentation"
+    labels:
+      - docs
+  - title: "Maintenance"
+    labels:
+      - chore
+change-template: "- $TITLE (#$NUMBER) @$AUTHOR"
+change-title-escapes: '\<*_&'
+exclude-labels:
+  - skip-changelog
+version-resolver:
+  major:
+    labels:
+      - breaking
+  minor:
+    labels:
+      - feat
+  patch:
+    labels:
+      - fix
+      - chore
+      - docs
+  default: patch
+template: |
+  ## Changes
+
+  $CHANGES
+
+  ## Distribution
+
+  Release assets are attached by the validated tag workflow after version, changelog,
+  package, Lambda, and Terraform module checks pass.

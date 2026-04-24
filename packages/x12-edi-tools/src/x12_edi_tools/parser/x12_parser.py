@@ -72,6 +72,7 @@ def parse(
             gs_token,
             strict=True,
             element_separator=delimiters.element,
+            repetition_separator=delimiters.repetition,
         )
         if not isinstance(gs_segment, GSSegment):
             raise X12ParseError(f"Expected GS at position {gs_token.position}")
@@ -104,6 +105,7 @@ def parse(
                     transaction_tokens,
                     strict=strict,
                     element_separator=delimiters.element,
+                    repetition_separator=delimiters.repetition,
                     transaction_index=transaction_index,
                 )
             except ParserComponentError as exc:
@@ -131,6 +133,7 @@ def parse(
             ge_token,
             strict=True,
             element_separator=delimiters.element,
+            repetition_separator=delimiters.repetition,
         )
         if not isinstance(ge_segment, GESegment):
             raise X12ParseError(f"Expected GE at position {ge_token.position}")
@@ -148,6 +151,7 @@ def parse(
         iea_token,
         strict=True,
         element_separator=delimiters.element,
+        repetition_separator=delimiters.repetition,
     )
     if not isinstance(iea_segment, IEASegment):
         raise X12ParseError(f"Expected IEA at position {iea_token.position}")
@@ -237,6 +241,7 @@ def _parse_transaction_tokens(
     *,
     strict: bool,
     element_separator: str,
+    repetition_separator: str,
     transaction_index: int,
 ) -> tuple[Transaction270 | Transaction271, list[str]]:
     """Parse tokens for a single transaction into a typed transaction model."""
@@ -249,6 +254,7 @@ def _parse_transaction_tokens(
             token,
             strict=strict,
             element_separator=element_separator,
+            repetition_separator=repetition_separator,
         )
         if isinstance(segment, GenericSegment):
             warnings.append(

@@ -8,7 +8,14 @@ from x12_edi_tools.models.base import GenericSegment
 from x12_edi_tools.models.transactions import FunctionalGroup, Interchange
 from x12_edi_tools.models.transactions.transaction_270 import Transaction270
 from x12_edi_tools.models.transactions.transaction_271 import Transaction271
-from x12_edi_tools.validator.base import SnipLevel, ValidationError, as_list, issue
+from x12_edi_tools.validator.base import (
+    SnipLevel,
+    TransactionContext,
+    ValidationError,
+    annotate_transaction_issues,
+    as_list,
+    issue,
+)
 
 _ISA_FIELD_WIDTHS = {
     "authorization_information_qualifier": 2,
@@ -164,8 +171,14 @@ def validate_snip1(interchange: Interchange) -> list[ValidationError]:
             location_prefix = f"FunctionalGroup[{group_index}].Transaction[{transaction_index}]"
             if not isinstance(transaction, Transaction270 | Transaction271):
                 continue
+            tx_context = TransactionContext(
+                functional_group_index=group_index,
+                transaction_index=transaction_index,
+                transaction=transaction,
+            )
+            transaction_issues: list[ValidationError] = []
             if getattr(transaction, "st", None) is None:
-                issues.append(
+                transaction_issues.append(
                     issue(
                         level=SnipLevel.SNIP1,
                         code="SNIP1_MISSING_ST",
@@ -179,7 +192,7 @@ def validate_snip1(interchange: Interchange) -> list[ValidationError]:
                     )
                 )
             if getattr(transaction, "se", None) is None:
-                issues.append(
+                transaction_issues.append(
                     issue(
                         level=SnipLevel.SNIP1,
                         code="SNIP1_MISSING_SE",
@@ -196,7 +209,7 @@ def validate_snip1(interchange: Interchange) -> list[ValidationError]:
             for generic_index, segment in enumerate(as_list(transaction.generic_segments)):
                 if not isinstance(segment, GenericSegment):
                     continue
-                issues.append(
+                transaction_issues.append(
                     issue(
                         level=SnipLevel.SNIP1,
                         code="SNIP1_UNKNOWN_SEGMENT_ID",
@@ -212,5 +225,6 @@ def validate_snip1(interchange: Interchange) -> list[ValidationError]:
                         ),
                     )
                 )
+            issues.extend(annotate_transaction_issues(transaction_issues, tx_context))
 
     return issues

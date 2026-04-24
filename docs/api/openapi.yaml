@@ -1,1191 +1,2253 @@
-openapi: 3.1.0
-info:
-  title: X12 Workbench API
-  description: |
-    HTTP interface to the `x12-edi-tools` library.
-
-    **Scope (v1):** 270/271 eligibility (existing) plus the new 837I, 837P, and 835 endpoints
-    delivered by the 837I/837P/835 implementation plan. The service is stateless: uploaded
-    payloads are never persisted, and responses carry no cookies or server-assigned
-    identifiers. PHI must be handled with TLS in transit and MUST NOT appear in logs or
-    metrics.
-
-    **Related artifacts:**
-    - Implementation plan: `.agents/plans/837i-837p-835-implementation-plan.md`
-    - Domain model (ERD): `docs/erd.md`
-    - Rendered UI: `docs/api/index.html`
-
-    **Error model.** All errors follow RFC 7807 Problem Details (`application/problem+json`)
-    with an additional `issues` array for validation failures. Correlation IDs are
-    echoed in the `X-Correlation-Id` response header; clients should always log them
-    alongside their own trace.
-  version: "1.0.0-draft"
-  contact:
-    name: Platform Engineering
-    email: platform@example.invalid
-  license:
-    name: Internal
-servers:
-  - url: "/api/v1"
-    description: Versioned base path for this API.
-
-tags:
-  - name: health
-    description: Liveness and readiness probes.
-  - name: eligibility
-    description: 270/271 eligibility submission and response parsing (existing).
-  - name: claims
-    description: 837I and 837P claim generation and validation.
-  - name: remittance
-    description: 835 remittance advice parsing and reconciliation.
-  - name: acknowledgements
-    description: 999 / 277CA acknowledgement parsing (scaffold).
-  - name: payers
-    description: Payer profile and companion-guide lookups.
-
-security: []
-
-paths:
-  /health:
-    get:
-      tags: [health]
-      summary: Liveness probe
-      operationId: getHealth
-      responses:
-        "200":
-          description: Service is alive.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/HealthStatus" }
-
-  /version:
-    get:
-      tags: [health]
-      summary: API and library versions
-      operationId: getVersion
-      responses:
-        "200":
-          description: Version info.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/VersionInfo" }
-
-  # ------------------------------------------------------------------------
-  # 270/271 eligibility (existing — documented for completeness)
-  # ------------------------------------------------------------------------
-
-  /eligibility/generate:
-    post:
-      tags: [eligibility]
-      summary: Generate a 270 eligibility request
-      operationId: generateEligibility270
-      description: |
-        Builds a 270 interchange from a structured patient list and submitter config.
-        Returns both the encoded EDI payload and the parsed domain object.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/Generate270Request" }
-      responses:
-        "200":
-          description: 270 generated successfully.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Generate270Response" }
-        "400": { $ref: "#/components/responses/ValidationProblem" }
-        "413": { $ref: "#/components/responses/PayloadTooLarge" }
-
-  /eligibility/parse:
-    post:
-      tags: [eligibility]
-      summary: Parse a 271 eligibility response
-      operationId: parseEligibility271
-      description: Parses an EDI 271 response and returns the domain object.
-      requestBody:
-        required: true
-        content:
-          text/plain:
-            schema:
-              type: string
-              description: Raw 271 EDI text.
-          application/json:
-            schema: { $ref: "#/components/schemas/RawX12Request" }
-      responses:
-        "200":
-          description: Parsed 271 response.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Parse271Response" }
-        "400": { $ref: "#/components/responses/ValidationProblem" }
-        "413": { $ref: "#/components/responses/PayloadTooLarge" }
-
-  # ------------------------------------------------------------------------
-  # 837 — claim generation & validation (NEW)
-  # ------------------------------------------------------------------------
-
-  /claims/generate:
-    post:
-      tags: [claims]
-      summary: Generate an 837 (Institutional or Professional) interchange
-      operationId: generate837
-      description: |
-        Builds an 837 interchange from one or more claims. The transaction variant
-        (837I vs 837P) is determined **per claim** by the `claim_type` discriminator
-        on the body (`INSTITUTIONAL` or `PROFESSIONAL`). An interchange MAY contain
-        a mix of institutional and professional claims; when it does, the builder
-        emits separate functional groups (GS/GE) so each ST/SE uses the correct
-        implementation reference (`005010X223A2` or `005010X222A1`).
-
-        The response carries both the encoded EDI payload and the parsed
-        `Interchange` object for inspection. Validation is run at SNIP levels 1–4
-        unless overridden via `validation_levels`.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/Generate837Request" }
-      responses:
-        "200":
-          description: 837 generated successfully.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Generate837Response" }
-        "400": { $ref: "#/components/responses/ValidationProblem" }
-        "413": { $ref: "#/components/responses/PayloadTooLarge" }
-        "422": { $ref: "#/components/responses/UnprocessableClaim" }
-
-  /claims/validate:
-    post:
-      tags: [claims]
-      summary: Validate an existing 837 interchange
-      operationId: validateClaims
-      description: |
-        Runs the validation engine against a raw EDI payload or a structured
-        `Interchange` document. Used for dry-running payer-specific checks before
-        submission. Does not emit any EDI output.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/ValidateClaimsRequest" }
-          text/plain:
-            schema:
-              type: string
-              description: Raw 837I/837P EDI text.
-      responses:
-        "200":
-          description: Validation report (may include warnings even on success).
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/ValidationReport" }
-        "400": { $ref: "#/components/responses/ValidationProblem" }
-        "413": { $ref: "#/components/responses/PayloadTooLarge" }
-
-  # ------------------------------------------------------------------------
-  # 835 — remittance parsing & reconciliation (NEW)
-  # ------------------------------------------------------------------------
-
-  /remittance/835/parse:
-    post:
-      tags: [remittance]
-      summary: Parse an 835 remittance advice
-      operationId: parse835
-      description: |
-        Parses an EDI 835 payload into a structured `Remittance` domain object.
-        Handles interchanges that contain multiple ST/SE blocks per functional group.
-      requestBody:
-        required: true
-        content:
-          text/plain:
-            schema: { type: string, description: Raw 835 EDI text }
-          application/json:
-            schema: { $ref: "#/components/schemas/RawX12Request" }
-      responses:
-        "200":
-          description: Parsed remittance.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Parse835Response" }
-        "400": { $ref: "#/components/responses/ValidationProblem" }
-        "413": { $ref: "#/components/responses/PayloadTooLarge" }
-
-  /remittance/835/reconcile:
-    post:
-      tags: [remittance]
-      summary: Reconcile a parsed 835 against an 837 corpus
-      operationId: reconcile835
-      description: |
-        Projects a `Remittance` onto a caller-provided set of originating claims
-        (the 837 corpus) and returns a join report identifying matched/unmatched
-        claims, charge variances, paid ratios, and line-level matches.
-        **This endpoint is a read-only projection** — it does not mutate the 835
-        or the claim corpus. The library itself does not persist either side.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/Reconcile835Request" }
-      responses:
-        "200":
-          description: Reconciliation report.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Reconcile835Response" }
-        "400": { $ref: "#/components/responses/ValidationProblem" }
-        "413": { $ref: "#/components/responses/PayloadTooLarge" }
-
-  # ------------------------------------------------------------------------
-  # Acknowledgements (SCAFFOLD — parsed-only; builder deferred)
-  # ------------------------------------------------------------------------
-
-  /acks/999/parse:
-    post:
-      tags: [acknowledgements]
-      summary: Parse a 999 Implementation Acknowledgement
-      operationId: parse999
-      description: |
-        Scaffold endpoint. Parses an EDI 999 implementation acknowledgement and
-        returns the structured result. Does not generate 999 payloads.
-      requestBody:
-        required: true
-        content:
-          text/plain:
-            schema: { type: string }
-          application/json:
-            schema: { $ref: "#/components/schemas/RawX12Request" }
-      responses:
-        "200":
-          description: Parsed 999.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/FunctionalAcknowledgementReport" }
-        "400": { $ref: "#/components/responses/ValidationProblem" }
-        "501":
-          description: Endpoint registered but builder not implemented.
-          content:
-            application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
-
-  /acks/277ca/parse:
-    post:
-      tags: [acknowledgements]
-      summary: Parse a 277CA Claims Acknowledgement
-      operationId: parse277CA
-      description: |
-        Scaffold endpoint. Parses an EDI 277CA claims acknowledgement.
-        Correlates back to submitted claims on `patient_control_number`.
-      requestBody:
-        required: true
-        content:
-          text/plain:
-            schema: { type: string }
-          application/json:
-            schema: { $ref: "#/components/schemas/RawX12Request" }
-      responses:
-        "200":
-          description: Parsed 277CA.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/ClaimsAcknowledgementReport" }
-        "400": { $ref: "#/components/responses/ValidationProblem" }
-        "501":
-          description: Endpoint registered but builder not implemented.
-          content:
-            application/problem+json:
-              schema: { $ref: "#/components/schemas/Problem" }
-
-  # ------------------------------------------------------------------------
-  # Payer profiles (NEW — read-only registry)
-  # ------------------------------------------------------------------------
-
-  /payers:
-    get:
-      tags: [payers]
-      summary: List registered payer profiles
-      operationId: listPayers
-      responses:
-        "200":
-          description: Array of payer profile summaries.
-          content:
-            application/json:
-              schema:
-                type: array
-                items: { $ref: "#/components/schemas/PayerProfileSummary" }
-
-  /payers/{name}:
-    get:
-      tags: [payers]
-      summary: Get a payer profile
-      operationId: getPayer
-      parameters:
-        - $ref: "#/components/parameters/PayerName"
-      responses:
-        "200":
-          description: Payer profile detail.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/PayerProfileDetail" }
-        "404": { $ref: "#/components/responses/NotFound" }
-
-components:
-  parameters:
-    PayerName:
-      name: name
-      in: path
-      required: true
-      description: Canonical payer profile name (e.g., `medicare-national`).
-      schema: { type: string, pattern: "^[a-z0-9][a-z0-9\\-]{1,62}$" }
-    CorrelationIdHeader:
-      name: X-Correlation-Id
-      in: header
-      required: false
-      description: Optional caller-supplied correlation ID. Echoed in the response.
-      schema: { type: string, maxLength: 128 }
-
-  responses:
-    ValidationProblem:
-      description: Input validation failed. Body is RFC 7807 with an `issues` array.
-      content:
-        application/problem+json:
-          schema: { $ref: "#/components/schemas/ValidationProblem" }
-    UnprocessableClaim:
-      description: Syntactically valid but semantically rejected by SNIP validation.
-      content:
-        application/problem+json:
-          schema: { $ref: "#/components/schemas/ValidationProblem" }
-    PayloadTooLarge:
-      description: Request exceeds configured maximum size.
-      content:
-        application/problem+json:
-          schema: { $ref: "#/components/schemas/Problem" }
-    NotFound:
-      description: Resource not found.
-      content:
-        application/problem+json:
-          schema: { $ref: "#/components/schemas/Problem" }
-
-  schemas:
-
-    # ------------------------------------------------------------------
-    # Common primitives
-    # ------------------------------------------------------------------
-
-    Problem:
-      type: object
-      description: RFC 7807 Problem Details.
-      required: [title, status]
-      properties:
-        type:
-          type: string
-          format: uri
-          default: "about:blank"
-        title: { type: string }
-        status: { type: integer, format: int32 }
-        detail: { type: string }
-        instance: { type: string }
-        correlation_id: { type: string }
-
-    ValidationProblem:
-      allOf:
-        - $ref: "#/components/schemas/Problem"
-        - type: object
-          required: [issues]
-          properties:
-            issues:
-              type: array
-              items: { $ref: "#/components/schemas/ValidationIssue" }
-
-    ValidationIssue:
-      type: object
-      required: [code, severity, message]
-      properties:
-        code:
-          type: string
-          description: Stable machine-readable code (e.g., `SNIP2.LOOP2300.MISSING`).
-        severity:
-          type: string
-          enum: [error, warning, info]
-        snip_level:
-          type: integer
-          minimum: 1
-          maximum: 5
-        message:
-          type: string
-          description: Human-readable description. Never contains PHI.
-        path:
-          type: string
-          description: Dotted path to offending element (e.g., `claims[0].service_lines[2].procedure_code`).
-        segment_id:
-          type: string
-          description: X12 segment ID (e.g., `CLM`, `SV1`, `CAS`).
-        element_reference:
-          type: string
-          description: X12 element reference (e.g., `CLM05-1`).
-        payer_scope:
-          type: string
-          description: Payer profile that emitted this issue, if payer-specific.
-
-    HealthStatus:
-      type: object
-      required: [status]
-      properties:
-        status:
-          type: string
-          enum: [ok]
-        uptime_seconds: { type: number, format: double }
-
-    VersionInfo:
-      type: object
-      required: [api_version, library_version]
-      properties:
-        api_version: { type: string, example: "1.0.0" }
-        library_version: { type: string, example: "0.2.0" }
-        git_revision: { type: string }
-        implementation_references:
-          type: array
-          items: { type: string }
-          example: ["005010X279A1", "005010X222A1", "005010X223A2", "005010X221A1"]
-
-    SubmitterConfig:
-      type: object
-      description: Submitter-side defaults and control numbers. Never persisted server-side.
-      required: [submitter_id, submitter_name, receiver_id, trading_partner_id]
-      properties:
-        submitter_id: { type: string }
-        submitter_name: { type: string }
-        submitter_etin: { type: string }
-        submitter_contact_name: { type: string }
-        submitter_contact_phone: { type: string }
-        submitter_contact_email: { type: string, format: email }
-        receiver_id: { type: string }
-        receiver_name: { type: string }
-        trading_partner_id: { type: string }
-        usage_indicator:
-          type: string
-          enum: [P, T]
-          default: T
-        control_numbers:
-          $ref: "#/components/schemas/ControlNumbers"
-
-    ControlNumbers:
-      type: object
-      description: Caller-owned control number seeds.
-      properties:
-        next_isa_control_number: { type: integer, minimum: 1, maximum: 999999999 }
-        next_gs_control_number: { type: integer, minimum: 1, maximum: 999999999 }
-        next_st_control_number: { type: integer, minimum: 1 }
-
-    RawX12Request:
-      type: object
-      required: [payload]
-      properties:
-        payload: { type: string, description: Raw EDI text (ISA...IEA). }
-        correlation_id: { type: string }
-
-    Address:
-      type: object
-      properties:
-        line1: { type: string }
-        line2: { type: string }
-        city: { type: string }
-        state: { type: string, minLength: 2, maxLength: 2 }
-        zip: { type: string }
-        country_code: { type: string, minLength: 2, maxLength: 3 }
-
-    # ------------------------------------------------------------------
-    # Parties
-    # ------------------------------------------------------------------
-
-    Provider:
-      type: object
-      required: [role, npi]
-      properties:
-        role:
-          type: string
-          enum: [BILLING, PAY_TO, RENDERING, ATTENDING, OPERATING, REFERRING, SUPERVISING, ORDERING, SERVICE_FACILITY, OTHER_OPERATING]
-        npi:
-          type: string
-          pattern: "^\\d{10}$"
-        tax_id: { type: string }
-        taxonomy_code: { type: string }
-        organization_name: { type: string }
-        first_name: { type: string }
-        last_name: { type: string }
-        address: { $ref: "#/components/schemas/Address" }
-        secondary_identifiers:
-          type: array
-          items: { $ref: "#/components/schemas/SecondaryIdentifier" }
-
-    SecondaryIdentifier:
-      type: object
-      required: [qualifier, value]
-      properties:
-        qualifier: { type: string }
-        value: { type: string }
-
-    Subscriber:
-      type: object
-      required: [member_id, first_name, last_name, dob]
-      properties:
-        member_id: { type: string }
-        first_name: { type: string }
-        last_name: { type: string }
-        middle_name: { type: string }
-        dob: { type: string, format: date }
-        gender:
-          type: string
-          enum: [M, F, U]
-        address: { $ref: "#/components/schemas/Address" }
-        relationship_code: { type: string, example: "18" }
-        payer_responsibility:
-          type: string
-          enum: [P, S, T]
-        group_number: { type: string }
-        plan_name: { type: string }
-
-    Patient:
-      type: object
-      required: [first_name, last_name, dob]
-      properties:
-        first_name: { type: string }
-        last_name: { type: string }
-        middle_name: { type: string }
-        dob: { type: string, format: date }
-        gender:
-          type: string
-          enum: [M, F, U]
-        relationship_to_subscriber:
-          type: string
-          description: HIPAA individual relationship code. Required when patient is not subscriber.
-        address: { $ref: "#/components/schemas/Address" }
-
-    Payer:
-      type: object
-      required: [name, payer_id]
-      properties:
-        name: { type: string }
-        payer_id: { type: string }
-        address: { $ref: "#/components/schemas/Address" }
-        plan_type:
-          type: string
-          enum: [MEDICARE, MEDICAID, COMMERCIAL, BCBS, OTHER]
-
-    # ------------------------------------------------------------------
-    # Claim body
-    # ------------------------------------------------------------------
-
-    Diagnosis:
-      type: object
-      required: [code, code_qualifier]
-      properties:
-        code: { type: string }
-        code_qualifier:
-          type: string
-          enum: [ABK, ABF, APR, ABJ, BN, BF, BR, BQ, BJ]
-        poa_indicator:
-          type: string
-          enum: [Y, N, U, W, "1"]
-
-    ServiceLineBase:
-      type: object
-      required: [line_number, procedure_code, charge_amount, unit_count]
-      properties:
-        line_number: { type: integer, minimum: 1 }
-        procedure_code: { type: string }
-        procedure_modifiers:
-          type: array
-          items: { type: string, maxLength: 2 }
-          maxItems: 4
-        charge_amount: { type: number, format: double }
-        unit_basis:
-          type: string
-          enum: [UN, MJ, DA]
-          default: UN
-        unit_count: { type: number, format: double }
-        service_date: { type: string, format: date }
-
-    ServiceLineProfessional:
-      allOf:
-        - $ref: "#/components/schemas/ServiceLineBase"
-        - type: object
-          properties:
-            place_of_service_override: { type: string, minLength: 2, maxLength: 2 }
-            diagnosis_pointers:
-              type: array
-              items: { type: integer, minimum: 1 }
-              minItems: 1
-              maxItems: 4
-
-    ServiceLineInstitutional:
-      allOf:
-        - $ref: "#/components/schemas/ServiceLineBase"
-        - type: object
-          required: [revenue_code]
-          properties:
-            revenue_code: { type: string, minLength: 3, maxLength: 4 }
-
-    ClaimBase:
-      type: object
-      required:
-        - patient_control_number
-        - total_charge_amount
-        - facility_code
-        - claim_frequency_code
-        - billing_provider
-        - subscriber
-        - payer
-        - diagnoses
-        - service_lines
-      properties:
-        patient_control_number: { type: string, maxLength: 38 }
-        total_charge_amount: { type: number, format: double, minimum: 0 }
-        facility_code: { type: string }
-        claim_frequency_code: { type: string, minLength: 1, maxLength: 1 }
-        provider_signature_indicator:
-          type: string
-          enum: [Y, N]
-          default: Y
-        assignment_of_benefits:
-          type: string
-          enum: [A, B, C, Y, N, W]
-        benefits_assignment_cert:
-          type: string
-          enum: [Y, N]
-        release_of_info_code:
-          type: string
-          enum: [Y, I, O, A, M, N]
-        billing_provider: { $ref: "#/components/schemas/Provider" }
-        pay_to_provider: { $ref: "#/components/schemas/Provider" }
-        rendering_providers:
-          type: array
-          items: { $ref: "#/components/schemas/Provider" }
-        subscriber: { $ref: "#/components/schemas/Subscriber" }
-        patient: { $ref: "#/components/schemas/Patient" }
-        payer: { $ref: "#/components/schemas/Payer" }
-        service_facility: { $ref: "#/components/schemas/Provider" }
-        diagnoses:
-          type: array
-          items: { $ref: "#/components/schemas/Diagnosis" }
-          minItems: 1
-        prior_authorization: { type: string }
-        referral_number: { type: string }
-        payer_claim_control_number:
-          type: string
-          description: Required when claim_frequency_code in (7, 8).
-
-    InstitutionalClaim:
-      allOf:
-        - $ref: "#/components/schemas/ClaimBase"
-        - type: object
-          required:
-            - statement_from_date
-            - statement_to_date
-            - type_of_bill
-            - admission_type_code
-            - patient_status_code
-            - service_lines
-          properties:
-            statement_from_date: { type: string, format: date }
-            statement_to_date: { type: string, format: date }
-            admission_date: { type: string, format: date-time }
-            discharge_date: { type: string, format: date }
-            type_of_bill: { type: string, minLength: 3, maxLength: 3 }
-            admission_type_code: { type: string, minLength: 1, maxLength: 1 }
-            admission_source_code: { type: string, minLength: 1, maxLength: 1 }
-            patient_status_code: { type: string, minLength: 2, maxLength: 2 }
-            drg_code: { type: string }
-            condition_codes:
-              type: array
-              items: { type: string }
-            occurrence_codes:
-              type: array
-              items: { $ref: "#/components/schemas/DateCodedEntry" }
-            value_codes:
-              type: array
-              items: { $ref: "#/components/schemas/AmountCodedEntry" }
-            service_lines:
-              type: array
-              items: { $ref: "#/components/schemas/ServiceLineInstitutional" }
-              minItems: 1
-
-    ProfessionalClaim:
-      allOf:
-        - $ref: "#/components/schemas/ClaimBase"
-        - type: object
-          required:
-            - place_of_service_code
-            - service_lines
-          properties:
-            place_of_service_code: { type: string, minLength: 2, maxLength: 2 }
-            onset_of_illness_date: { type: string, format: date }
-            accident_related_causes:
-              type: array
-              items: { type: string }
-            auto_accident_state: { type: string, minLength: 2, maxLength: 2 }
-            special_program_code: { type: string }
-            delay_reason_code: { type: string }
-            service_lines:
-              type: array
-              items: { $ref: "#/components/schemas/ServiceLineProfessional" }
-              minItems: 1
-
-    DateCodedEntry:
-      type: object
-      required: [code, date]
-      properties:
-        code: { type: string }
-        date: { type: string, format: date }
-
-    AmountCodedEntry:
-      type: object
-      required: [code, amount]
-      properties:
-        code: { type: string }
-        amount: { type: number, format: double }
-
-    # ------------------------------------------------------------------
-    # Request/response envelopes — 270
-    # ------------------------------------------------------------------
-
-    Generate270Request:
-      type: object
-      required: [submitter, patients]
-      properties:
-        submitter: { $ref: "#/components/schemas/SubmitterConfig" }
-        payer_profile: { type: string }
-        patients:
-          type: array
-          items: { $ref: "#/components/schemas/Subscriber" }
-          minItems: 1
-        correlation_id: { type: string }
-
-    Generate270Response:
-      type: object
-      required: [payload, interchange, warnings]
-      properties:
-        payload: { type: string, description: Raw 270 EDI text. }
-        interchange: { $ref: "#/components/schemas/InterchangeSummary" }
-        control_numbers_used: { $ref: "#/components/schemas/ControlNumbers" }
-        warnings:
-          type: array
-          items: { $ref: "#/components/schemas/ValidationIssue" }
-        correlation_id: { type: string }
-
-    Parse271Response:
-      type: object
-      required: [eligibility_results]
-      properties:
-        eligibility_results:
-          type: array
-          items:
-            type: object
-            description: Domain shape from x12_edi_tools.read_271.
-        warnings:
-          type: array
-          items: { $ref: "#/components/schemas/ValidationIssue" }
-        correlation_id: { type: string }
-
-    # ------------------------------------------------------------------
-    # Request/response envelopes — 837
-    # ------------------------------------------------------------------
-
-    Generate837Request:
-      type: object
-      required: [submitter, claims]
-      properties:
-        submitter: { $ref: "#/components/schemas/SubmitterConfig" }
-        payer_profile:
-          type: string
-          description: Name of a registered payer profile to apply defaults and validation.
-        validation_levels:
-          type: array
-          items: { type: integer, minimum: 1, maximum: 5 }
-          description: SNIP levels to enforce (default 1–4). Level 5 is reserved for the reconciliation use-case.
-          default: [1, 2, 3, 4]
-        claims:
-          type: array
-          items:
-            oneOf:
-              - $ref: "#/components/schemas/InstitutionalClaim"
-              - $ref: "#/components/schemas/ProfessionalClaim"
-            discriminator:
-              propertyName: claim_type
-              mapping:
-                INSTITUTIONAL: "#/components/schemas/InstitutionalClaim"
-                PROFESSIONAL: "#/components/schemas/ProfessionalClaim"
-          minItems: 1
-        correlation_id: { type: string }
-
-    Generate837Response:
-      type: object
-      required: [payload, interchange, warnings]
-      properties:
-        payload:
-          type: string
-          description: Raw 837I or 837P EDI text (ISA...IEA).
-        interchange: { $ref: "#/components/schemas/InterchangeSummary" }
-        control_numbers_used: { $ref: "#/components/schemas/ControlNumbers" }
-        warnings:
-          type: array
-          items: { $ref: "#/components/schemas/ValidationIssue" }
-        correlation_id: { type: string }
-
-    ValidateClaimsRequest:
-      type: object
-      description: Supply one of `payload`, `interchange`, or `claims`.
-      properties:
-        payload: { type: string }
-        interchange: { $ref: "#/components/schemas/InterchangeSummary" }
-        claims:
-          type: array
-          items:
-            oneOf:
-              - $ref: "#/components/schemas/InstitutionalClaim"
-              - $ref: "#/components/schemas/ProfessionalClaim"
-        validation_levels:
-          type: array
-          items: { type: integer, minimum: 1, maximum: 5 }
-          default: [1, 2, 3, 4]
-        payer_profile: { type: string }
-        correlation_id: { type: string }
-
-    ValidationReport:
-      type: object
-      required: [success, issues]
-      properties:
-        success:
-          type: boolean
-          description: True when no issues of severity `error` are present.
-        snip_levels_applied:
-          type: array
-          items: { type: integer }
-        payer_profile: { type: string }
-        issues:
-          type: array
-          items: { $ref: "#/components/schemas/ValidationIssue" }
-        correlation_id: { type: string }
-
-    # ------------------------------------------------------------------
-    # Request/response envelopes — 835
-    # ------------------------------------------------------------------
-
-    Parse835Response:
-      type: object
-      required: [interchange, remittances]
-      properties:
-        interchange: { $ref: "#/components/schemas/InterchangeSummary" }
-        remittances:
-          type: array
-          items: { $ref: "#/components/schemas/Remittance" }
-        warnings:
-          type: array
-          items: { $ref: "#/components/schemas/ValidationIssue" }
-        correlation_id: { type: string }
-
-    Reconcile835Request:
-      type: object
-      required: [remittance, claims]
-      properties:
-        remittance: { $ref: "#/components/schemas/Remittance" }
-        claims:
-          type: array
-          items:
-            oneOf:
-              - $ref: "#/components/schemas/InstitutionalClaim"
-              - $ref: "#/components/schemas/ProfessionalClaim"
-        match_strategy:
-          type: string
-          enum: [strict, heuristic]
-          default: strict
-          description: |
-            `strict` matches only on `patient_control_number`.
-            `heuristic` falls back to (subscriber, charge, service_date) when PCN is missing.
-        correlation_id: { type: string }
-
-    Reconcile835Response:
-      type: object
-      required: [matched, unmatched_claims, orphan_payments]
-      properties:
-        matched:
-          type: array
-          items: { $ref: "#/components/schemas/ReconciliationMatch" }
-        unmatched_claims:
-          type: array
-          items: { $ref: "#/components/schemas/ClaimRef" }
-        orphan_payments:
-          type: array
-          items: { $ref: "#/components/schemas/ClaimPayment" }
-        totals: { $ref: "#/components/schemas/ReconciliationTotals" }
-        correlation_id: { type: string }
-
-    ReconciliationMatch:
-      type: object
-      required: [patient_control_number, claim_payment]
-      properties:
-        patient_control_number: { type: string }
-        claim_ref: { $ref: "#/components/schemas/ClaimRef" }
-        claim_payment: { $ref: "#/components/schemas/ClaimPayment" }
-        charge_variance: { type: number, format: double }
-        paid_ratio: { type: number, format: double }
-        line_matches:
-          type: array
-          items: { $ref: "#/components/schemas/LineMatch" }
-
-    LineMatch:
-      type: object
-      properties:
-        line_number: { type: integer }
-        procedure_code: { type: string }
-        charge_amount: { type: number, format: double }
-        paid_amount: { type: number, format: double }
-        adjustments:
-          type: array
-          items: { $ref: "#/components/schemas/Adjustment" }
-
-    ReconciliationTotals:
-      type: object
-      properties:
-        total_billed: { type: number, format: double }
-        total_paid: { type: number, format: double }
-        total_patient_responsibility: { type: number, format: double }
-        total_contractual_adjustments: { type: number, format: double }
-
-    ClaimRef:
-      type: object
-      required: [patient_control_number]
-      properties:
-        patient_control_number: { type: string }
-        claim_type:
-          type: string
-          enum: [INSTITUTIONAL, PROFESSIONAL]
-        total_charge_amount: { type: number, format: double }
-
-    Remittance:
-      type: object
-      required: [transaction_handling_code, total_paid_amount, credit_debit_flag, payment_method, payment_date, claim_payments]
-      properties:
-        transaction_handling_code:
-          type: string
-          enum: [I, H, C, D, P]
-        total_paid_amount: { type: number, format: double }
-        credit_debit_flag:
-          type: string
-          enum: [C, D]
-        payment_method:
-          type: string
-          enum: [ACH, CHK, FWT, NON]
-        payment_format:
-          type: string
-          enum: [CCP, CTX]
-        payment_date: { type: string, format: date }
-        check_or_eft_trace_number: { type: string }
-        payer_identifier: { type: string }
-        payer: { $ref: "#/components/schemas/Payer" }
-        payee: { $ref: "#/components/schemas/Provider" }
-        claim_payments:
-          type: array
-          items: { $ref: "#/components/schemas/ClaimPayment" }
-          minItems: 1
-        provider_level_adjustments:
-          type: array
-          items: { $ref: "#/components/schemas/ProviderAdjustment" }
-
-    ClaimPayment:
-      type: object
-      required: [patient_control_number, claim_status_code, total_charge_amount, total_paid_amount]
-      properties:
-        patient_control_number: { type: string }
-        claim_status_code: { type: string }
-        total_charge_amount: { type: number, format: double }
-        total_paid_amount: { type: number, format: double }
-        patient_responsibility: { type: number, format: double }
-        claim_filing_indicator_code: { type: string }
-        payer_claim_control_number: { type: string }
-        facility_code: { type: string }
-        claim_frequency_code: { type: string }
-        diagnosis_drg_code: { type: string }
-        subscriber: { $ref: "#/components/schemas/Subscriber" }
-        service_payments:
-          type: array
-          items: { $ref: "#/components/schemas/ServicePayment" }
-        claim_adjustments:
-          type: array
-          items: { $ref: "#/components/schemas/Adjustment" }
-
-    ServicePayment:
-      type: object
-      required: [procedure_code, charge_amount, paid_amount]
-      properties:
-        procedure_code: { type: string }
-        procedure_modifiers:
-          type: array
-          items: { type: string }
-        charge_amount: { type: number, format: double }
-        paid_amount: { type: number, format: double }
-        revenue_code: { type: string }
-        paid_units: { type: number, format: double }
-        service_date: { type: string, format: date }
-        line_adjustments:
-          type: array
-          items: { $ref: "#/components/schemas/Adjustment" }
-        line_item_control_number: { type: string }
-
-    Adjustment:
-      type: object
-      required: [scope, group_code, reason_code, amount]
-      properties:
-        scope:
-          type: string
-          enum: [CLAIM, LINE]
-        group_code:
-          type: string
-          enum: [CO, CR, OA, PI, PR]
-          description: Contractual, Corrective, Other, Payer-initiated, Patient-responsibility.
-        reason_code:
-          type: string
-          description: CARC code (Claim Adjustment Reason Code).
-        amount: { type: number, format: double }
-        quantity: { type: number, format: double }
-        additional_reasons:
-          type: array
-          items:
-            type: object
-            properties:
-              reason_code: { type: string }
-              amount: { type: number, format: double }
-              quantity: { type: number, format: double }
-
-    ProviderAdjustment:
-      type: object
-      required: [provider_id, fiscal_period_date, adjustment_identifier, amount]
-      properties:
-        provider_id: { type: string }
-        fiscal_period_date: { type: string, format: date }
-        adjustment_identifier: { type: string }
-        amount: { type: number, format: double }
-
-    # ------------------------------------------------------------------
-    # Interchange summary (non-PHI view of envelope for inspection)
-    # ------------------------------------------------------------------
-
-    InterchangeSummary:
-      type: object
-      required: [sender_id, receiver_id, interchange_control_number, functional_groups]
-      properties:
-        sender_id: { type: string }
-        receiver_id: { type: string }
-        interchange_control_number: { type: integer }
-        interchange_date: { type: string, format: date }
-        usage_indicator:
-          type: string
-          enum: [P, T]
-        functional_groups:
-          type: array
-          items: { $ref: "#/components/schemas/FunctionalGroupSummary" }
-
-    FunctionalGroupSummary:
-      type: object
-      required: [functional_id_code, group_control_number, version_release, transaction_sets]
-      properties:
-        functional_id_code:
-          type: string
-          enum: [HC, HP, FA, HR, HI, HB]
-        group_control_number: { type: integer }
-        version_release: { type: string }
-        transaction_sets:
-          type: array
-          items: { $ref: "#/components/schemas/TransactionSetSummary" }
-
-    TransactionSetSummary:
-      type: object
-      required: [transaction_set_code, transaction_set_control_number]
-      properties:
-        transaction_set_code:
-          type: string
-          enum: ["270", "271", "837", "835", "999", "277", "276", "278"]
-        transaction_set_control_number: { type: string }
-        implementation_reference: { type: string }
-        segment_count: { type: integer }
-
-    # ------------------------------------------------------------------
-    # Acknowledgement scaffolds
-    # ------------------------------------------------------------------
-
-    FunctionalAcknowledgementReport:
-      type: object
-      required: [functional_id_code, group_control_number, accepted]
-      properties:
-        functional_id_code: { type: string }
-        group_control_number: { type: integer }
-        accepted: { type: boolean }
-        transaction_set_acks:
-          type: array
-          items:
-            type: object
-            required: [transaction_set_control_number, accepted]
-            properties:
-              transaction_set_control_number: { type: string }
-              accepted: { type: boolean }
-              errors:
-                type: array
-                items: { $ref: "#/components/schemas/ValidationIssue" }
-        correlation_id: { type: string }
-
-    ClaimsAcknowledgementReport:
-      type: object
-      required: [payer, claim_statuses]
-      properties:
-        payer: { $ref: "#/components/schemas/Payer" }
-        claim_statuses:
-          type: array
-          items:
-            type: object
-            required: [patient_control_number, status_category_code, status_code]
-            properties:
-              patient_control_number: { type: string }
-              status_category_code: { type: string }
-              status_code: { type: string }
-              entity_identifier_code: { type: string }
-              total_charge_amount: { type: number, format: double }
-              message: { type: string }
-        correlation_id: { type: string }
-
-    # ------------------------------------------------------------------
-    # Payer profile
-    # ------------------------------------------------------------------
-
-    PayerProfileSummary:
-      type: object
-      required: [name, payer_id, supported_transactions]
-      properties:
-        name: { type: string }
-        payer_id: { type: string }
-        version: { type: string }
-        supported_transactions:
-          type: array
-          items:
-            type: string
-            enum: ["270", "271", "837I", "837P", "835", "999", "277CA", "276", "277", "278"]
-
-    PayerProfileDetail:
-      allOf:
-        - $ref: "#/components/schemas/PayerProfileSummary"
-        - type: object
-          properties:
-            defaults_270_271:
-              type: object
-              additionalProperties: true
-            defaults_837i:
-              type: object
-              additionalProperties: true
-            defaults_837p:
-              type: object
-              additionalProperties: true
-            overrides_835:
-              type: object
-              additionalProperties: true
-            element_max_lengths:
-              type: object
-              additionalProperties: { type: integer }
-            rule_count: { type: integer }
+{
+  "components": {
+    "schemas": {
+      "AAAError": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "followUpActionCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Followupactioncode"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "AAAError",
+        "type": "object"
+      },
+      "ApiSubmitterConfig": {
+        "additionalProperties": false,
+        "description": "API-facing config model compatible with snake_case and camelCase payloads.",
+        "properties": {
+          "acknowledgment_requested": {
+            "default": "0",
+            "title": "Acknowledgment Requested",
+            "type": "string"
+          },
+          "contact_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Email"
+          },
+          "contact_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Name"
+          },
+          "contact_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Phone"
+          },
+          "default_service_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Service Date"
+          },
+          "default_service_type_code": {
+            "default": "30",
+            "title": "Default Service Type Code",
+            "type": "string"
+          },
+          "gs_control_number_start": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gs Control Number Start"
+          },
+          "interchange_receiver_id": {
+            "title": "Interchange Receiver Id",
+            "type": "string"
+          },
+          "isa_control_number_start": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Isa Control Number Start"
+          },
+          "max_batch_size": {
+            "default": 5000,
+            "minimum": 1.0,
+            "title": "Max Batch Size",
+            "type": "integer"
+          },
+          "organization_name": {
+            "title": "Organization Name",
+            "type": "string"
+          },
+          "payer_id": {
+            "title": "Payer Id",
+            "type": "string"
+          },
+          "payer_name": {
+            "title": "Payer Name",
+            "type": "string"
+          },
+          "provider_entity_type": {
+            "default": "2",
+            "title": "Provider Entity Type",
+            "type": "string"
+          },
+          "provider_npi": {
+            "title": "Provider Npi",
+            "type": "string"
+          },
+          "provider_taxonomy_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Taxonomy Code"
+          },
+          "receiver_id_qualifier": {
+            "default": "ZZ",
+            "title": "Receiver Id Qualifier",
+            "type": "string"
+          },
+          "sender_id_qualifier": {
+            "default": "ZZ",
+            "title": "Sender Id Qualifier",
+            "type": "string"
+          },
+          "st_control_number_start": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "St Control Number Start"
+          },
+          "trading_partner_id": {
+            "title": "Trading Partner Id",
+            "type": "string"
+          },
+          "usage_indicator": {
+            "default": "T",
+            "title": "Usage Indicator",
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_name",
+          "provider_npi",
+          "trading_partner_id",
+          "payer_name",
+          "payer_id",
+          "interchange_receiver_id"
+        ],
+        "title": "ApiSubmitterConfig",
+        "type": "object"
+      },
+      "ArchiveEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "controlNumbers": {
+            "$ref": "#/components/schemas/ControlNumbers"
+          },
+          "fileName": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "recordRangeEnd": {
+            "title": "Recordrangeend",
+            "type": "integer"
+          },
+          "recordRangeStart": {
+            "title": "Recordrangestart",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "fileName",
+          "recordRangeStart",
+          "recordRangeEnd",
+          "controlNumbers"
+        ],
+        "title": "ArchiveEntry",
+        "type": "object"
+      },
+      "BenefitEntity": {
+        "additionalProperties": false,
+        "properties": {
+          "contacts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Contacts",
+            "type": "array"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "entityIdentifierCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entityidentifiercode"
+          },
+          "identifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identifier"
+          },
+          "loopIdentifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Loopidentifier"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "qualifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qualifier"
+          }
+        },
+        "title": "BenefitEntity",
+        "type": "object"
+      },
+      "Body_convert_upload_api_v1_convert_post": {
+        "properties": {
+          "config": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_convert_upload_api_v1_convert_post",
+        "type": "object"
+      },
+      "Body_parse_271_api_v1_parse_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_parse_271_api_v1_parse_post",
+        "type": "object"
+      },
+      "Body_pipeline_api_v1_pipeline_post": {
+        "properties": {
+          "config": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "contentMediaType": "application/octet-stream",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile"
+          }
+        },
+        "title": "Body_pipeline_api_v1_pipeline_post",
+        "type": "object"
+      },
+      "Body_validate_x12_api_v1_validate_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "profile": {
+            "default": "dc_medicaid",
+            "title": "Profile",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_validate_x12_api_v1_validate_post",
+        "type": "object"
+      },
+      "ControlNumbers": {
+        "additionalProperties": false,
+        "properties": {
+          "gs06": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gs06"
+          },
+          "isa13": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Isa13"
+          },
+          "st02Range": {
+            "items": {
+              "type": "string"
+            },
+            "title": "St02Range",
+            "type": "array"
+          }
+        },
+        "title": "ControlNumbers",
+        "type": "object"
+      },
+      "ConvertResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "corrections": {
+            "items": {
+              "$ref": "#/components/schemas/Correction"
+            },
+            "title": "Corrections",
+            "type": "array"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/RowError"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "fileType": {
+            "title": "Filetype",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "patients": {
+            "items": {
+              "$ref": "#/components/schemas/PatientRecord"
+            },
+            "title": "Patients",
+            "type": "array"
+          },
+          "recordCount": {
+            "title": "Recordcount",
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/WarningMessage"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "filename",
+          "fileType",
+          "recordCount"
+        ],
+        "title": "ConvertResponse",
+        "type": "object"
+      },
+      "Correction": {
+        "additionalProperties": false,
+        "properties": {
+          "correctedValue": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correctedvalue"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "originalValue": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Originalvalue"
+          },
+          "row": {
+            "title": "Row",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "row",
+          "field",
+          "message"
+        ],
+        "title": "Correction",
+        "type": "object"
+      },
+      "EligibilityResult": {
+        "additionalProperties": false,
+        "properties": {
+          "aaaErrors": {
+            "items": {
+              "$ref": "#/components/schemas/AAAError"
+            },
+            "title": "Aaaerrors",
+            "type": "array"
+          },
+          "benefitEntities": {
+            "items": {
+              "$ref": "#/components/schemas/BenefitEntity"
+            },
+            "title": "Benefitentities",
+            "type": "array"
+          },
+          "eligibilitySegments": {
+            "items": {
+              "$ref": "#/components/schemas/EligibilitySegment"
+            },
+            "title": "Eligibilitysegments",
+            "type": "array"
+          },
+          "memberId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memberid"
+          },
+          "memberName": {
+            "title": "Membername",
+            "type": "string"
+          },
+          "overallStatus": {
+            "title": "Overallstatus",
+            "type": "string"
+          },
+          "stControlNumber": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stcontrolnumber"
+          },
+          "statusReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Statusreason"
+          },
+          "traceNumber": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tracenumber"
+          }
+        },
+        "required": [
+          "memberName",
+          "overallStatus"
+        ],
+        "title": "EligibilityResult",
+        "type": "object"
+      },
+      "EligibilitySegment": {
+        "additionalProperties": false,
+        "properties": {
+          "coverageLevelCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coveragelevelcode"
+          },
+          "eligibilityCode": {
+            "title": "Eligibilitycode",
+            "type": "string"
+          },
+          "inPlanNetworkIndicator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inplannetworkindicator"
+          },
+          "insuranceTypeCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Insurancetypecode"
+          },
+          "monetaryAmount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monetaryamount"
+          },
+          "planCoverageDescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plancoveragedescription"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "serviceTypeCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Servicetypecode"
+          },
+          "serviceTypeCodes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Servicetypecodes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "eligibilityCode"
+        ],
+        "title": "EligibilitySegment",
+        "type": "object"
+      },
+      "EligibilitySummary": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "integer"
+          },
+          "error": {
+            "title": "Error",
+            "type": "integer"
+          },
+          "inactive": {
+            "title": "Inactive",
+            "type": "integer"
+          },
+          "notFound": {
+            "default": 0,
+            "title": "Notfound",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "unknown": {
+            "title": "Unknown",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "active",
+          "inactive",
+          "error",
+          "unknown"
+        ],
+        "title": "EligibilitySummary",
+        "type": "object"
+      },
+      "ExportWorkbookRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filename"
+          },
+          "parserIssueCount": {
+            "default": 0,
+            "title": "Parserissuecount",
+            "type": "integer"
+          },
+          "parserIssues": {
+            "items": {
+              "$ref": "#/components/schemas/ParserIssue"
+            },
+            "title": "Parserissues",
+            "type": "array"
+          },
+          "payerName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payername"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/EligibilityResult"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/EligibilitySummary"
+          }
+        },
+        "required": [
+          "summary"
+        ],
+        "title": "ExportWorkbookRequest",
+        "type": "object"
+      },
+      "GenerateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "config": {
+            "$ref": "#/components/schemas/ApiSubmitterConfig"
+          },
+          "patients": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "minItems": 1,
+            "title": "Patients",
+            "type": "array"
+          },
+          "profile": {
+            "default": "dc_medicaid",
+            "title": "Profile",
+            "type": "string"
+          }
+        },
+        "required": [
+          "config",
+          "patients"
+        ],
+        "title": "GenerateRequest",
+        "type": "object"
+      },
+      "GenerateResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "archiveEntries": {
+            "items": {
+              "$ref": "#/components/schemas/ArchiveEntry"
+            },
+            "title": "Archiveentries",
+            "type": "array"
+          },
+          "batchSummaryFileName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batchsummaryfilename"
+          },
+          "batchSummaryText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batchsummarytext"
+          },
+          "controlNumbers": {
+            "$ref": "#/components/schemas/ControlNumbers"
+          },
+          "downloadFileName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Downloadfilename"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/RowError"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "fileSizeBytes": {
+            "title": "Filesizebytes",
+            "type": "integer"
+          },
+          "manifest": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manifest"
+          },
+          "partial": {
+            "default": false,
+            "title": "Partial",
+            "type": "boolean"
+          },
+          "segmentCount": {
+            "title": "Segmentcount",
+            "type": "integer"
+          },
+          "splitCount": {
+            "title": "Splitcount",
+            "type": "integer"
+          },
+          "transactionCount": {
+            "title": "Transactioncount",
+            "type": "integer"
+          },
+          "x12Content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "X12Content"
+          },
+          "zipContentBase64": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zipcontentbase64"
+          }
+        },
+        "required": [
+          "transactionCount",
+          "segmentCount",
+          "fileSizeBytes",
+          "splitCount",
+          "controlNumbers"
+        ],
+        "title": "GenerateResponse",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthChecks": {
+        "additionalProperties": false,
+        "properties": {
+          "details": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Details",
+            "type": "array"
+          },
+          "libraryImport": {
+            "title": "Libraryimport",
+            "type": "boolean"
+          },
+          "parserSmoke": {
+            "title": "Parsersmoke",
+            "type": "boolean"
+          },
+          "profilesLoaded": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Profilesloaded",
+            "type": "array"
+          },
+          "prometheusMetrics": {
+            "title": "Prometheusmetrics",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "libraryImport",
+          "parserSmoke",
+          "prometheusMetrics"
+        ],
+        "title": "HealthChecks",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "checks": {
+            "$ref": "#/components/schemas/HealthChecks"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "version",
+          "checks"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "ParseResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "parsedResultCount": {
+            "title": "Parsedresultcount",
+            "type": "integer"
+          },
+          "parserIssueCount": {
+            "title": "Parserissuecount",
+            "type": "integer"
+          },
+          "parserIssues": {
+            "items": {
+              "$ref": "#/components/schemas/ParserIssue"
+            },
+            "title": "Parserissues",
+            "type": "array"
+          },
+          "payerName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payername"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/EligibilityResult"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "sourceTransactionCount": {
+            "title": "Sourcetransactioncount",
+            "type": "integer"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/EligibilitySummary"
+          },
+          "transactionCount": {
+            "deprecated": true,
+            "description": "Deprecated alias of source_transaction_count. Will be removed in the next minor release; prefer source_transaction_count.",
+            "title": "Transactioncount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "filename",
+          "sourceTransactionCount",
+          "parsedResultCount",
+          "parserIssueCount",
+          "transactionCount",
+          "summary"
+        ],
+        "title": "ParseResponse",
+        "type": "object"
+      },
+      "ParserIssue": {
+        "additionalProperties": false,
+        "properties": {
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "segmentId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segmentid"
+          },
+          "severity": {
+            "default": "error",
+            "enum": [
+              "error",
+              "warning"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "transactionControlNumber": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transactioncontrolnumber"
+          },
+          "transactionIndex": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transactionindex"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "ParserIssue",
+        "type": "object"
+      },
+      "PatientRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "dateOfBirth": {
+            "title": "Dateofbirth",
+            "type": "string"
+          },
+          "firstName": {
+            "title": "Firstname",
+            "type": "string"
+          },
+          "gender": {
+            "title": "Gender",
+            "type": "string"
+          },
+          "lastName": {
+            "title": "Lastname",
+            "type": "string"
+          },
+          "memberId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memberid"
+          },
+          "serviceDate": {
+            "title": "Servicedate",
+            "type": "string"
+          },
+          "serviceDateEnd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Servicedateend"
+          },
+          "serviceTypeCode": {
+            "title": "Servicetypecode",
+            "type": "string"
+          },
+          "ssn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ssn"
+          }
+        },
+        "required": [
+          "lastName",
+          "firstName",
+          "dateOfBirth",
+          "gender",
+          "serviceTypeCode",
+          "serviceDate"
+        ],
+        "title": "PatientRecord",
+        "type": "object"
+      },
+      "PatientValidationRow": {
+        "additionalProperties": false,
+        "properties": {
+          "errorCount": {
+            "title": "Errorcount",
+            "type": "integer"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationIssue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "memberId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memberid"
+          },
+          "memberName": {
+            "title": "Membername",
+            "type": "string"
+          },
+          "serviceDate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Servicedate"
+          },
+          "status": {
+            "enum": [
+              "valid",
+              "invalid"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "transactionControlNumber": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transactioncontrolnumber"
+          },
+          "warningCount": {
+            "title": "Warningcount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "index",
+          "transactionControlNumber",
+          "memberName",
+          "memberId",
+          "serviceDate",
+          "status",
+          "errorCount",
+          "warningCount"
+        ],
+        "title": "PatientValidationRow",
+        "type": "object"
+      },
+      "PipelineResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/RowError"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "partial": {
+            "default": false,
+            "title": "Partial",
+            "type": "boolean"
+          },
+          "segmentCount": {
+            "title": "Segmentcount",
+            "type": "integer"
+          },
+          "transactionCount": {
+            "title": "Transactioncount",
+            "type": "integer"
+          },
+          "validationResult": {
+            "$ref": "#/components/schemas/PipelineValidationResult"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/WarningMessage"
+            },
+            "title": "Warnings",
+            "type": "array"
+          },
+          "x12Content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "X12Content"
+          }
+        },
+        "required": [
+          "validationResult",
+          "transactionCount",
+          "segmentCount"
+        ],
+        "title": "PipelineResponse",
+        "type": "object"
+      },
+      "PipelineValidationResult": {
+        "additionalProperties": false,
+        "properties": {
+          "errorCount": {
+            "title": "Errorcount",
+            "type": "integer"
+          },
+          "isValid": {
+            "title": "Isvalid",
+            "type": "boolean"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationIssue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "warningCount": {
+            "title": "Warningcount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "isValid",
+          "errorCount",
+          "warningCount"
+        ],
+        "title": "PipelineValidationResult",
+        "type": "object"
+      },
+      "ProfileDefaultsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "defaultServiceTypeCode": {
+            "title": "Defaultservicetypecode",
+            "type": "string"
+          },
+          "interchangeReceiverId": {
+            "title": "Interchangereceiverid",
+            "type": "string"
+          },
+          "maxBatchSize": {
+            "title": "Maxbatchsize",
+            "type": "integer"
+          },
+          "payerId": {
+            "title": "Payerid",
+            "type": "string"
+          },
+          "payerName": {
+            "title": "Payername",
+            "type": "string"
+          },
+          "receiverIdQualifier": {
+            "title": "Receiveridqualifier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "payerName",
+          "payerId",
+          "interchangeReceiverId",
+          "receiverIdQualifier",
+          "defaultServiceTypeCode",
+          "maxBatchSize"
+        ],
+        "title": "ProfileDefaultsResponse",
+        "type": "object"
+      },
+      "ProfileInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "displayName",
+          "description"
+        ],
+        "title": "ProfileInfo",
+        "type": "object"
+      },
+      "ProfilesResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "profiles": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileInfo"
+            },
+            "title": "Profiles",
+            "type": "array"
+          }
+        },
+        "title": "ProfilesResponse",
+        "type": "object"
+      },
+      "RowError": {
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "row": {
+            "title": "Row",
+            "type": "integer"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion"
+          }
+        },
+        "required": [
+          "row",
+          "message"
+        ],
+        "title": "RowError",
+        "type": "object"
+      },
+      "ValidateResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "errorCount": {
+            "title": "Errorcount",
+            "type": "integer"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "isValid": {
+            "title": "Isvalid",
+            "type": "boolean"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationIssue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "patients": {
+            "items": {
+              "$ref": "#/components/schemas/PatientValidationRow"
+            },
+            "title": "Patients",
+            "type": "array"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ValidationSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "warningCount": {
+            "title": "Warningcount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "filename",
+          "isValid",
+          "errorCount",
+          "warningCount"
+        ],
+        "title": "ValidateResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "ValidationIssue": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "element": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Element"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile"
+          },
+          "segmentId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segmentid"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion"
+          },
+          "transactionControlNumber": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transactioncontrolnumber"
+          },
+          "transactionIndex": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transactionindex"
+          }
+        },
+        "required": [
+          "severity",
+          "level",
+          "code",
+          "message"
+        ],
+        "title": "ValidationIssue",
+        "type": "object"
+      },
+      "ValidationSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "invalidPatients": {
+            "title": "Invalidpatients",
+            "type": "integer"
+          },
+          "totalPatients": {
+            "title": "Totalpatients",
+            "type": "integer"
+          },
+          "validPatients": {
+            "title": "Validpatients",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "totalPatients",
+          "validPatients",
+          "invalidPatients"
+        ],
+        "title": "ValidationSummary",
+        "type": "object"
+      },
+      "WarningMessage": {
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "row": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "WarningMessage",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Eligibility Workbench API",
+    "version": "1.0.1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/convert": {
+      "post": {
+        "description": "Convert a canonical spreadsheet or delimited file into normalized patient JSON.",
+        "operationId": "convert_upload_api_v1_convert_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_convert_upload_api_v1_convert_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConvertResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Convert Upload",
+        "tags": [
+          "convert"
+        ]
+      }
+    },
+    "/api/v1/export/validation/xlsx": {
+      "post": {
+        "description": "Export validation results as an Excel workbook.",
+        "operationId": "export_validation_xlsx_api_v1_export_validation_xlsx_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateResponse"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Validation Xlsx",
+        "tags": [
+          "export"
+        ]
+      }
+    },
+    "/api/v1/export/xlsx": {
+      "post": {
+        "description": "Export parsed eligibility results as an Excel workbook.",
+        "operationId": "export_xlsx_api_v1_export_xlsx_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportWorkbookRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Xlsx",
+        "tags": [
+          "export"
+        ]
+      }
+    },
+    "/api/v1/generate": {
+      "post": {
+        "description": "Generate one or more X12 270 payloads from patient JSON and config.",
+        "operationId": "generate_270_api_v1_generate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Generate 270",
+        "tags": [
+          "generate"
+        ]
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "description": "Run the deep phase-5 health check.",
+        "operationId": "health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/v1/parse": {
+      "post": {
+        "description": "Parse a raw 271 file into dashboard-friendly JSON.",
+        "operationId": "parse_271_api_v1_parse_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_parse_271_api_v1_parse_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Parse 271",
+        "tags": [
+          "parse"
+        ]
+      }
+    },
+    "/api/v1/pipeline": {
+      "post": {
+        "description": "Run convert -> generate -> validate in a single request.",
+        "operationId": "pipeline_api_v1_pipeline_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_pipeline_api_v1_pipeline_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PipelineResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pipeline",
+        "tags": [
+          "pipeline"
+        ]
+      }
+    },
+    "/api/v1/profiles": {
+      "get": {
+        "description": "List all built-in payer profiles.",
+        "operationId": "list_profile_metadata_api_v1_profiles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfilesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Profile Metadata",
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/profiles/{name}/defaults": {
+      "get": {
+        "description": "Return the default configuration values for a payer profile.",
+        "operationId": "get_profile_defaults_api_v1_profiles__name__defaults_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileDefaultsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Profile Defaults",
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/templates/{name}": {
+      "get": {
+        "description": "Download one canonical import template or the template specification.",
+        "operationId": "get_template_api_v1_templates__name__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Template",
+        "tags": [
+          "templates"
+        ]
+      }
+    },
+    "/api/v1/validate": {
+      "post": {
+        "description": "Validate a raw X12 file against generic SNIP rules and payer rules.",
+        "operationId": "validate_x12_api_v1_validate_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_validate_x12_api_v1_validate_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Validate X12",
+        "tags": [
+          "validate"
+        ]
+      }
+    },
+    "/healthz": {
+      "get": {
+        "operationId": "healthcheck_healthz_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Healthcheck Healthz Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Healthcheck"
+      }
+    }
+  }
+}

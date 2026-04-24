@@ -46,5 +46,5 @@ def test_templates_and_profiles_endpoints(client: TestClient) -> None:
     assert profiles.status_code == 200
     assert any(profile["name"] == "dc_medicaid" for profile in profiles.json()["profiles"])
     assert defaults.status_code == 200
-    assert defaults.json()["payer_name"] == "DC MEDICAID"
+    assert defaults.json()["payerName"] == "DC MEDICAID"
     assert missing.status_code == 404

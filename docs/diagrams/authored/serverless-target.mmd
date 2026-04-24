@@ -1,0 +1,8 @@
+flowchart LR
+  browser["Browser"] --> cloudfront["CloudFront distribution<br/>stable CloudFront URL or custom domain"]
+  cloudfront -->|default behavior| s3["Private S3 SPA bucket<br/>OAC + SigV4"]
+  cloudfront -->|/api/* + X-Origin-Verify| lambda_url["Lambda Function URL<br/>AuthType NONE"]
+  lambda_url --> lambda["Python 3.12 Lambda<br/>Mangum + FastAPI"]
+  lambda --> library["x12-edi-tools wheel<br/>parse / encode / validate"]
+  lambda --> logs["CloudWatch Logs + EMF metrics"]
+  direct["Direct Function URL request"] -. "missing origin secret: 403" .-> lambda_url

@@ -9,6 +9,8 @@ import re
 from datetime import date
 from pathlib import Path
 
+from versioning import normalize_final, normalize_release_candidate, parse_semver
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 VERSION_FILE = REPO_ROOT / "VERSION"
 README_FILE = REPO_ROOT / "README.md"
@@ -44,27 +46,52 @@ def read_current_version() -> str:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("target", help="major, minor, patch, or an explicit X.Y.Z version")
+    parser.add_argument(
+        "target",
+        help=(
+            "major, minor, patch, rc, final, or an explicit SemVer version "
+            "such as X.Y.Z or X.Y.Z-rc.1"
+        ),
+    )
     return parser.parse_args()
 
 
 def normalize_version(target: str, current: str) -> str:
-    explicit = re.fullmatch(r"\d+\.\d+\.\d+", target)
-    if explicit:
-        return target
+    def parse_current():
+        try:
+            return parse_semver(current)
+        except ValueError as exc:
+            raise SystemExit(
+                f"Current version '{current}' is not valid SemVer"
+            ) from exc
 
-    current_match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", current)
-    if current_match is None:
-        raise SystemExit(f"Current version '{current}' is not valid semantic versioning")
-
-    major, minor, patch = [int(value) for value in current_match.groups()]
     if target == "major":
-        return f"{major + 1}.0.0"
+        return str(parse_current().bump_major())
     if target == "minor":
-        return f"{major}.{minor + 1}.0"
+        return str(parse_current().bump_minor())
     if target == "patch":
-        return f"{major}.{minor}.{patch + 1}"
-    raise SystemExit("Target must be one of: major, minor, patch, or X.Y.Z")
+        return str(parse_current().bump_patch())
+    if target == "rc":
+        try:
+            return normalize_release_candidate(current)
+        except ValueError as exc:
+            raise SystemExit(
+                f"Current version '{current}' is not valid SemVer"
+            ) from exc
+    if target == "final":
+        try:
+            return normalize_final(current)
+        except ValueError as exc:
+            raise SystemExit(
+                f"Current version '{current}' is not valid SemVer"
+            ) from exc
+    try:
+        return str(parse_semver(target))
+    except ValueError as exc:
+        raise SystemExit(
+            "Target must be one of: major, minor, patch, rc, final, "
+            "or an explicit SemVer version such as X.Y.Z or X.Y.Z-rc.1"
+        ) from exc
 
 
 def replace_in_text_file(path: Path, *, version: str) -> None:
@@ -122,7 +149,9 @@ def update_changelog(*, version: str) -> None:
         release_block += f"\n{unreleased_body}\n"
     else:
         release_block += "\n- No user-facing changes yet.\n"
-    updated = text[: match.start()] + release_block + "\n" + text[match.end() :].lstrip("\n")
+    updated = (
+        text[: match.start()] + release_block + "\n" + text[match.end() :].lstrip("\n")
+    )
     CHANGELOG_FILE.write_text(updated.rstrip() + "\n", encoding="utf-8")
 
 
@@ -131,11 +160,17 @@ def main() -> None:
     current = read_current_version()
     target = normalize_version(args.target, current)
 
+    if target == current:
+        print(f"Version already {current}; no files changed.")
+        return
+
     VERSION_FILE.write_text(f"{target}\n", encoding="utf-8")
     for path in TEXT_VERSION_FILES:
         replace_in_text_file(path, version=target)
     update_json_version(REPO_ROOT / "apps" / "web" / "package.json", version=target)
-    update_json_version(REPO_ROOT / "apps" / "web" / "package-lock.json", version=target)
+    update_json_version(
+        REPO_ROOT / "apps" / "web" / "package-lock.json", version=target
+    )
     update_readme_version_table(version=target)
     if CHANGELOG_FILE.exists():
         update_changelog(version=target)

@@ -15,7 +15,7 @@ def test_deep_healthcheck(client: TestClient) -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "ok"
-    assert payload["checks"]["library_import"] is True
-    assert payload["checks"]["parser_smoke"] is True
-    assert payload["checks"]["prometheus_metrics"] is True
-    assert "dc_medicaid" in payload["checks"]["profiles_loaded"]
+    assert payload["checks"]["libraryImport"] is True
+    assert payload["checks"]["parserSmoke"] is True
+    assert payload["checks"]["prometheusMetrics"] is True
+    assert "dc_medicaid" in payload["checks"]["profilesLoaded"]

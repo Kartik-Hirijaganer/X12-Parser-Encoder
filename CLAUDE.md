@@ -39,6 +39,8 @@ make check-version-sync                                     # CI gate: VERSION =
 make check-oss                                              # CI gate: no proprietary content leaked
 make check-hygiene                                          # CI gate: metadata/ not re-introduced
 make docs                                                   # validate docs/api/openapi.yaml, regenerate ERD if graphviz present
+make docs-regenerate                                        # write generated OpenAPI, diagrams, ERD, and marker blocks
+make docs-check                                             # verify generated docs in a temp copy and fail on drift
 ```
 
 Dev servers:
@@ -56,8 +58,8 @@ make rebuild                                                 # docker compose do
 The monorepo ships three artifacts that are versioned together through `VERSION` and `scripts/bump_version.py`:
 
 - **`packages/x12-edi-tools/`** — the framework-agnostic Python library. Publishes to PyPI as `x12-edi-tools`.
-- **`apps/api/`** — a FastAPI service (`app.main:create_app`) that wraps the library behind HTTP endpoints and is the only place that handles uploads, correlation IDs, and metrics.
-- **`apps/web/`** — the React + Vite workbench (routed SPA) that calls the API. In production the API can also serve the built SPA from `apps/web/dist` (see `_register_frontend` in `apps/api/app/main.py`).
+- **`apps/api/`** — a FastAPI service (`app.main:create_app`) that wraps the library behind HTTP endpoints and is the only place that handles uploads, correlation IDs, origin-secret checks, and metrics.
+- **`apps/web/`** — the React + Vite workbench (routed SPA) that calls the API. In Lambda production, CloudFront serves the SPA from private S3; in local/container mode the API can still serve `apps/web/dist` (see `_register_frontend` in `apps/api/app/main.py`).
 
 ### Library layout (`x12_edi_tools`)
 
@@ -107,7 +109,9 @@ Phase 0/1/7 note: 837I/837P/835 symbols (`ClaimBuildOptions`, `PartitioningStrat
 
 ### Documentation sources of truth
 
-Conflicts between docs: `apps/web/src/styles/tokens.css` wins for values, `docs/design-system.md` wins for rules/roles, `docs/ui-components.md` wins for primitive APIs. `docs/architecture.md` covers system-level boundaries.
+Conflicts between frontend docs: `apps/web/src/styles/tokens.css` wins for concrete values, `docs/design-spec.md` wins for enforceable rules and roles, and `docs/ui-components.md` remains the primitive API appendix. `docs/architecture.md` covers system-level boundaries.
+
+Generated documentation uses marker blocks. Run `make docs-regenerate` after changing API routes, schemas, Python module imports, `VERSION`, or Terraform module docs. Run `make docs-check` before handing off changes that should not drift generated docs.
 
 ## Conventions
 
@@ -129,16 +133,20 @@ Conflicts between docs: `apps/web/src/styles/tokens.css` wins for values, `docs/
 - Use Pydantic v2 models for request/config/domain contracts where validation matters.
 - Keep public package APIs explicit through `x12_edi_tools.__init__`. Phase 7 types stay in `TYPE_CHECKING` until promoted.
 - `mypy` runs in strict mode for both `packages/x12-edi-tools/src` and `apps/api/app`.
+- X12 segment IDs are domain identifiers. Filenames and symbols such as `sv2.py`,
+  `sv3.py`, `SV2Segment`, and `SV3Segment` are allowed even though they contain
+  numeric suffixes; they are not release/version markers and should not be
+  renamed for generic banned-name checks.
 
 ### Frontend
 
 - Use React + TypeScript + Vite.
-- **Before writing any UI code, read `docs/design-system.md` (visual + composition rules) and `docs/ui-components.md` (primitive API catalog).** These two documents plus `apps/web/src/styles/tokens.css` are the authoritative frontend spec; do not guess from memory.
+- **Before writing any UI code, read `docs/design-spec.md`.** It is the single enforceable frontend design contract and links to the detailed visual and primitive appendices.
 - **Token source of truth**: `apps/web/src/styles/tokens.css` is the only place concrete hex values, radii, shadows, fonts, and motion tokens live. Never hardcode hex values, pixel spacing, or arbitrary Tailwind values (`bg-[#...]`, `p-[13px]`). If you need a new value, add it to `tokens.css` first as a named token, then reference the token.
 - **Primitive-first**: every interactive element, table, file input, card, badge, banner, and spinner must use the matching primitive under `apps/web/src/components/ui/` (`Button`, `Table`, `FileUpload`, `Card`, `Badge`, `Banner`, `Spinner`, `Icons`). Do not hand-roll raw `<button>`, `<table>`, or `<input type="file">`, and do not duplicate an existing primitive with a one-off component.
 - **Storage boundary**: do not persist patient data in `localStorage`, `sessionStorage`, or `IndexedDB`. The only sanctioned `localStorage` key is `x12_submitter_config` for non-PHI submitter configuration.
-- **Every new visual pattern lands as a triplet**: update `docs/design-system.md` (role / rule), update `docs/ui-components.md` (primitive API + usage), and add or extend the primitive's test. If the pattern needs a new token, update `tokens.css` in the same change.
-- **When rules conflict**: `tokens.css` wins for values, `docs/design-system.md` wins for rules and roles, `docs/ui-components.md` wins for primitive APIs. Fix the drift in the same PR rather than working around it.
+- **Every new visual pattern lands as a triplet**: update `docs/design-spec.md`, update or add the primitive, and add or extend the primitive's test. If the pattern needs a new token, update `tokens.css` in the same change.
+- **When rules conflict**: `tokens.css` wins for values, `docs/design-spec.md` wins for rules and roles, and `docs/ui-components.md` wins for primitive APIs. Fix the drift in the same PR rather than working around it.
 
 ### Release
 

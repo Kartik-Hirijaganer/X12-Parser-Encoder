@@ -5,7 +5,6 @@ import logging
 import tempfile
 
 import pytest
-from app.core import middleware as middleware_module
 from app.core.config import settings
 from fastapi.testclient import TestClient
 
@@ -65,18 +64,17 @@ def test_pipeline_happy_path_and_invalid_rows(
     )
 
     assert success.status_code == 200
-    assert success.json()["x12_content"].startswith("ISA*")
-    assert success.json()["validation_result"]["is_valid"] is True
+    assert success.json()["x12Content"].startswith("ISA*")
+    assert success.json()["validationResult"]["isValid"] is True
     assert failure.status_code == 200
-    assert failure.json()["x12_content"] is None
+    assert failure.json()["x12Content"] is None
     assert failure.json()["errors"]
 
 
-def test_auth_boundary_and_rate_limit_production_only(
+def test_auth_boundary_remains_and_rate_limit_is_inert(
     client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    middleware_module._request_windows.clear()
     monkeypatch.setattr(settings, "auth_boundary_enabled", True)
     monkeypatch.setattr(settings, "rate_limit_enabled", True)
     monkeypatch.setattr(settings, "environment", "production")
@@ -85,12 +83,9 @@ def test_auth_boundary_and_rate_limit_production_only(
     assert unauthorized.status_code == 401
 
     headers = {settings.trusted_identity_header: "user-1"}
-    for _ in range(settings.requests_per_minute):
+    for _ in range(settings.requests_per_minute + 1):
         response = client.get("/api/v1/health", headers=headers)
         assert response.status_code == 200
-
-    rate_limited = client.get("/api/v1/health", headers=headers)
-    assert rate_limited.status_code == 429
 
 
 def test_logs_are_phi_safe_and_no_temp_files_created(

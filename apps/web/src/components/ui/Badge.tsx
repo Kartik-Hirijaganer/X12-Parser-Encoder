@@ -17,7 +17,7 @@ export function Badge({
 }
 
 const badgeBaseClass =
-  'inline-flex items-center rounded-[var(--radius-pill)] px-2.5 py-1 text-[12px] font-semibold tracking-[0.02em]'
+  'inline-flex items-center rounded-[var(--radius-pill)] px-2.5 py-1 text-xs font-semibold tracking-[0.02em]'
 
 const badgeVariantClasses: Record<BadgeVariant, string> = {
   active: 'bg-[var(--color-active-50)] text-[var(--color-active-500)]',

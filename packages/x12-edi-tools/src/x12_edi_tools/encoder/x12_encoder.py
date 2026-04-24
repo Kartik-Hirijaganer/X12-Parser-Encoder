@@ -28,7 +28,14 @@ from x12_edi_tools.models.loops import (
     Loop2100C_271,
     Loop2110C_270,
     Loop2110C_271,
+    Loop2120C_271,
 )
+from x12_edi_tools.models.segments import EBSegment, NM1Segment
+from x12_edi_tools.models.segments.eb import (
+    OUTBOUND_ELIGIBILITY_INFO_CODES,
+    OUTBOUND_SERVICE_TYPE_CODES,
+)
+from x12_edi_tools.models.segments.nm1 import OUTBOUND_ENTITY_IDENTIFIER_CODES
 from x12_edi_tools.models.transactions import (
     FunctionalGroup,
     Interchange,
@@ -247,7 +254,43 @@ def _materialize_transaction_body(transaction: TransactionModel) -> list[BodySeg
         typed_segments = list(_iter_270_body_segments(transaction))
     else:
         typed_segments = list(_iter_271_body_segments(transaction))
+    _validate_outbound_segments(typed_segments)
     return _inject_generic_segments(typed_segments, transaction.generic_segments)
+
+
+def _validate_outbound_segments(segments: Iterable[X12Segment]) -> None:
+    for segment in segments:
+        if isinstance(segment, EBSegment):
+            _validate_eb_segment_for_encoding(segment)
+        if isinstance(segment, NM1Segment):
+            _validate_nm1_segment_for_encoding(segment)
+
+
+def _validate_eb_segment_for_encoding(segment: EBSegment) -> None:
+    if segment.eligibility_or_benefit_information not in OUTBOUND_ELIGIBILITY_INFO_CODES:
+        raise X12EncodeError(
+            "EB01 must use a supported outbound eligibility code; "
+            f"got '{segment.eligibility_or_benefit_information}'"
+        )
+
+    service_type_codes = (
+        segment.service_type_codes
+        if segment.service_type_codes
+        else ([segment.service_type_code] if segment.service_type_code is not None else [])
+    )
+    for service_type_code in service_type_codes:
+        if service_type_code not in OUTBOUND_SERVICE_TYPE_CODES:
+            raise X12EncodeError(
+                f"EB03 must use supported outbound service type codes; got '{service_type_code}'"
+            )
+
+
+def _validate_nm1_segment_for_encoding(segment: NM1Segment) -> None:
+    if segment.entity_identifier_code not in OUTBOUND_ENTITY_IDENTIFIER_CODES:
+        raise X12EncodeError(
+            "NM101 must use a supported outbound entity identifier code; "
+            f"got '{segment.entity_identifier_code}'"
+        )
 
 
 def _inject_generic_segments(
@@ -416,9 +459,22 @@ def _iter_loop_2100c_271(loop: Loop2100C_271) -> Iterable[X12Segment]:
 def _iter_loop_2110c_271(loop: Loop2110C_271) -> Iterable[X12Segment]:
     yield from loop.eb_segments
     yield from loop.aaa_segments
+    if loop.loop_2120c:
+        yield from loop.ref_segments
+        yield from loop.dtp_segments
+        for child_loop in loop.loop_2120c:
+            yield from _iter_loop_2120c_271(child_loop)
+        return
     if loop.ls_segment is not None:
         yield loop.ls_segment
     yield from loop.ref_segments
     if loop.le_segment is not None:
         yield loop.le_segment
     yield from loop.dtp_segments
+
+
+def _iter_loop_2120c_271(loop: Loop2120C_271) -> Iterable[X12Segment]:
+    yield loop.ls
+    yield loop.nm1
+    yield from loop.per_segments
+    yield loop.le

@@ -1,8 +1,9 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { generateResponseFixture } from './fixtures'
 import { renderApp } from './testUtils'
+import { Toaster } from '../components/ui/Toast'
 
 describe('GenerateResultPage', () => {
   it('renders the generated submission filenames and batch summary', () => {
@@ -13,16 +14,17 @@ describe('GenerateResultPage', () => {
 
     expect(screen.getByText('Submission package')).toBeInTheDocument()
     expect(screen.getByText('Batch summary')).toBeInTheDocument()
-    expect(screen.getByText(generateResponseFixture.download_file_name!)).toBeInTheDocument()
+    expect(screen.getByText(generateResponseFixture.downloadFileName!)).toBeInTheDocument()
     expect(
-      screen.getByText(generateResponseFixture.batch_summary_file_name!),
+      screen.getByText(generateResponseFixture.batchSummaryFileName!),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Download Batch Summary' })).toBeEnabled()
   })
 
-  it('copies the raw x12 payload to the clipboard', async () => {
+  it('copies the raw x12 payload to the clipboard and shows a success toast', async () => {
     const writeText = vi.mocked(navigator.clipboard.writeText)
 
+    render(<Toaster />)
     renderApp('/generate/result', {
       filename: 'eligibility.csv',
       response: generateResponseFixture,
@@ -31,7 +33,10 @@ describe('GenerateResultPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Copy to Clipboard' }))
 
     await waitFor(() => {
-      expect(writeText).toHaveBeenCalledWith(generateResponseFixture.x12_content)
+      expect(writeText).toHaveBeenCalledWith(generateResponseFixture.x12Content)
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Copied X12 to clipboard')).toBeInTheDocument()
     })
   })
 })

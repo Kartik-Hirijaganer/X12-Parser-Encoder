@@ -105,6 +105,53 @@ jobs:
       - name: Build
         run: cd apps/web && npm run build
 
+  design-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install web dependencies
+        run: cd apps/web && npm ci
+      - name: Design lint
+        run: make design-lint
+
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.6"
+      - uses: terraform-linters/setup-tflint@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+      - name: Install tfsec
+        run: |
+          go install github.com/aquasecurity/tfsec/cmd/tfsec@v1.28.14
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+        working-directory: .
+      - name: Terraform format check
+        run: terraform fmt -check -recursive .
+      - name: Terraform validate example environment
+        run: |
+          cd environments/example
+          terraform init -backend=false
+          terraform validate
+      - name: TFLint
+        run: |
+          tflint --init --config "$GITHUB_WORKSPACE/infra/terraform/.tflint.hcl"
+          tflint --recursive --config "$GITHUB_WORKSPACE/infra/terraform/.tflint.hcl"
+      - name: tfsec critical scan
+        run: tfsec --force-all-dirs --minimum-severity CRITICAL .
+
   security:
     runs-on: ubuntu-latest
     steps:
