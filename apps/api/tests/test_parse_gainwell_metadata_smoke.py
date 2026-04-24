@@ -67,15 +67,15 @@ def test_real_gainwell_271_matches_smoke_oracle(client: TestClient) -> None:
     payload = response.json()
     summary = payload["summary"]
 
-    assert payload["source_transaction_count"] == EXPECTED_TRANSACTIONS
-    assert payload["parsed_result_count"] == EXPECTED_TRANSACTIONS
-    assert payload["parser_issue_count"] == 0
-    assert payload["parser_issues"] == []
+    assert payload["sourceTransactionCount"] == EXPECTED_TRANSACTIONS
+    assert payload["parsedResultCount"] == EXPECTED_TRANSACTIONS
+    assert payload["parserIssueCount"] == 0
+    assert payload["parserIssues"] == []
     assert len(payload["results"]) == EXPECTED_TRANSACTIONS
 
     assert summary["total"] == EXPECTED_TRANSACTIONS
     assert summary["inactive"] == EXPECTED_INACTIVE
     assert summary["error"] == EXPECTED_ERROR
-    assert summary["not_found"] == EXPECTED_NOT_FOUND
+    assert summary["notFound"] == EXPECTED_NOT_FOUND
     assert 0 <= summary["unknown"] <= MAX_EXPECTED_UNKNOWN
     assert summary["active"] + summary["unknown"] == EXPECTED_ACTIVE_OR_UNKNOWN

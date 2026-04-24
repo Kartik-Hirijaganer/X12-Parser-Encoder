@@ -25,7 +25,7 @@ export function EligibilityDashboard({
   const filteredResults = useMemo(() => {
     const normalizedSearch = deferredSearch.trim().toLowerCase()
     return results.filter((result) => {
-      if (filter !== 'all' && result.overall_status !== filter) {
+      if (filter !== 'all' && result.overallStatus !== filter) {
         return false
       }
 
@@ -34,11 +34,11 @@ export function EligibilityDashboard({
       }
 
       return [
-        result.member_name,
-        result.member_id,
+        result.memberName,
+        result.memberId,
         summarizePlan(result),
-        result.status_reason,
-        result.trace_number,
+        result.statusReason,
+        result.traceNumber,
       ]
         .filter(Boolean)
         .some((value) => value?.toLowerCase().includes(normalizedSearch))

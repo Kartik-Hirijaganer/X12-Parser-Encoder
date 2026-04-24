@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 
 import { Button } from './Button'
 import { CloseIcon } from './Icons'
+import { useReducedMotionPreference } from '../../hooks/useReducedMotionPreference'
 import { cn } from '../../utils/cn'
 
 type DrawerSide = 'left' | 'right'
@@ -30,12 +31,18 @@ export function Drawer({
   side = 'right',
   title,
 }: DrawerProps) {
+  const prefersReducedMotion = useReducedMotionPreference()
+
   return (
     <Dialog.Root onOpenChange={onOpenChange} open={open}>
       <Dialog.Portal>
-        <Dialog.Overlay className={cn('ui-dialog-overlay', overlayClass)} />
+        <Dialog.Overlay
+          className={cn('ui-dialog-overlay', overlayClass)}
+          data-reduced-motion={prefersReducedMotion}
+        />
         <Dialog.Content
           className={cn('ui-drawer-content', contentBaseClass, sideClasses[side], className)}
+          data-reduced-motion={prefersReducedMotion}
           data-side={side}
         >
           <div className="flex items-start justify-between gap-4 border-b border-[var(--color-border-default)] pb-4">

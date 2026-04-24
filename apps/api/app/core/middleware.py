@@ -13,6 +13,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.responses import JSONResponse, Response
 
 from app.core.config import settings
+from app.core.errors import error_payload
 from app.core.logging import get_logger
 from app.core.metrics import IN_FLIGHT_REQUESTS, metric_path_for_request, record_request
 
@@ -46,12 +47,12 @@ class OriginSecretMiddleware(BaseHTTPMiddleware):
         started_at = perf_counter()
         response = JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            content={
-                "code": "FORBIDDEN",
-                "message": "Forbidden.",
-                "details": {},
-                "requestId": correlation_id,
-            },
+            content=error_payload(
+                status_code=status.HTTP_403_FORBIDDEN,
+                request_id=correlation_id,
+                code="FORBIDDEN",
+                message="Forbidden.",
+            ),
         )
         response.headers["X-Correlation-ID"] = correlation_id
         duration_ms = round((perf_counter() - started_at) * 1000, 2)
@@ -111,12 +112,15 @@ def register_middleware(app: FastAPI) -> None:
                         request=request,
                         response=JSONResponse(
                             status_code=status.HTTP_401_UNAUTHORIZED,
-                            content={
-                                "detail": (
+                            content=error_payload(
+                                status_code=status.HTTP_401_UNAUTHORIZED,
+                                request_id=correlation_id,
+                                code="UNAUTHORIZED",
+                                message=(
                                     "Authentication boundary is enabled and the trusted identity "
                                     "header is missing."
-                                )
-                            },
+                                ),
+                            ),
                         ),
                         started_at=started_at,
                         correlation_id=correlation_id,
@@ -130,7 +134,12 @@ def register_middleware(app: FastAPI) -> None:
                     )
                     response = JSONResponse(
                         status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                        content={"detail": size_limit_message},
+                        content=error_payload(
+                            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                            request_id=correlation_id,
+                            code="PAYLOAD_TOO_LARGE",
+                            message=size_limit_message,
+                        ),
                     )
                     return _finalize_response(
                         request=request,

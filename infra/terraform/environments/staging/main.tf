@@ -49,11 +49,25 @@ locals {
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
     )
   )
+  route53_hosted_zone_arn = (
+    try(trimspace(var.hosted_zone_id), "") == "" ?
+    "arn:aws:route53:::hostedzone/*" :
+    "arn:aws:route53:::hostedzone/${var.hosted_zone_id}"
+  )
+  waf_web_acl_arn = "arn:aws:wafv2:us-east-1:${data.aws_caller_identity.current.account_id}:global/webacl/${local.name_prefix}-web-acl/*"
+  cloudfront_support_resource_arns = [
+    "arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:function/${local.name_prefix}-spa-rewrite",
+    "arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:origin-access-control/*",
+    "arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:response-headers-policy/*",
+  ]
+  acm_certificate_policy_arn = "arn:aws:acm:us-east-1:${data.aws_caller_identity.current.account_id}:certificate/*"
 
   spa_bucket_name = coalesce(
     var.spa_bucket_name,
     "${local.app_name}-spa-${var.app_env}-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
   )
+  custom_domain_enabled         = var.custom_domain != null && trimspace(var.custom_domain) != ""
+  route53_custom_domain_enabled = local.custom_domain_enabled && lower(var.dns_provider) == "route53"
 
   lambda_zip_path = (
     var.lambda_zip_path == null ? null :
@@ -269,7 +283,7 @@ data "aws_iam_policy_document" "deploy" {
       "iam:UntagOpenIDConnectProvider",
       "iam:UpdateOpenIDConnectProviderThumbprint",
     ]
-    resources = ["*"]
+    resources = [local.github_oidc_provider_arn]
   }
 
   statement {
@@ -307,13 +321,6 @@ data "aws_iam_policy_document" "deploy" {
       "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.current.account_id}:function:${local.function_name}",
       "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.current.account_id}:function:${local.function_name}:*",
     ]
-  }
-
-  statement {
-    sid       = "ListLambdaFunctions"
-    effect    = "Allow"
-    actions   = ["lambda:ListFunctions"]
-    resources = ["*"]
   }
 
   statement {
@@ -373,58 +380,99 @@ data "aws_iam_policy_document" "deploy" {
     actions = [
       "wafv2:CreateWebACL",
       "wafv2:DeleteWebACL",
-      "wafv2:DescribeManagedRuleGroup",
       "wafv2:GetWebACL",
       "wafv2:ListTagsForResource",
-      "wafv2:ListWebACLs",
       "wafv2:TagResource",
       "wafv2:UntagResource",
       "wafv2:UpdateWebACL",
+    ]
+    resources = [local.waf_web_acl_arn]
+  }
+
+  statement {
+    sid    = "ReadCloudFrontWafCatalog"
+    effect = "Allow"
+    actions = [
+      "wafv2:DescribeManagedRuleGroup",
+      "wafv2:ListWebACLs",
     ]
     resources = ["*"]
   }
 
   statement {
-    sid    = "ManageCloudFrontStack"
+    sid    = "ManageCloudFrontDistribution"
     effect = "Allow"
     actions = [
-      "cloudfront:CreateCloudFrontOriginAccessIdentity",
-      "cloudfront:CreateDistribution",
-      "cloudfront:CreateFunction",
       "cloudfront:CreateInvalidation",
+      "cloudfront:DeleteDistribution",
+      "cloudfront:GetDistribution",
+      "cloudfront:GetDistributionConfig",
+      "cloudfront:ListTagsForResource",
+      "cloudfront:TagResource",
+      "cloudfront:UntagResource",
+      "cloudfront:UpdateDistribution",
+    ]
+    resources = [module.cloudfront_distribution.distribution_arn]
+  }
+
+  statement {
+    sid    = "ManageCloudFrontSupportResources"
+    effect = "Allow"
+    actions = [
+      "cloudfront:CreateFunction",
       "cloudfront:CreateOriginAccessControl",
       "cloudfront:CreateResponseHeadersPolicy",
-      "cloudfront:DeleteCloudFrontOriginAccessIdentity",
-      "cloudfront:DeleteDistribution",
       "cloudfront:DeleteFunction",
       "cloudfront:DeleteOriginAccessControl",
       "cloudfront:DeleteResponseHeadersPolicy",
       "cloudfront:DescribeFunction",
-      "cloudfront:GetCloudFrontOriginAccessIdentity",
-      "cloudfront:GetCloudFrontOriginAccessIdentityConfig",
-      "cloudfront:GetDistribution",
-      "cloudfront:GetDistributionConfig",
       "cloudfront:GetFunction",
       "cloudfront:GetOriginAccessControl",
       "cloudfront:GetOriginAccessControlConfig",
       "cloudfront:GetResponseHeadersPolicy",
       "cloudfront:GetResponseHeadersPolicyConfig",
-      "cloudfront:ListCloudFrontOriginAccessIdentities",
-      "cloudfront:ListDistributions",
-      "cloudfront:ListFunctions",
-      "cloudfront:ListOriginAccessControls",
-      "cloudfront:ListResponseHeadersPolicies",
       "cloudfront:ListTagsForResource",
       "cloudfront:PublishFunction",
       "cloudfront:TagResource",
       "cloudfront:UntagResource",
-      "cloudfront:UpdateCloudFrontOriginAccessIdentity",
-      "cloudfront:UpdateDistribution",
       "cloudfront:UpdateFunction",
       "cloudfront:UpdateOriginAccessControl",
       "cloudfront:UpdateResponseHeadersPolicy",
     ]
+    resources = local.cloudfront_support_resource_arns
+  }
+
+  statement {
+    sid    = "ReadCloudFrontCatalog"
+    effect = "Allow"
+    actions = [
+      "cloudfront:ListDistributions",
+      "cloudfront:ListFunctions",
+      "cloudfront:ListOriginAccessControls",
+      "cloudfront:ListResponseHeadersPolicies",
+    ]
     resources = ["*"]
+  }
+
+  statement {
+    sid    = "RequestCustomDomainCertificate"
+    effect = "Allow"
+    actions = [
+      "acm:RequestCertificate",
+    ]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/Application"
+      values   = [local.app_name]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/Environment"
+      values   = [var.app_env]
+    }
   }
 
   statement {
@@ -436,21 +484,38 @@ data "aws_iam_policy_document" "deploy" {
       "acm:DescribeCertificate",
       "acm:ListTagsForCertificate",
       "acm:RemoveTagsFromCertificate",
-      "acm:RequestCertificate",
     ]
-    resources = ["*"]
+    resources = [local.acm_certificate_policy_arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/Application"
+      values   = [local.app_name]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/Environment"
+      values   = [var.app_env]
+    }
   }
 
   statement {
-    sid    = "ManageCustomDomainDns"
+    sid    = "ManageCustomDomainDnsRecords"
     effect = "Allow"
     actions = [
       "route53:ChangeResourceRecordSets",
-      "route53:GetChange",
       "route53:GetHostedZone",
       "route53:ListResourceRecordSets",
     ]
-    resources = ["*"]
+    resources = [local.route53_hosted_zone_arn]
+  }
+
+  statement {
+    sid       = "ReadCustomDomainDnsChanges"
+    effect    = "Allow"
+    actions   = ["route53:GetChange"]
+    resources = ["arn:aws:route53:::change/*"]
   }
 }
 
@@ -523,12 +588,41 @@ module "custom_domain" {
     aws = aws.global
   }
 
-  domain_name                            = var.custom_domain
-  dns_provider                           = var.dns_provider
-  hosted_zone_id                         = var.hosted_zone_id
-  cloudfront_distribution_domain_name    = module.cloudfront_distribution.domain_name
-  cloudfront_distribution_hosted_zone_id = module.cloudfront_distribution.hosted_zone_id
-  tags                                   = local.common_tags
+  domain_name    = var.custom_domain
+  dns_provider   = var.dns_provider
+  hosted_zone_id = var.hosted_zone_id
+  tags           = local.common_tags
+}
+
+resource "terraform_data" "custom_domain_route53_alias_inputs" {
+  count = local.route53_custom_domain_enabled ? 1 : 0
+
+  input = {
+    hosted_zone_id = var.hosted_zone_id
+  }
+
+  lifecycle {
+    precondition {
+      condition     = var.hosted_zone_id != null && trimspace(var.hosted_zone_id) != ""
+      error_message = "hosted_zone_id is required when dns_provider is route53 and custom_domain is set."
+    }
+  }
+}
+
+resource "aws_route53_record" "custom_domain_alias" {
+  count = local.route53_custom_domain_enabled ? 1 : 0
+
+  zone_id = coalesce(var.hosted_zone_id, "")
+  name    = var.custom_domain
+  type    = "A"
+
+  alias {
+    name                   = module.cloudfront_distribution.domain_name
+    zone_id                = module.cloudfront_distribution.hosted_zone_id
+    evaluate_target_health = false
+  }
+
+  depends_on = [terraform_data.custom_domain_route53_alias_inputs]
 }
 
 data "aws_iam_policy_document" "spa_oac_read" {

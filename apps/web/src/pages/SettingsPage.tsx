@@ -45,12 +45,12 @@ export function SettingsPage() {
         const next = {
           ...current,
           payerProfile: profileName,
-          payerName: defaults.payer_name,
-          payerId: defaults.payer_id,
-          interchangeReceiverId: defaults.interchange_receiver_id,
-          receiverIdQualifier: defaults.receiver_id_qualifier,
-          defaultServiceTypeCode: defaults.default_service_type_code,
-          maxBatchSize: defaults.max_batch_size,
+          payerName: defaults.payerName,
+          payerId: defaults.payerId,
+          interchangeReceiverId: defaults.interchangeReceiverId,
+          receiverIdQualifier: defaults.receiverIdQualifier,
+          defaultServiceTypeCode: defaults.defaultServiceTypeCode,
+          maxBatchSize: defaults.maxBatchSize,
         }
         persist(next, { silent: true })
         return next
@@ -127,7 +127,7 @@ export function SettingsPage() {
 
   const npiValid = draft.providerNpi.length === 0 ? null : isValidNpi(draft.providerNpi)
   const emailValid = draft.contactEmail.length === 0 ? null : EMAIL_PATTERN.test(draft.contactEmail)
-  const profiles = profilesRequest.data?.profiles ?? [{ name: 'dc_medicaid', display_name: 'DC Medicaid', description: 'DC Medicaid eligibility profile.' }]
+  const profiles = profilesRequest.data?.profiles ?? [{ name: 'dc_medicaid', displayName: 'DC Medicaid', description: 'DC Medicaid eligibility profile.' }]
 
   return (
     <AppShell
@@ -246,7 +246,7 @@ export function SettingsPage() {
             onBlur={handleBlurSave}
             onChange={(event) => void applyProfileDefaults(event.currentTarget.value)}
             options={profiles.map((profile) => ({
-              label: profile.display_name,
+              label: profile.displayName,
               value: profile.name,
             }))}
             value={draft.payerProfile}

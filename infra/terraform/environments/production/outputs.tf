@@ -35,12 +35,16 @@ output "custom_domain_validation_records" {
 
 output "custom_domain_cname_record" {
   description = "External DNS CNAME record pointing the custom domain at CloudFront."
-  value       = module.custom_domain.cname_record
+  value = local.custom_domain_enabled ? {
+    name  = var.custom_domain
+    type  = "CNAME"
+    value = module.cloudfront_distribution.domain_name
+  } : null
 }
 
 output "custom_domain_route53_alias_fqdn" {
   description = "Route 53 ALIAS record FQDN, or null when Route 53 DNS is not managed by Terraform."
-  value       = module.custom_domain.route53_alias_fqdn
+  value       = local.route53_custom_domain_enabled ? aws_route53_record.custom_domain_alias[0].fqdn : null
 }
 
 output "deploy_role_arn" {

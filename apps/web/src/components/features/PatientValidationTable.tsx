@@ -25,27 +25,27 @@ export function PatientValidationTable({
           header: 'Member',
           cell: (row) => (
             <Button
-              aria-label={`Open issues for ${row.member_name}`}
+              aria-label={`Open issues for ${row.memberName}`}
               className="min-h-0 px-0 py-0 text-left text-sm font-medium text-[var(--color-action-500)]"
               onClick={() => onSelect(row)}
               variant="quiet"
             >
-              {row.member_name}
+              {row.memberName}
             </Button>
           ),
-          sortValue: (row) => row.member_name,
+          sortValue: (row) => row.memberName,
         },
         {
           id: 'member_id',
           header: 'Member ID',
-          cell: (row) => row.member_id ?? 'Not provided',
-          sortValue: (row) => row.member_id ?? '',
+          cell: (row) => row.memberId ?? 'Not provided',
+          sortValue: (row) => row.memberId ?? '',
         },
         {
           id: 'service_date',
           header: 'Service Date',
-          cell: (row) => formatDate(row.service_date),
-          sortValue: (row) => row.service_date ?? '',
+          cell: (row) => formatDate(row.serviceDate),
+          sortValue: (row) => row.serviceDate ?? '',
         },
         {
           id: 'status',
@@ -58,19 +58,19 @@ export function PatientValidationTable({
         {
           id: 'errors',
           header: 'Errors',
-          cell: (row) => row.error_count,
-          sortValue: (row) => row.error_count,
+          cell: (row) => row.errorCount,
+          sortValue: (row) => row.errorCount,
         },
         {
           id: 'warnings',
           header: 'Warnings',
-          cell: (row) => row.warning_count,
-          sortValue: (row) => row.warning_count,
+          cell: (row) => row.warningCount,
+          sortValue: (row) => row.warningCount,
         },
       ]}
       emptyMessage="No patients match the current filter."
       pageSize={25}
-      rowKey={(row) => `${row.index}-${row.transaction_control_number ?? row.member_id ?? row.member_name}`}
+      rowKey={(row) => `${row.index}-${row.transactionControlNumber ?? row.memberId ?? row.memberName}`}
       rows={rows}
     />
   )

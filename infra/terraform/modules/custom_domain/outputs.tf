@@ -16,15 +16,6 @@ output "validation_records" {
 }
 
 output "cname_record" {
-  description = "CNAME record external DNS operators can point at the CloudFront distribution."
-  value = local.domain_enabled ? {
-    name  = var.domain_name
-    type  = "CNAME"
-    value = var.cloudfront_distribution_domain_name
-  } : null
-}
-
-output "route53_alias_fqdn" {
-  description = "Route 53 ALIAS record FQDN, or null when Route 53 DNS is not managed by Terraform."
-  value       = local.route53_enabled ? aws_route53_record.alias[0].fqdn : null
+  description = "Deprecated placeholder retained for module output compatibility. Environment roots provide the CloudFront CNAME target."
+  value       = null
 }

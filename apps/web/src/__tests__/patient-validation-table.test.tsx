@@ -6,13 +6,13 @@ import type { PatientValidationRow } from '../types/api'
 
 const fiveRows: PatientValidationRow[] = Array.from({ length: 5 }, (_unused, index) => ({
   index,
-  transaction_control_number: String(index + 1).padStart(4, '0'),
-  member_name: `MEMBER_${index + 1}`,
-  member_id: `ID-${index + 1}`,
-  service_date: '20260412',
+  transactionControlNumber: String(index + 1).padStart(4, '0'),
+  memberName: `MEMBER_${index + 1}`,
+  memberId: `ID-${index + 1}`,
+  serviceDate: '20260412',
   status: index === 1 ? 'invalid' : 'valid',
-  error_count: index === 1 ? 2 : 0,
-  warning_count: index === 1 ? 1 : 0,
+  errorCount: index === 1 ? 2 : 0,
+  warningCount: index === 1 ? 1 : 0,
   issues: [],
 }))
 

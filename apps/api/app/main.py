@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
+from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging
 from app.core.metrics import render_metrics_response
 from app.core.middleware import register_middleware
@@ -19,6 +20,7 @@ configure_logging()
 
 def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name, version=settings.app_version)
+    register_exception_handlers(app)
     register_middleware(app)
     app.include_router(api_router)
 

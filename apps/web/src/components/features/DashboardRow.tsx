@@ -7,20 +7,20 @@ const ENTITY_LABELS: Record<string, string> = {
 }
 
 export function DashboardRow({ result }: { result: EligibilityResult }) {
-  const entityGroups = groupBenefitEntities(result.benefit_entities)
+  const entityGroups = groupBenefitEntities(result.benefitEntities)
 
   return (
     <div className="space-y-5">
       <div className="rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-surface-primary)] p-4">
         <h4 className="text-xs font-semibold uppercase text-[var(--color-text-secondary)]">Status Reason</h4>
         <p className="mt-1 text-base font-semibold text-[var(--color-text-primary)]">
-          {result.status_reason ?? 'No status reason returned'}
+          {result.statusReason ?? 'No status reason returned'}
         </p>
-        {result.trace_number || result.st_control_number ? (
+        {result.traceNumber || result.stControlNumber ? (
           <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
-            {result.trace_number ? `Trace ${result.trace_number}` : null}
-            {result.trace_number && result.st_control_number ? ' • ' : null}
-            {result.st_control_number ? `ST ${result.st_control_number}` : null}
+            {result.traceNumber ? `Trace ${result.traceNumber}` : null}
+            {result.traceNumber && result.stControlNumber ? ' • ' : null}
+            {result.stControlNumber ? `ST ${result.stControlNumber}` : null}
           </p>
         ) : null}
       </div>
@@ -28,14 +28,14 @@ export function DashboardRow({ result }: { result: EligibilityResult }) {
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-2">
           <h4 className="text-sm font-semibold text-[var(--color-text-primary)]">Eligibility Segments</h4>
-          {result.eligibility_segments.length === 0 ? (
+          {result.eligibilitySegments.length === 0 ? (
             <p className="text-sm text-[var(--color-text-secondary)]">No eligibility segments returned.</p>
           ) : (
             <ul className="space-y-2 text-sm text-[var(--color-text-primary)]">
-              {result.eligibility_segments.map((segment, index) => (
-                <li key={`${segment.eligibility_code}-${index}`}>
-                  {segment.plan_coverage_description ?? 'Coverage returned'} • Code{' '}
-                  {segment.eligibility_code}
+              {result.eligibilitySegments.map((segment, index) => (
+                <li key={`${segment.eligibilityCode}-${index}`}>
+                  {segment.planCoverageDescription ?? 'Coverage returned'} • Code{' '}
+                  {segment.eligibilityCode}
                   {formatServiceTypes(segment)}
                 </li>
               ))}
@@ -84,11 +84,11 @@ export function DashboardRow({ result }: { result: EligibilityResult }) {
 
         <div className="space-y-2">
           <h4 className="text-sm font-semibold text-[var(--color-text-primary)]">AAA Errors</h4>
-          {result.aaa_errors.length === 0 ? (
+          {result.aaaErrors.length === 0 ? (
             <p className="text-sm text-[var(--color-text-secondary)]">No AAA errors returned.</p>
           ) : (
             <ul className="space-y-2 text-sm text-[var(--color-text-primary)]">
-              {result.aaa_errors.map((error, index) => (
+              {result.aaaErrors.map((error, index) => (
                 <li key={`${error.code}-${index}`}>
                   {error.message}
                   {error.suggestion ? (
@@ -105,10 +105,10 @@ export function DashboardRow({ result }: { result: EligibilityResult }) {
 }
 
 function formatServiceTypes(segment: EligibilitySegment): string {
-  const serviceTypes = segment.service_type_codes.length
-    ? segment.service_type_codes
-    : segment.service_type_code
-      ? [segment.service_type_code]
+  const serviceTypes = segment.serviceTypeCodes.length
+    ? segment.serviceTypeCodes
+    : segment.serviceTypeCode
+      ? [segment.serviceTypeCode]
       : []
   return serviceTypes.length ? ` • Service ${serviceTypes.join(', ')}` : ''
 }
@@ -119,7 +119,7 @@ function groupBenefitEntities(entities: BenefitEntity[]): Array<{
 }> {
   const groups = new Map<string, BenefitEntity[]>()
   for (const entity of entities) {
-    const code = entity.entity_identifier_code ?? 'other'
+    const code = entity.entityIdentifierCode ?? 'other'
     groups.set(code, [...(groups.get(code) ?? []), entity])
   }
 

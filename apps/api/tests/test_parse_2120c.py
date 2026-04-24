@@ -26,13 +26,13 @@ def test_parse_271_projects_2120c_benefit_entity_contacts(client: TestClient) ->
 
     assert response.status_code == 200
     payload = response.json()
-    entity = payload["results"][0]["benefit_entities"][0]
-    assert entity["entity_identifier_code"] == "P5"
+    entity = payload["results"][0]["benefitEntities"][0]
+    assert entity["entityIdentifierCode"] == "P5"
     assert entity["name"] == "PLAN SPONSOR"
     assert entity["contacts"] == [
         "PROVIDER RELATIONS (TE:8665550001, EM:support@example.test)",
         "EDI HELPDESK (TE:8775550001)",
     ]
-    assert payload["results"][0]["status_reason"] == "Coverage on file"
-    assert payload["results"][0]["st_control_number"] == "0001"
-    assert payload["results"][0]["trace_number"] == "TRACE0001"
+    assert payload["results"][0]["statusReason"] == "Coverage on file"
+    assert payload["results"][0]["stControlNumber"] == "0001"
+    assert payload["results"][0]["traceNumber"] == "TRACE0001"

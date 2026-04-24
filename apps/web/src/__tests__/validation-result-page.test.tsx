@@ -25,13 +25,13 @@ function buildFiveRowResponse(overrides: Partial<ValidateResponse> = {}): Valida
   const invalidIndex = 2
   const patients = Array.from({ length: 5 }, (_unused, index) => ({
     index,
-    transaction_control_number: String(index + 1).padStart(4, '0'),
-    member_name: `MEMBER_${index + 1}`,
-    member_id: `ID-${index + 1}`,
-    service_date: '20260412',
+    transactionControlNumber: String(index + 1).padStart(4, '0'),
+    memberName: `MEMBER_${index + 1}`,
+    memberId: `ID-${index + 1}`,
+    serviceDate: '20260412',
     status: index === invalidIndex ? ('invalid' as const) : ('valid' as const),
-    error_count: index === invalidIndex ? 1 : 0,
-    warning_count: 0,
+    errorCount: index === invalidIndex ? 1 : 0,
+    warningCount: 0,
     issues:
       index === invalidIndex
         ? [
@@ -41,7 +41,7 @@ function buildFiveRowResponse(overrides: Partial<ValidateResponse> = {}): Valida
               code: 'E201',
               message: 'Member ID is too short.',
               location: 'segment_position:14',
-              segment_id: 'NM1',
+              segmentId: 'NM1',
               element: 'NM109',
               suggestion: 'Confirm the member ID.',
               profile: 'dc_medicaid',
@@ -52,15 +52,15 @@ function buildFiveRowResponse(overrides: Partial<ValidateResponse> = {}): Valida
 
   return {
     filename: 'sample.270',
-    is_valid: false,
-    error_count: 1,
-    warning_count: 0,
+    isValid: false,
+    errorCount: 1,
+    warningCount: 0,
     issues: patients[invalidIndex]?.issues ?? [],
     patients,
     summary: {
-      total_patients: 5,
-      valid_patients: 4,
-      invalid_patients: 1,
+      totalPatients: 5,
+      validPatients: 4,
+      invalidPatients: 1,
     },
     ...overrides,
   }
@@ -146,12 +146,12 @@ describe('ValidationResultPage', () => {
     renderApp('/validate/result', {
       filename: 'sample.270',
       response: buildFiveRowResponse({
-        is_valid: true,
-        error_count: 0,
-        warning_count: 0,
+        isValid: true,
+        errorCount: 0,
+        warningCount: 0,
         issues: [],
         patients: [],
-        summary: { total_patients: 0, valid_patients: 0, invalid_patients: 0 },
+        summary: { totalPatients: 0, validPatients: 0, invalidPatients: 0 },
       }),
     })
 

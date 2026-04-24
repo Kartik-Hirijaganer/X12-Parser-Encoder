@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-04-24
+
+### Changed
+
+- Standardized API responses and generated OpenAPI fields on camelCase.
+- Reworked custom-domain Terraform ownership so ACM validation happens before CloudFront alias DNS wiring.
+- Tightened GitHub OIDC deploy permissions around named state, artifact, Lambda, SPA, CloudFront, ACM, WAF, and Route 53 resources.
+
+### Fixed
+
+- Restored the web production build by aligning dashboard card props with the Card primitive.
+- Centralized FastAPI error envelopes for middleware, upload, validation, and HTTP exception paths.
+- Completed reduced-motion handling for modal, drawer, toast, and skeleton primitives.
+- Rendered dashboard zero-row filter results through the shared EmptyState component.
+
 ## [0.1.1] - 2026-04-21
 
 ### Added

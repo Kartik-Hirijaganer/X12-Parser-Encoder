@@ -18,7 +18,7 @@ def test_validate_valid_270_returns_is_valid(client: TestClient) -> None:
     )
 
     assert response.status_code == 200
-    assert response.json()["is_valid"] is True
+    assert response.json()["isValid"] is True
 
 
 def test_validate_wrong_isa08_returns_suggestion(client: TestClient) -> None:
@@ -32,7 +32,7 @@ def test_validate_wrong_isa08_returns_suggestion(client: TestClient) -> None:
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["is_valid"] is False
+    assert payload["isValid"] is False
     assert any(issue["code"] == "DCM_INVALID_ISA08" for issue in payload["issues"])
 
 
@@ -52,10 +52,10 @@ def test_validate_270_dtp_placement_returns_blocking_error(client: TestClient) -
     placement_issue = next(
         issue for issue in payload["issues"] if issue["code"] == "DCM_270_DTP291_REQUIRES_2100C"
     )
-    assert payload["is_valid"] is False
+    assert payload["isValid"] is False
     assert placement_issue["level"] == "snip5"
-    assert placement_issue["transaction_index"] == 0
-    assert placement_issue["transaction_control_number"] == "0001"
+    assert placement_issue["transactionIndex"] == 0
+    assert placement_issue["transactionControlNumber"] == "0001"
     assert placement_issue["suggestion"] == (
         "Move DTP*291 before the EQ segment so it is in Loop 2100C."
     )
@@ -85,7 +85,7 @@ def test_parse_271_summarizes_active_results(client: TestClient) -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["summary"]["active"] == 1
-    assert payload["results"][0]["overall_status"] == "active"
+    assert payload["results"][0]["overallStatus"] == "active"
 
 
 def test_parse_271_extracts_aaa_and_benefit_entities(client: TestClient) -> None:
@@ -121,7 +121,7 @@ def test_parse_271_extracts_aaa_and_benefit_entities(client: TestClient) -> None
     )
 
     assert rejected.status_code == 200
-    assert rejected.json()["results"][0]["overall_status"] == "error"
-    assert rejected.json()["results"][0]["aaa_errors"][0]["code"] == "72"
-    assert wrapped.json()["results"][0]["benefit_entities"][0]["identifier"] == "PLAN123"
-    assert multi_eb.json()["results"][0]["eligibility_segments"][1]["monetary_amount"] == "5.00"
+    assert rejected.json()["results"][0]["overallStatus"] == "error"
+    assert rejected.json()["results"][0]["aaaErrors"][0]["code"] == "72"
+    assert wrapped.json()["results"][0]["benefitEntities"][0]["identifier"] == "PLAN123"
+    assert multi_eb.json()["results"][0]["eligibilitySegments"][1]["monetaryAmount"] == "5.00"

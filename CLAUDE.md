@@ -133,6 +133,10 @@ Generated documentation uses marker blocks. Run `make docs-regenerate` after cha
 - Use Pydantic v2 models for request/config/domain contracts where validation matters.
 - Keep public package APIs explicit through `x12_edi_tools.__init__`. Phase 7 types stay in `TYPE_CHECKING` until promoted.
 - `mypy` runs in strict mode for both `packages/x12-edi-tools/src` and `apps/api/app`.
+- X12 segment IDs are domain identifiers. Filenames and symbols such as `sv2.py`,
+  `sv3.py`, `SV2Segment`, and `SV3Segment` are allowed even though they contain
+  numeric suffixes; they are not release/version markers and should not be
+  renamed for generic banned-name checks.
 
 ### Frontend
 

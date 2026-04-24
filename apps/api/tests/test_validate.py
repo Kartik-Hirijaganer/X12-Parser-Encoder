@@ -22,13 +22,13 @@ def test_validate_projects_three_patient_rows_with_transaction_issue(
     assert response.status_code == 200
     payload = response.json()
     assert payload["summary"] == {
-        "total_patients": 3,
-        "valid_patients": 2,
-        "invalid_patients": 1,
+        "totalPatients": 3,
+        "validPatients": 2,
+        "invalidPatients": 1,
     }
     assert len(payload["patients"]) == 3
     assert payload["patients"][1]["status"] == "invalid"
-    assert payload["patients"][1]["transaction_control_number"] == "0002"
+    assert payload["patients"][1]["transactionControlNumber"] == "0002"
     assert payload["patients"][1]["issues"][0]["code"] == "DCM_INVALID_PAYER_NAME"
     assert payload["patients"][2]["status"] == "valid"
 

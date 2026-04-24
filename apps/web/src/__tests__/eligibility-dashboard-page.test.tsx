@@ -40,20 +40,20 @@ describe('EligibilityDashboardPage', () => {
       filename: 'response.271',
       response: {
         ...parseResponseFixture,
-        parser_issue_count: 2,
-        parser_issues: [
+        parserIssueCount: 2,
+        parserIssues: [
           {
-            transaction_index: 1,
-            transaction_control_number: '0001',
-            segment_id: 'EB',
+            transactionIndex: 1,
+            transactionControlNumber: '0001',
+            segmentId: 'EB',
             location: 'segment_position:12',
             message: 'Unexpected EB segment.',
             severity: 'error',
           },
           {
-            transaction_index: 2,
-            transaction_control_number: '0002',
-            segment_id: 'NM1',
+            transactionIndex: 2,
+            transactionControlNumber: '0002',
+            segmentId: 'NM1',
             location: 'segment_position:24',
             message: 'Unexpected NM1 segment.',
             severity: 'error',
@@ -71,12 +71,12 @@ describe('EligibilityDashboardPage', () => {
       filename: 'response.271',
       response: {
         ...parseResponseFixture,
-        parser_issue_count: 1,
-        parser_issues: [
+        parserIssueCount: 1,
+        parserIssues: [
           {
-            transaction_index: 5,
-            transaction_control_number: '0005',
-            segment_id: 'PER',
+            transactionIndex: 5,
+            transactionControlNumber: '0005',
+            segmentId: 'PER',
             location: 'segment_position:48',
             message: 'Collected parser issue.',
             severity: 'error',
@@ -97,10 +97,10 @@ describe('EligibilityDashboardPage', () => {
     expect(exportEligibilityWorkbookMock).toHaveBeenCalledWith(
       expect.objectContaining({
         results: parseResponseFixture.results,
-        parser_issue_count: 1,
-        parser_issues: [
+        parserIssueCount: 1,
+        parserIssues: [
           expect.objectContaining({
-            transaction_control_number: '0005',
+            transactionControlNumber: '0005',
           }),
         ],
       }),

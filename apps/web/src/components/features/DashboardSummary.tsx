@@ -3,7 +3,7 @@ import { cn } from '../../utils/cn'
 import { Card } from '../ui/Card'
 import type { DashboardStatusFilter } from './DashboardFilterBar'
 
-type SummaryKey = 'error' | 'not_found' | 'unknown' | 'inactive' | 'active'
+type SummaryKey = 'error' | 'notFound' | 'unknown' | 'inactive' | 'active'
 type SummaryVariant = 'warning' | 'notfound' | 'inactive' | 'active'
 
 interface SummaryCardSpec {
@@ -15,7 +15,7 @@ interface SummaryCardSpec {
 
 const SUMMARY_CARDS: readonly SummaryCardSpec[] = [
   { key: 'error', label: 'Errors', variant: 'warning', filter: 'error' },
-  { key: 'not_found', label: 'Not Found', variant: 'notfound', filter: 'not_found' },
+  { key: 'notFound', label: 'Not Found', variant: 'notfound', filter: 'not_found' },
   { key: 'unknown', label: 'Unknown', variant: 'notfound', filter: 'unknown' },
   { key: 'inactive', label: 'Inactive', variant: 'inactive', filter: 'inactive' },
   { key: 'active', label: 'Active', variant: 'active', filter: 'active' },
@@ -51,7 +51,6 @@ export function DashboardSummary({
             )}
             key={card.key}
             onClick={() => onFilterChange(nextFilter)}
-            type="button"
           >
             <p className={`text-3xl font-semibold ${textClasses[card.variant]}`}>{summary[card.key]}</p>
             <p className="mt-2 text-sm font-medium text-[var(--color-text-primary)]">{card.label}</p>

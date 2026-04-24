@@ -28,10 +28,10 @@ X12 is the transaction format used by US healthcare trading partners to exchange
 <!-- version-table:start -->
 | Artifact | Version |
 | --- | --- |
-| Monorepo | `0.1.1` |
-| Python package | `0.1.1` |
-| API app | `0.1.1` |
-| Web app | `0.1.1` |
+| Monorepo | `1.0.1` |
+| Python package | `1.0.1` |
+| API app | `1.0.1` |
+| Web app | `1.0.1` |
 <!-- version-table:end -->
 
 ## Releases

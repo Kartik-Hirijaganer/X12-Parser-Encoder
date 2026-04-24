@@ -48,11 +48,11 @@ describe('PreviewPage', () => {
     )
     const splitResponse = {
       ...generateResponseFixture,
-      x12_content: null,
-      zip_content_base64: 'UEsDBAo=',
-      split_count: 3,
-      control_numbers: { isa13: '000000042', gs06: '42', st02_range: [] },
-      archive_entries: [
+      x12Content: null,
+      zipContentBase64: 'UEsDBAo=',
+      splitCount: 3,
+      controlNumbers: { isa13: '000000042', gs06: '42', st02Range: [] },
+      archiveEntries: [
         archiveEntry('000000042'),
         archiveEntry('000000044'),
         archiveEntry('000000043'),
@@ -93,9 +93,9 @@ describe('PreviewPage', () => {
 
 function archiveEntry(isa13: string) {
   return {
-    file_name: `ACME123456_270_20260412_${isa13}.txt`,
-    record_range_start: 1,
-    record_range_end: 1,
-    control_numbers: { isa13, gs06: String(Number(isa13)), st02_range: [] },
+    fileName: `ACME123456_270_20260412_${isa13}.txt`,
+    recordRangeStart: 1,
+    recordRangeEnd: 1,
+    controlNumbers: { isa13, gs06: String(Number(isa13)), st02Range: [] },
   }
 }

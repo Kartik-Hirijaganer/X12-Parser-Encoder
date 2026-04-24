@@ -14,9 +14,9 @@ describe('GenerateResultPage', () => {
 
     expect(screen.getByText('Submission package')).toBeInTheDocument()
     expect(screen.getByText('Batch summary')).toBeInTheDocument()
-    expect(screen.getByText(generateResponseFixture.download_file_name!)).toBeInTheDocument()
+    expect(screen.getByText(generateResponseFixture.downloadFileName!)).toBeInTheDocument()
     expect(
-      screen.getByText(generateResponseFixture.batch_summary_file_name!),
+      screen.getByText(generateResponseFixture.batchSummaryFileName!),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Download Batch Summary' })).toBeEnabled()
   })
@@ -33,7 +33,7 @@ describe('GenerateResultPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Copy to Clipboard' }))
 
     await waitFor(() => {
-      expect(writeText).toHaveBeenCalledWith(generateResponseFixture.x12_content)
+      expect(writeText).toHaveBeenCalledWith(generateResponseFixture.x12Content)
     })
     await waitFor(() => {
       expect(screen.getByText('Copied X12 to clipboard')).toBeInTheDocument()

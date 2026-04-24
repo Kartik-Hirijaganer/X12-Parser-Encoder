@@ -55,7 +55,7 @@ def test_lambda_handler_accepts_base64_multipart_upload() -> None:
     response = handler(event, None)
 
     assert response["statusCode"] == 200
-    assert json.loads(response["body"])["is_valid"] is True
+    assert json.loads(response["body"])["isValid"] is True
 
 
 def test_origin_secret_middleware_rejects_missing_header(

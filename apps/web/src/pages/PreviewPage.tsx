@@ -55,7 +55,7 @@ export function PreviewPage() {
 
       try {
         if (previewState.flow === 'generate') {
-          setProcessingLabel(`Generating X12 file for ${previewState.response.record_count} records...`)
+          setProcessingLabel(`Generating X12 file for ${previewState.response.recordCount} records...`)
           const nextIcn = nextIsaControlNumber(settings.lastIsaControlNumber)
           const response = await generate270(settings, previewState.response.patients, nextIcn)
           navigate('/generate/result', {
@@ -127,7 +127,7 @@ export function PreviewPage() {
 
   const rowCount =
     previewState.flow === 'generate'
-      ? previewState.response.record_count
+      ? previewState.response.recordCount
       : previewState.preview.subscriberNames.length
   const rowLabel =
     previewState.flow === 'generate'
@@ -263,7 +263,7 @@ export function PreviewPage() {
       ) : previewState.flow === 'generate' ? (
         <div className="space-y-6">
           <Card className="grid gap-4 md:grid-cols-4">
-            <SummaryCard label="Rows ready" value={String(previewState.response.record_count)} />
+            <SummaryCard label="Rows ready" value={String(previewState.response.recordCount)} />
             <SummaryCard label="Warnings" value={String(previewState.response.warnings.length)} />
             <SummaryCard label="Corrections" value={String(previewState.response.corrections.length)} />
             <SummaryCard label="Excluded rows" value={String(previewState.response.errors.length)} />
@@ -281,31 +281,31 @@ export function PreviewPage() {
                 {
                   id: 'member',
                   header: 'Member',
-                  cell: (patient) => `${patient.last_name}, ${patient.first_name}`,
-                  sortValue: (patient) => `${patient.last_name}, ${patient.first_name}`,
+                  cell: (patient) => `${patient.lastName}, ${patient.firstName}`,
+                  sortValue: (patient) => `${patient.lastName}, ${patient.firstName}`,
                 },
                 {
                   id: 'dob',
                   header: 'DOB',
-                  cell: (patient) => formatDate(patient.date_of_birth),
-                  sortValue: (patient) => patient.date_of_birth,
+                  cell: (patient) => formatDate(patient.dateOfBirth),
+                  sortValue: (patient) => patient.dateOfBirth,
                 },
                 {
                   id: 'member_id',
                   header: 'Member ID',
-                  cell: (patient) => patient.member_id ?? 'Not provided',
-                  sortValue: (patient) => patient.member_id ?? '',
+                  cell: (patient) => patient.memberId ?? 'Not provided',
+                  sortValue: (patient) => patient.memberId ?? '',
                 },
                 {
                   id: 'service_date',
                   header: 'Service Date',
-                  cell: (patient) => formatDate(patient.service_date),
-                  sortValue: (patient) => patient.service_date,
+                  cell: (patient) => formatDate(patient.serviceDate),
+                  sortValue: (patient) => patient.serviceDate,
                 },
               ]}
               emptyMessage="No patient rows were returned."
               pageSize={5}
-              rowKey={(patient, index) => `${patient.last_name}-${patient.first_name}-${index}`}
+              rowKey={(patient, index) => `${patient.lastName}-${patient.firstName}-${index}`}
               rows={previewState.response.patients.slice(0, 5)}
             />
           </Card>

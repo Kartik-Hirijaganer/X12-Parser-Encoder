@@ -57,7 +57,7 @@ export function ValidationResultPage() {
   const patients = useMemo(() => response?.patients ?? [], [response])
   const issues = response?.issues ?? []
   const summary = response?.summary ?? null
-  const isValid = response?.is_valid ?? false
+  const isValid = response?.isValid ?? false
 
   useEffect(() => {
     if (!response || !isValid) {
@@ -83,9 +83,9 @@ export function ValidationResultPage() {
     }
     const valid = patients.filter((row) => row.status === 'valid').length
     return {
-      total_patients: patients.length,
-      valid_patients: valid,
-      invalid_patients: patients.length - valid,
+      totalPatients: patients.length,
+      validPatients: valid,
+      invalidPatients: patients.length - valid,
     }
   }, [patients, summary])
 
@@ -98,19 +98,19 @@ export function ValidationResultPage() {
       if (!normalizedSearch) {
         return true
       }
-      return [row.member_name, row.member_id, row.transaction_control_number]
+      return [row.memberName, row.memberId, row.transactionControlNumber]
         .filter(Boolean)
         .some((value) => value?.toLowerCase().includes(normalizedSearch))
     })
   }, [deferredSearch, filter, patients])
 
   const failureSummary = useMemo(() => {
-    if (!response || response.is_valid) {
+    if (!response || response.isValid) {
       return null
     }
-    const errorWord = response.error_count === 1 ? 'critical issue' : 'critical issues'
-    const warningWord = response.warning_count === 1 ? 'warning' : 'warnings'
-    return `${response.error_count} ${errorWord}, ${response.warning_count} ${warningWord}.`
+    const errorWord = response.errorCount === 1 ? 'critical issue' : 'critical issues'
+    const warningWord = response.warningCount === 1 ? 'warning' : 'warnings'
+    return `${response.errorCount} ${errorWord}, ${response.warningCount} ${warningWord}.`
   }, [response])
 
   if (!response) {
@@ -151,7 +151,7 @@ export function ValidationResultPage() {
       subtitle="Review per-patient validation results, drill into issue details, and export the workbook for downstream teams."
       title="Validation Result"
     >
-      {response.is_valid ? (
+      {response.isValid ? (
         <Banner
           actions={
             <Button onClick={focusExportAction} size="sm" variant="primary">
@@ -161,7 +161,7 @@ export function ValidationResultPage() {
           title="All patients validated successfully"
           variant="success"
         >
-          {derivedSummary.total_patients} patient{derivedSummary.total_patients === 1 ? '' : 's'} passed every
+          {derivedSummary.totalPatients} patient{derivedSummary.totalPatients === 1 ? '' : 's'} passed every
           SNIP check. Export the workbook to share with downstream teams.
         </Banner>
       ) : (
@@ -185,22 +185,22 @@ export function ValidationResultPage() {
       <Card className="flex flex-wrap items-center justify-between gap-4">
         <div className="space-y-2">
           <p className="text-sm text-[var(--color-text-secondary)]">Overall status</p>
-          <Badge variant={response.is_valid ? 'active' : 'inactive'}>
-            {response.is_valid ? 'PASS' : 'FAIL'}
+          <Badge variant={response.isValid ? 'active' : 'inactive'}>
+            {response.isValid ? 'PASS' : 'FAIL'}
           </Badge>
         </div>
         <div className="flex flex-wrap gap-6">
-          <Metric label="Total" value={String(derivedSummary.total_patients)} />
-          <Metric label="Valid" value={String(derivedSummary.valid_patients)} />
-          <Metric label="Invalid" value={String(derivedSummary.invalid_patients)} />
-          <Metric label="Errors" value={String(response.error_count)} />
-          <Metric label="Warnings" value={String(response.warning_count)} />
+          <Metric label="Total" value={String(derivedSummary.totalPatients)} />
+          <Metric label="Valid" value={String(derivedSummary.validPatients)} />
+          <Metric label="Invalid" value={String(derivedSummary.invalidPatients)} />
+          <Metric label="Errors" value={String(response.errorCount)} />
+          <Metric label="Warnings" value={String(response.warningCount)} />
         </div>
       </Card>
 
       {exportError ? <Banner variant="error">{exportError}</Banner> : null}
 
-      {!response.is_valid && !showFailureDetails ? null : (
+      {!response.isValid && !showFailureDetails ? null : (
         <Card className="space-y-5">
           <Tabs active={activeTab} onChange={setActiveTab} />
 
@@ -228,9 +228,9 @@ export function ValidationResultPage() {
 
           {activeTab === 'summary' ? (
             <SummaryTab
-              errorCount={response.error_count}
+              errorCount={response.errorCount}
               summary={derivedSummary}
-              warningCount={response.warning_count}
+              warningCount={response.warningCount}
             />
           ) : null}
         </Card>
@@ -290,14 +290,14 @@ function SummaryTab({
   warningCount,
 }: {
   errorCount: number
-  summary: { total_patients: number; valid_patients: number; invalid_patients: number }
+  summary: { totalPatients: number; validPatients: number; invalidPatients: number }
   warningCount: number
 }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <Metric label="Total Patients" value={String(summary.total_patients)} />
-      <Metric label="Valid" value={String(summary.valid_patients)} />
-      <Metric label="Invalid" value={String(summary.invalid_patients)} />
+      <Metric label="Total Patients" value={String(summary.totalPatients)} />
+      <Metric label="Valid" value={String(summary.validPatients)} />
+      <Metric label="Invalid" value={String(summary.invalidPatients)} />
       <Metric label="Errors" value={String(errorCount)} />
       <Metric label="Warnings" value={String(warningCount)} />
     </div>

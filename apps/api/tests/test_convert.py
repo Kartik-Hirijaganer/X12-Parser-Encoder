@@ -36,11 +36,11 @@ def test_convert_valid_xlsx_returns_normalized_patients(
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["record_count"] == 1
-    assert payload["patients"][0]["last_name"] == "SMITH"
-    assert payload["patients"][0]["first_name"] == "JOHN"
-    assert payload["patients"][0]["date_of_birth"] == "19850115"
-    assert payload["patients"][0]["service_type_code"] == "30"
+    assert payload["recordCount"] == 1
+    assert payload["patients"][0]["lastName"] == "SMITH"
+    assert payload["patients"][0]["firstName"] == "JOHN"
+    assert payload["patients"][0]["dateOfBirth"] == "19850115"
+    assert payload["patients"][0]["serviceTypeCode"] == "30"
 
 
 def test_convert_missing_required_column_returns_actionable_error(
@@ -63,8 +63,10 @@ def test_convert_missing_required_column_returns_actionable_error(
     )
 
     assert response.status_code == 400
-    assert "missing_columns" in response.json()["detail"]
-    assert "last_name" in response.json()["detail"]["missing_columns"]
+    payload = response.json()
+    assert payload["code"] == "BAD_REQUEST"
+    assert "missingColumns" in payload["details"]
+    assert "last_name" in payload["details"]["missingColumns"]
 
 
 def test_convert_extra_columns_are_ignored_with_warning(client: TestClient) -> None:
@@ -79,7 +81,7 @@ def test_convert_extra_columns_are_ignored_with_warning(client: TestClient) -> N
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["record_count"] == 1
+    assert payload["recordCount"] == 1
     assert payload["warnings"][0]["field"] == "extra_column"
 
 
@@ -90,7 +92,7 @@ def test_convert_rejects_unsupported_file_type(client: TestClient) -> None:
     )
 
     assert response.status_code == 400
-    assert response.json()["detail"]["message"] == "Unsupported file type."
+    assert response.json()["message"] == "Unsupported file type."
 
 
 def test_convert_empty_xlsx_returns_zero_records(client: TestClient) -> None:
@@ -108,7 +110,7 @@ def test_convert_empty_xlsx_returns_zero_records(client: TestClient) -> None:
     )
 
     assert response.status_code == 200
-    assert response.json()["record_count"] == 0
+    assert response.json()["recordCount"] == 0
 
 
 def test_convert_short_member_id_warns_and_partial_errors_are_preserved(
@@ -143,7 +145,7 @@ def test_convert_short_member_id_warns_and_partial_errors_are_preserved(
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["record_count"] == 1
+    assert payload["recordCount"] == 1
     assert len(payload["errors"]) == 1
     assert payload["warnings"][0]["field"] == "member_id"
     assert payload["warnings"][0]["row"] == 2

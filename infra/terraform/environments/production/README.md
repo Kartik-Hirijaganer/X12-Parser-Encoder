@@ -25,4 +25,4 @@ Production defaults:
 - WAF rate limit: 2,000 requests per 5 minutes per source IP
 - No WAF geo filter unless `waf_geo_allow_countries` is set
 
-To enable the optional Phase 5 branded hostname, set `custom_domain`, `dns_provider`, and `hosted_zone_id` in the protected production `TERRAFORM_TFVARS` secret. Route 53 mode provisions the ACM certificate, validation records, CloudFront alias, and Route 53 ALIAS record.
+To enable the optional Phase 5 branded hostname, set `custom_domain`, `dns_provider`, and `hosted_zone_id` in the protected production `TERRAFORM_TFVARS` secret. Route 53 mode provisions the ACM certificate and validation records first, then attaches the CloudFront alias and creates the Route 53 ALIAS record from the environment root.

@@ -151,9 +151,19 @@ async function buildApiError(response: Response): Promise<ApiError> {
 
   try {
     const payload = (await response.json()) as {
+      message?: string
+      details?: {
+        suggestion?: string
+        errors?: Array<{ msg?: string }>
+      }
       detail?: string | { message?: string; suggestion?: string } | Array<{ msg?: string }>
     }
-    if (typeof payload.detail === 'string') {
+    if (payload.message) {
+      message = payload.message
+      suggestion = payload.details?.suggestion ?? null
+    } else if (payload.details?.errors?.length) {
+      message = payload.details.errors[0]?.msg ?? message
+    } else if (typeof payload.detail === 'string') {
       message = payload.detail
     } else if (Array.isArray(payload.detail)) {
       message = payload.detail[0]?.msg ?? message

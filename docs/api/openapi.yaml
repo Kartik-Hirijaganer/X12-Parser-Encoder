@@ -8,7 +8,7 @@
             "title": "Code",
             "type": "string"
           },
-          "follow_up_action_code": {
+          "followUpActionCode": {
             "anyOf": [
               {
                 "type": "string"
@@ -17,7 +17,7 @@
                 "type": "null"
               }
             ],
-            "title": "Follow Up Action Code"
+            "title": "Followupactioncode"
           },
           "message": {
             "title": "Message",
@@ -212,27 +212,27 @@
       "ArchiveEntry": {
         "additionalProperties": false,
         "properties": {
-          "control_numbers": {
+          "controlNumbers": {
             "$ref": "#/components/schemas/ControlNumbers"
           },
-          "file_name": {
-            "title": "File Name",
+          "fileName": {
+            "title": "Filename",
             "type": "string"
           },
-          "record_range_end": {
-            "title": "Record Range End",
+          "recordRangeEnd": {
+            "title": "Recordrangeend",
             "type": "integer"
           },
-          "record_range_start": {
-            "title": "Record Range Start",
+          "recordRangeStart": {
+            "title": "Recordrangestart",
             "type": "integer"
           }
         },
         "required": [
-          "file_name",
-          "record_range_start",
-          "record_range_end",
-          "control_numbers"
+          "fileName",
+          "recordRangeStart",
+          "recordRangeEnd",
+          "controlNumbers"
         ],
         "title": "ArchiveEntry",
         "type": "object"
@@ -258,7 +258,7 @@
             ],
             "title": "Description"
           },
-          "entity_identifier_code": {
+          "entityIdentifierCode": {
             "anyOf": [
               {
                 "type": "string"
@@ -267,7 +267,7 @@
                 "type": "null"
               }
             ],
-            "title": "Entity Identifier Code"
+            "title": "Entityidentifiercode"
           },
           "identifier": {
             "anyOf": [
@@ -280,7 +280,7 @@
             ],
             "title": "Identifier"
           },
-          "loop_identifier": {
+          "loopIdentifier": {
             "anyOf": [
               {
                 "type": "string"
@@ -289,7 +289,7 @@
                 "type": "null"
               }
             ],
-            "title": "Loop Identifier"
+            "title": "Loopidentifier"
           },
           "name": {
             "anyOf": [
@@ -440,11 +440,11 @@
             ],
             "title": "Isa13"
           },
-          "st02_range": {
+          "st02Range": {
             "items": {
               "type": "string"
             },
-            "title": "St02 Range",
+            "title": "St02Range",
             "type": "array"
           }
         },
@@ -468,8 +468,8 @@
             "title": "Errors",
             "type": "array"
           },
-          "file_type": {
-            "title": "File Type",
+          "fileType": {
+            "title": "Filetype",
             "type": "string"
           },
           "filename": {
@@ -483,8 +483,8 @@
             "title": "Patients",
             "type": "array"
           },
-          "record_count": {
-            "title": "Record Count",
+          "recordCount": {
+            "title": "Recordcount",
             "type": "integer"
           },
           "warnings": {
@@ -497,8 +497,8 @@
         },
         "required": [
           "filename",
-          "file_type",
-          "record_count"
+          "fileType",
+          "recordCount"
         ],
         "title": "ConvertResponse",
         "type": "object"
@@ -506,7 +506,7 @@
       "Correction": {
         "additionalProperties": false,
         "properties": {
-          "corrected_value": {
+          "correctedValue": {
             "anyOf": [
               {
                 "type": "string"
@@ -515,7 +515,7 @@
                 "type": "null"
               }
             ],
-            "title": "Corrected Value"
+            "title": "Correctedvalue"
           },
           "field": {
             "title": "Field",
@@ -525,7 +525,7 @@
             "title": "Message",
             "type": "string"
           },
-          "original_value": {
+          "originalValue": {
             "anyOf": [
               {
                 "type": "string"
@@ -534,7 +534,7 @@
                 "type": "null"
               }
             ],
-            "title": "Original Value"
+            "title": "Originalvalue"
           },
           "row": {
             "title": "Row",
@@ -552,28 +552,28 @@
       "EligibilityResult": {
         "additionalProperties": false,
         "properties": {
-          "aaa_errors": {
+          "aaaErrors": {
             "items": {
               "$ref": "#/components/schemas/AAAError"
             },
-            "title": "Aaa Errors",
+            "title": "Aaaerrors",
             "type": "array"
           },
-          "benefit_entities": {
+          "benefitEntities": {
             "items": {
               "$ref": "#/components/schemas/BenefitEntity"
             },
-            "title": "Benefit Entities",
+            "title": "Benefitentities",
             "type": "array"
           },
-          "eligibility_segments": {
+          "eligibilitySegments": {
             "items": {
               "$ref": "#/components/schemas/EligibilitySegment"
             },
-            "title": "Eligibility Segments",
+            "title": "Eligibilitysegments",
             "type": "array"
           },
-          "member_id": {
+          "memberId": {
             "anyOf": [
               {
                 "type": "string"
@@ -582,17 +582,17 @@
                 "type": "null"
               }
             ],
-            "title": "Member Id"
+            "title": "Memberid"
           },
-          "member_name": {
-            "title": "Member Name",
+          "memberName": {
+            "title": "Membername",
             "type": "string"
           },
-          "overall_status": {
-            "title": "Overall Status",
+          "overallStatus": {
+            "title": "Overallstatus",
             "type": "string"
           },
-          "st_control_number": {
+          "stControlNumber": {
             "anyOf": [
               {
                 "type": "string"
@@ -601,9 +601,9 @@
                 "type": "null"
               }
             ],
-            "title": "St Control Number"
+            "title": "Stcontrolnumber"
           },
-          "status_reason": {
+          "statusReason": {
             "anyOf": [
               {
                 "type": "string"
@@ -612,9 +612,9 @@
                 "type": "null"
               }
             ],
-            "title": "Status Reason"
+            "title": "Statusreason"
           },
-          "trace_number": {
+          "traceNumber": {
             "anyOf": [
               {
                 "type": "string"
@@ -623,12 +623,12 @@
                 "type": "null"
               }
             ],
-            "title": "Trace Number"
+            "title": "Tracenumber"
           }
         },
         "required": [
-          "member_name",
-          "overall_status"
+          "memberName",
+          "overallStatus"
         ],
         "title": "EligibilityResult",
         "type": "object"
@@ -636,7 +636,7 @@
       "EligibilitySegment": {
         "additionalProperties": false,
         "properties": {
-          "coverage_level_code": {
+          "coverageLevelCode": {
             "anyOf": [
               {
                 "type": "string"
@@ -645,13 +645,13 @@
                 "type": "null"
               }
             ],
-            "title": "Coverage Level Code"
+            "title": "Coveragelevelcode"
           },
-          "eligibility_code": {
-            "title": "Eligibility Code",
+          "eligibilityCode": {
+            "title": "Eligibilitycode",
             "type": "string"
           },
-          "in_plan_network_indicator": {
+          "inPlanNetworkIndicator": {
             "anyOf": [
               {
                 "type": "string"
@@ -660,9 +660,9 @@
                 "type": "null"
               }
             ],
-            "title": "In Plan Network Indicator"
+            "title": "Inplannetworkindicator"
           },
-          "insurance_type_code": {
+          "insuranceTypeCode": {
             "anyOf": [
               {
                 "type": "string"
@@ -671,9 +671,9 @@
                 "type": "null"
               }
             ],
-            "title": "Insurance Type Code"
+            "title": "Insurancetypecode"
           },
-          "monetary_amount": {
+          "monetaryAmount": {
             "anyOf": [
               {
                 "type": "string"
@@ -682,9 +682,9 @@
                 "type": "null"
               }
             ],
-            "title": "Monetary Amount"
+            "title": "Monetaryamount"
           },
-          "plan_coverage_description": {
+          "planCoverageDescription": {
             "anyOf": [
               {
                 "type": "string"
@@ -693,7 +693,7 @@
                 "type": "null"
               }
             ],
-            "title": "Plan Coverage Description"
+            "title": "Plancoveragedescription"
           },
           "quantity": {
             "anyOf": [
@@ -706,7 +706,7 @@
             ],
             "title": "Quantity"
           },
-          "service_type_code": {
+          "serviceTypeCode": {
             "anyOf": [
               {
                 "type": "string"
@@ -715,18 +715,18 @@
                 "type": "null"
               }
             ],
-            "title": "Service Type Code"
+            "title": "Servicetypecode"
           },
-          "service_type_codes": {
+          "serviceTypeCodes": {
             "items": {
               "type": "string"
             },
-            "title": "Service Type Codes",
+            "title": "Servicetypecodes",
             "type": "array"
           }
         },
         "required": [
-          "eligibility_code"
+          "eligibilityCode"
         ],
         "title": "EligibilitySegment",
         "type": "object"
@@ -746,9 +746,9 @@
             "title": "Inactive",
             "type": "integer"
           },
-          "not_found": {
+          "notFound": {
             "default": 0,
-            "title": "Not Found",
+            "title": "Notfound",
             "type": "integer"
           },
           "total": {
@@ -784,19 +784,19 @@
             ],
             "title": "Filename"
           },
-          "parser_issue_count": {
+          "parserIssueCount": {
             "default": 0,
-            "title": "Parser Issue Count",
+            "title": "Parserissuecount",
             "type": "integer"
           },
-          "parser_issues": {
+          "parserIssues": {
             "items": {
               "$ref": "#/components/schemas/ParserIssue"
             },
-            "title": "Parser Issues",
+            "title": "Parserissues",
             "type": "array"
           },
-          "payer_name": {
+          "payerName": {
             "anyOf": [
               {
                 "type": "string"
@@ -805,7 +805,7 @@
                 "type": "null"
               }
             ],
-            "title": "Payer Name"
+            "title": "Payername"
           },
           "results": {
             "items": {
@@ -855,14 +855,14 @@
       "GenerateResponse": {
         "additionalProperties": false,
         "properties": {
-          "archive_entries": {
+          "archiveEntries": {
             "items": {
               "$ref": "#/components/schemas/ArchiveEntry"
             },
-            "title": "Archive Entries",
+            "title": "Archiveentries",
             "type": "array"
           },
-          "batch_summary_file_name": {
+          "batchSummaryFileName": {
             "anyOf": [
               {
                 "type": "string"
@@ -871,9 +871,9 @@
                 "type": "null"
               }
             ],
-            "title": "Batch Summary File Name"
+            "title": "Batchsummaryfilename"
           },
-          "batch_summary_text": {
+          "batchSummaryText": {
             "anyOf": [
               {
                 "type": "string"
@@ -882,12 +882,12 @@
                 "type": "null"
               }
             ],
-            "title": "Batch Summary Text"
+            "title": "Batchsummarytext"
           },
-          "control_numbers": {
+          "controlNumbers": {
             "$ref": "#/components/schemas/ControlNumbers"
           },
-          "download_file_name": {
+          "downloadFileName": {
             "anyOf": [
               {
                 "type": "string"
@@ -896,7 +896,7 @@
                 "type": "null"
               }
             ],
-            "title": "Download File Name"
+            "title": "Downloadfilename"
           },
           "errors": {
             "items": {
@@ -905,8 +905,8 @@
             "title": "Errors",
             "type": "array"
           },
-          "file_size_bytes": {
-            "title": "File Size Bytes",
+          "fileSizeBytes": {
+            "title": "Filesizebytes",
             "type": "integer"
           },
           "manifest": {
@@ -926,19 +926,19 @@
             "title": "Partial",
             "type": "boolean"
           },
-          "segment_count": {
-            "title": "Segment Count",
+          "segmentCount": {
+            "title": "Segmentcount",
             "type": "integer"
           },
-          "split_count": {
-            "title": "Split Count",
+          "splitCount": {
+            "title": "Splitcount",
             "type": "integer"
           },
-          "transaction_count": {
-            "title": "Transaction Count",
+          "transactionCount": {
+            "title": "Transactioncount",
             "type": "integer"
           },
-          "x12_content": {
+          "x12Content": {
             "anyOf": [
               {
                 "type": "string"
@@ -947,9 +947,9 @@
                 "type": "null"
               }
             ],
-            "title": "X12 Content"
+            "title": "X12Content"
           },
-          "zip_content_base64": {
+          "zipContentBase64": {
             "anyOf": [
               {
                 "type": "string"
@@ -958,15 +958,15 @@
                 "type": "null"
               }
             ],
-            "title": "Zip Content Base64"
+            "title": "Zipcontentbase64"
           }
         },
         "required": [
-          "transaction_count",
-          "segment_count",
-          "file_size_bytes",
-          "split_count",
-          "control_numbers"
+          "transactionCount",
+          "segmentCount",
+          "fileSizeBytes",
+          "splitCount",
+          "controlNumbers"
         ],
         "title": "GenerateResponse",
         "type": "object"
@@ -994,30 +994,30 @@
             "title": "Details",
             "type": "array"
           },
-          "library_import": {
-            "title": "Library Import",
+          "libraryImport": {
+            "title": "Libraryimport",
             "type": "boolean"
           },
-          "parser_smoke": {
-            "title": "Parser Smoke",
+          "parserSmoke": {
+            "title": "Parsersmoke",
             "type": "boolean"
           },
-          "profiles_loaded": {
+          "profilesLoaded": {
             "items": {
               "type": "string"
             },
-            "title": "Profiles Loaded",
+            "title": "Profilesloaded",
             "type": "array"
           },
-          "prometheus_metrics": {
-            "title": "Prometheus Metrics",
+          "prometheusMetrics": {
+            "title": "Prometheusmetrics",
             "type": "boolean"
           }
         },
         "required": [
-          "library_import",
-          "parser_smoke",
-          "prometheus_metrics"
+          "libraryImport",
+          "parserSmoke",
+          "prometheusMetrics"
         ],
         "title": "HealthChecks",
         "type": "object"
@@ -1052,22 +1052,22 @@
             "title": "Filename",
             "type": "string"
           },
-          "parsed_result_count": {
-            "title": "Parsed Result Count",
+          "parsedResultCount": {
+            "title": "Parsedresultcount",
             "type": "integer"
           },
-          "parser_issue_count": {
-            "title": "Parser Issue Count",
+          "parserIssueCount": {
+            "title": "Parserissuecount",
             "type": "integer"
           },
-          "parser_issues": {
+          "parserIssues": {
             "items": {
               "$ref": "#/components/schemas/ParserIssue"
             },
-            "title": "Parser Issues",
+            "title": "Parserissues",
             "type": "array"
           },
-          "payer_name": {
+          "payerName": {
             "anyOf": [
               {
                 "type": "string"
@@ -1076,7 +1076,7 @@
                 "type": "null"
               }
             ],
-            "title": "Payer Name"
+            "title": "Payername"
           },
           "results": {
             "items": {
@@ -1085,26 +1085,26 @@
             "title": "Results",
             "type": "array"
           },
-          "source_transaction_count": {
-            "title": "Source Transaction Count",
+          "sourceTransactionCount": {
+            "title": "Sourcetransactioncount",
             "type": "integer"
           },
           "summary": {
             "$ref": "#/components/schemas/EligibilitySummary"
           },
-          "transaction_count": {
+          "transactionCount": {
             "deprecated": true,
             "description": "Deprecated alias of source_transaction_count. Will be removed in the next minor release; prefer source_transaction_count.",
-            "title": "Transaction Count",
+            "title": "Transactioncount",
             "type": "integer"
           }
         },
         "required": [
           "filename",
-          "source_transaction_count",
-          "parsed_result_count",
-          "parser_issue_count",
-          "transaction_count",
+          "sourceTransactionCount",
+          "parsedResultCount",
+          "parserIssueCount",
+          "transactionCount",
           "summary"
         ],
         "title": "ParseResponse",
@@ -1128,7 +1128,7 @@
             "title": "Message",
             "type": "string"
           },
-          "segment_id": {
+          "segmentId": {
             "anyOf": [
               {
                 "type": "string"
@@ -1137,7 +1137,7 @@
                 "type": "null"
               }
             ],
-            "title": "Segment Id"
+            "title": "Segmentid"
           },
           "severity": {
             "default": "error",
@@ -1148,7 +1148,7 @@
             "title": "Severity",
             "type": "string"
           },
-          "transaction_control_number": {
+          "transactionControlNumber": {
             "anyOf": [
               {
                 "type": "string"
@@ -1157,9 +1157,9 @@
                 "type": "null"
               }
             ],
-            "title": "Transaction Control Number"
+            "title": "Transactioncontrolnumber"
           },
-          "transaction_index": {
+          "transactionIndex": {
             "anyOf": [
               {
                 "type": "integer"
@@ -1168,7 +1168,7 @@
                 "type": "null"
               }
             ],
-            "title": "Transaction Index"
+            "title": "Transactionindex"
           }
         },
         "required": [
@@ -1180,23 +1180,23 @@
       "PatientRecord": {
         "additionalProperties": false,
         "properties": {
-          "date_of_birth": {
-            "title": "Date Of Birth",
+          "dateOfBirth": {
+            "title": "Dateofbirth",
             "type": "string"
           },
-          "first_name": {
-            "title": "First Name",
+          "firstName": {
+            "title": "Firstname",
             "type": "string"
           },
           "gender": {
             "title": "Gender",
             "type": "string"
           },
-          "last_name": {
-            "title": "Last Name",
+          "lastName": {
+            "title": "Lastname",
             "type": "string"
           },
-          "member_id": {
+          "memberId": {
             "anyOf": [
               {
                 "type": "string"
@@ -1205,13 +1205,13 @@
                 "type": "null"
               }
             ],
-            "title": "Member Id"
+            "title": "Memberid"
           },
-          "service_date": {
-            "title": "Service Date",
+          "serviceDate": {
+            "title": "Servicedate",
             "type": "string"
           },
-          "service_date_end": {
+          "serviceDateEnd": {
             "anyOf": [
               {
                 "type": "string"
@@ -1220,10 +1220,10 @@
                 "type": "null"
               }
             ],
-            "title": "Service Date End"
+            "title": "Servicedateend"
           },
-          "service_type_code": {
-            "title": "Service Type Code",
+          "serviceTypeCode": {
+            "title": "Servicetypecode",
             "type": "string"
           },
           "ssn": {
@@ -1239,12 +1239,12 @@
           }
         },
         "required": [
-          "last_name",
-          "first_name",
-          "date_of_birth",
+          "lastName",
+          "firstName",
+          "dateOfBirth",
           "gender",
-          "service_type_code",
-          "service_date"
+          "serviceTypeCode",
+          "serviceDate"
         ],
         "title": "PatientRecord",
         "type": "object"
@@ -1252,8 +1252,8 @@
       "PatientValidationRow": {
         "additionalProperties": false,
         "properties": {
-          "error_count": {
-            "title": "Error Count",
+          "errorCount": {
+            "title": "Errorcount",
             "type": "integer"
           },
           "index": {
@@ -1267,7 +1267,7 @@
             "title": "Issues",
             "type": "array"
           },
-          "member_id": {
+          "memberId": {
             "anyOf": [
               {
                 "type": "string"
@@ -1276,13 +1276,13 @@
                 "type": "null"
               }
             ],
-            "title": "Member Id"
+            "title": "Memberid"
           },
-          "member_name": {
-            "title": "Member Name",
+          "memberName": {
+            "title": "Membername",
             "type": "string"
           },
-          "service_date": {
+          "serviceDate": {
             "anyOf": [
               {
                 "type": "string"
@@ -1291,7 +1291,7 @@
                 "type": "null"
               }
             ],
-            "title": "Service Date"
+            "title": "Servicedate"
           },
           "status": {
             "enum": [
@@ -1301,7 +1301,7 @@
             "title": "Status",
             "type": "string"
           },
-          "transaction_control_number": {
+          "transactionControlNumber": {
             "anyOf": [
               {
                 "type": "string"
@@ -1310,22 +1310,22 @@
                 "type": "null"
               }
             ],
-            "title": "Transaction Control Number"
+            "title": "Transactioncontrolnumber"
           },
-          "warning_count": {
-            "title": "Warning Count",
+          "warningCount": {
+            "title": "Warningcount",
             "type": "integer"
           }
         },
         "required": [
           "index",
-          "transaction_control_number",
-          "member_name",
-          "member_id",
-          "service_date",
+          "transactionControlNumber",
+          "memberName",
+          "memberId",
+          "serviceDate",
           "status",
-          "error_count",
-          "warning_count"
+          "errorCount",
+          "warningCount"
         ],
         "title": "PatientValidationRow",
         "type": "object"
@@ -1345,15 +1345,15 @@
             "title": "Partial",
             "type": "boolean"
           },
-          "segment_count": {
-            "title": "Segment Count",
+          "segmentCount": {
+            "title": "Segmentcount",
             "type": "integer"
           },
-          "transaction_count": {
-            "title": "Transaction Count",
+          "transactionCount": {
+            "title": "Transactioncount",
             "type": "integer"
           },
-          "validation_result": {
+          "validationResult": {
             "$ref": "#/components/schemas/PipelineValidationResult"
           },
           "warnings": {
@@ -1363,7 +1363,7 @@
             "title": "Warnings",
             "type": "array"
           },
-          "x12_content": {
+          "x12Content": {
             "anyOf": [
               {
                 "type": "string"
@@ -1372,13 +1372,13 @@
                 "type": "null"
               }
             ],
-            "title": "X12 Content"
+            "title": "X12Content"
           }
         },
         "required": [
-          "validation_result",
-          "transaction_count",
-          "segment_count"
+          "validationResult",
+          "transactionCount",
+          "segmentCount"
         ],
         "title": "PipelineResponse",
         "type": "object"
@@ -1386,12 +1386,12 @@
       "PipelineValidationResult": {
         "additionalProperties": false,
         "properties": {
-          "error_count": {
-            "title": "Error Count",
+          "errorCount": {
+            "title": "Errorcount",
             "type": "integer"
           },
-          "is_valid": {
-            "title": "Is Valid",
+          "isValid": {
+            "title": "Isvalid",
             "type": "boolean"
           },
           "issues": {
@@ -1401,15 +1401,15 @@
             "title": "Issues",
             "type": "array"
           },
-          "warning_count": {
-            "title": "Warning Count",
+          "warningCount": {
+            "title": "Warningcount",
             "type": "integer"
           }
         },
         "required": [
-          "is_valid",
-          "error_count",
-          "warning_count"
+          "isValid",
+          "errorCount",
+          "warningCount"
         ],
         "title": "PipelineValidationResult",
         "type": "object"
@@ -1417,38 +1417,38 @@
       "ProfileDefaultsResponse": {
         "additionalProperties": false,
         "properties": {
-          "default_service_type_code": {
-            "title": "Default Service Type Code",
+          "defaultServiceTypeCode": {
+            "title": "Defaultservicetypecode",
             "type": "string"
           },
-          "interchange_receiver_id": {
-            "title": "Interchange Receiver Id",
+          "interchangeReceiverId": {
+            "title": "Interchangereceiverid",
             "type": "string"
           },
-          "max_batch_size": {
-            "title": "Max Batch Size",
+          "maxBatchSize": {
+            "title": "Maxbatchsize",
             "type": "integer"
           },
-          "payer_id": {
-            "title": "Payer Id",
+          "payerId": {
+            "title": "Payerid",
             "type": "string"
           },
-          "payer_name": {
-            "title": "Payer Name",
+          "payerName": {
+            "title": "Payername",
             "type": "string"
           },
-          "receiver_id_qualifier": {
-            "title": "Receiver Id Qualifier",
+          "receiverIdQualifier": {
+            "title": "Receiveridqualifier",
             "type": "string"
           }
         },
         "required": [
-          "payer_name",
-          "payer_id",
-          "interchange_receiver_id",
-          "receiver_id_qualifier",
-          "default_service_type_code",
-          "max_batch_size"
+          "payerName",
+          "payerId",
+          "interchangeReceiverId",
+          "receiverIdQualifier",
+          "defaultServiceTypeCode",
+          "maxBatchSize"
         ],
         "title": "ProfileDefaultsResponse",
         "type": "object"
@@ -1460,8 +1460,8 @@
             "title": "Description",
             "type": "string"
           },
-          "display_name": {
-            "title": "Display Name",
+          "displayName": {
+            "title": "Displayname",
             "type": "string"
           },
           "name": {
@@ -1471,7 +1471,7 @@
         },
         "required": [
           "name",
-          "display_name",
+          "displayName",
           "description"
         ],
         "title": "ProfileInfo",
@@ -1535,16 +1535,16 @@
       "ValidateResponse-Input": {
         "additionalProperties": false,
         "properties": {
-          "error_count": {
-            "title": "Error Count",
+          "errorCount": {
+            "title": "Errorcount",
             "type": "integer"
           },
           "filename": {
             "title": "Filename",
             "type": "string"
           },
-          "is_valid": {
-            "title": "Is Valid",
+          "isValid": {
+            "title": "Isvalid",
             "type": "boolean"
           },
           "issues": {
@@ -1571,16 +1571,16 @@
               }
             ]
           },
-          "warning_count": {
-            "title": "Warning Count",
+          "warningCount": {
+            "title": "Warningcount",
             "type": "integer"
           }
         },
         "required": [
           "filename",
-          "is_valid",
-          "error_count",
-          "warning_count"
+          "isValid",
+          "errorCount",
+          "warningCount"
         ],
         "title": "ValidateResponse",
         "type": "object"
@@ -1588,16 +1588,16 @@
       "ValidateResponse-Output": {
         "additionalProperties": false,
         "properties": {
-          "error_count": {
-            "title": "Error Count",
+          "errorCount": {
+            "title": "Errorcount",
             "type": "integer"
           },
           "filename": {
             "title": "Filename",
             "type": "string"
           },
-          "is_valid": {
-            "title": "Is Valid",
+          "isValid": {
+            "title": "Isvalid",
             "type": "boolean"
           },
           "issues": {
@@ -1624,16 +1624,16 @@
               }
             ]
           },
-          "warning_count": {
-            "title": "Warning Count",
+          "warningCount": {
+            "title": "Warningcount",
             "type": "integer"
           }
         },
         "required": [
           "filename",
-          "is_valid",
-          "error_count",
-          "warning_count"
+          "isValid",
+          "errorCount",
+          "warningCount"
         ],
         "title": "ValidateResponse",
         "type": "object"
@@ -1726,7 +1726,7 @@
             ],
             "title": "Profile"
           },
-          "segment_id": {
+          "segmentId": {
             "anyOf": [
               {
                 "type": "string"
@@ -1735,7 +1735,7 @@
                 "type": "null"
               }
             ],
-            "title": "Segment Id"
+            "title": "Segmentid"
           },
           "severity": {
             "title": "Severity",
@@ -1752,7 +1752,7 @@
             ],
             "title": "Suggestion"
           },
-          "transaction_control_number": {
+          "transactionControlNumber": {
             "anyOf": [
               {
                 "type": "string"
@@ -1761,9 +1761,9 @@
                 "type": "null"
               }
             ],
-            "title": "Transaction Control Number"
+            "title": "Transactioncontrolnumber"
           },
-          "transaction_index": {
+          "transactionIndex": {
             "anyOf": [
               {
                 "type": "integer"
@@ -1772,7 +1772,7 @@
                 "type": "null"
               }
             ],
-            "title": "Transaction Index"
+            "title": "Transactionindex"
           }
         },
         "required": [
@@ -1787,23 +1787,23 @@
       "ValidationSummary": {
         "additionalProperties": false,
         "properties": {
-          "invalid_patients": {
-            "title": "Invalid Patients",
+          "invalidPatients": {
+            "title": "Invalidpatients",
             "type": "integer"
           },
-          "total_patients": {
-            "title": "Total Patients",
+          "totalPatients": {
+            "title": "Totalpatients",
             "type": "integer"
           },
-          "valid_patients": {
-            "title": "Valid Patients",
+          "validPatients": {
+            "title": "Validpatients",
             "type": "integer"
           }
         },
         "required": [
-          "total_patients",
-          "valid_patients",
-          "invalid_patients"
+          "totalPatients",
+          "validPatients",
+          "invalidPatients"
         ],
         "title": "ValidationSummary",
         "type": "object"
@@ -1859,7 +1859,7 @@
   },
   "info": {
     "title": "Eligibility Workbench API",
-    "version": "0.1.1"
+    "version": "1.0.1"
   },
   "openapi": "3.1.0",
   "paths": {

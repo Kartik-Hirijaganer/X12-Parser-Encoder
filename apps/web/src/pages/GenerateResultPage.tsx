@@ -20,7 +20,7 @@ export function GenerateResultPage() {
   const [showFullX12, setShowFullX12] = useState(false)
 
   const segmentPreview = useMemo(() => {
-    const content = routeState?.response.x12_content
+    const content = routeState?.response.x12Content
     if (!content) {
       return { previewText: '', totalSegments: 0, hasMore: false }
     }
@@ -32,7 +32,7 @@ export function GenerateResultPage() {
       totalSegments: segments.length,
       hasMore: segments.length > SEGMENT_PREVIEW_COUNT,
     }
-  }, [routeState?.response.x12_content])
+  }, [routeState?.response.x12Content])
 
   if (!routeState) {
     return (
@@ -51,9 +51,9 @@ export function GenerateResultPage() {
 
   const { response } = routeState
   const primaryDownloadName =
-    response.download_file_name ??
-    (response.split_count > 1 ? 'eligibility_batch.zip' : 'eligibility_270.txt')
-  const batchSummaryFileName = response.batch_summary_file_name ?? 'submission_summary.txt'
+    response.downloadFileName ??
+    (response.splitCount > 1 ? 'eligibility_batch.zip' : 'eligibility_270.txt')
+  const batchSummaryFileName = response.batchSummaryFileName ?? 'submission_summary.txt'
 
   return (
     <AppShell
@@ -85,13 +85,13 @@ export function GenerateResultPage() {
       </Card>
 
       <Card className="grid gap-4 md:grid-cols-4">
-        <SummaryCard label="Transactions" value={String(response.transaction_count)} />
-        <SummaryCard label="Segments" value={String(response.segment_count)} />
-        <SummaryCard label="File Size" value={formatBytes(response.file_size_bytes)} />
-        <SummaryCard label="Split Count" value={String(response.split_count)} />
+        <SummaryCard label="Transactions" value={String(response.transactionCount)} />
+        <SummaryCard label="Segments" value={String(response.segmentCount)} />
+        <SummaryCard label="File Size" value={formatBytes(response.fileSizeBytes)} />
+        <SummaryCard label="Split Count" value={String(response.splitCount)} />
       </Card>
 
-      {response.split_count > 1 && response.archive_entries.length > 0 ? (
+      {response.splitCount > 1 && response.archiveEntries.length > 0 ? (
         <Card className="space-y-4">
           <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">Archive manifest</h2>
           <Table
@@ -99,30 +99,30 @@ export function GenerateResultPage() {
               {
                 id: 'file',
                 header: 'File',
-                cell: (entry) => entry.file_name,
-                sortValue: (entry) => entry.file_name,
+                cell: (entry) => entry.fileName,
+                sortValue: (entry) => entry.fileName,
               },
               {
                 id: 'range',
                 header: 'Record Range',
-                cell: (entry) => `${entry.record_range_start} - ${entry.record_range_end}`,
-                sortValue: (entry) => entry.record_range_start,
+                cell: (entry) => `${entry.recordRangeStart} - ${entry.recordRangeEnd}`,
+                sortValue: (entry) => entry.recordRangeStart,
               },
               {
                 id: 'isa',
                 header: 'ISA13',
-                cell: (entry) => entry.control_numbers.isa13 ?? 'N/A',
-                sortValue: (entry) => entry.control_numbers.isa13 ?? '',
+                cell: (entry) => entry.controlNumbers.isa13 ?? 'N/A',
+                sortValue: (entry) => entry.controlNumbers.isa13 ?? '',
               },
             ]}
             pageSize={6}
-            rowKey={(entry) => entry.file_name}
-            rows={response.archive_entries}
+            rowKey={(entry) => entry.fileName}
+            rows={response.archiveEntries}
           />
         </Card>
       ) : null}
 
-      {response.batch_summary_text ? (
+      {response.batchSummaryText ? (
         <Card className="space-y-4">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -138,12 +138,12 @@ export function GenerateResultPage() {
             </p>
           </div>
           <pre className="max-h-[var(--layout-preview-max-height)] overflow-auto rounded-[var(--radius-lg)] bg-[var(--color-surface-subtle)] p-5 font-mono text-caption leading-6 text-[var(--color-text-primary)]">
-            {response.batch_summary_text}
+            {response.batchSummaryText}
           </pre>
         </Card>
       ) : null}
 
-      {response.x12_content ? (
+      {response.x12Content ? (
         <Card className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -155,11 +155,11 @@ export function GenerateResultPage() {
               </p>
             </div>
             <p className="text-caption text-[var(--color-text-secondary)]">
-              ISA13 {response.control_numbers.isa13 ?? 'unknown'} • GS06 {response.control_numbers.gs06 ?? 'unknown'}
+              ISA13 {response.controlNumbers.isa13 ?? 'unknown'} • GS06 {response.controlNumbers.gs06 ?? 'unknown'}
             </p>
           </div>
           <pre className="max-h-[var(--layout-x12-preview-max-height)] overflow-auto rounded-[var(--radius-lg)] bg-[linear-gradient(to_bottom,var(--color-surface-dark),var(--color-surface-dark-end))] p-5 font-mono text-sm leading-6 text-[var(--color-code-text)]">
-            {showFullX12 ? response.x12_content : segmentPreview.previewText || response.x12_content}
+            {showFullX12 ? response.x12Content : segmentPreview.previewText || response.x12Content}
           </pre>
           {segmentPreview.hasMore ? (
             <Button
@@ -176,30 +176,30 @@ export function GenerateResultPage() {
       <div className="flex flex-wrap gap-3">
         <Button
           onClick={() => {
-            if (response.zip_content_base64) {
+            if (response.zipContentBase64) {
               downloadBlob(
-                decodeBase64ToBlob(response.zip_content_base64, 'application/zip'),
+                decodeBase64ToBlob(response.zipContentBase64, 'application/zip'),
                 primaryDownloadName,
               )
               toast.success('Download started')
               return
             }
 
-            if (response.x12_content) {
-              downloadTextFile(response.x12_content, primaryDownloadName)
+            if (response.x12Content) {
+              downloadTextFile(response.x12Content, primaryDownloadName)
               toast.success('Download started')
             }
           }}
           variant="primary"
         >
-          {response.split_count > 1 ? 'Download ZIP' : 'Download X12'}
+          {response.splitCount > 1 ? 'Download ZIP' : 'Download X12'}
         </Button>
         <Button
-          disabled={!response.batch_summary_text}
+          disabled={!response.batchSummaryText}
           onClick={() => {
-            if (response.batch_summary_text) {
+            if (response.batchSummaryText) {
               downloadTextFile(
-                response.batch_summary_text,
+                response.batchSummaryText,
                 batchSummaryFileName,
                 'text/plain',
               )
@@ -211,10 +211,10 @@ export function GenerateResultPage() {
           Download Batch Summary
         </Button>
         <Button
-          disabled={!response.x12_content}
+          disabled={!response.x12Content}
           onClick={async () => {
-            if (response.x12_content) {
-              await navigator.clipboard.writeText(response.x12_content)
+            if (response.x12Content) {
+              await navigator.clipboard.writeText(response.x12Content)
               toast.success('Copied X12 to clipboard')
             }
           }}

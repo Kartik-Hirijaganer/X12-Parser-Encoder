@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "x12-edi-tools"
-version = "0.1.1"
+version = "1.0.1"
 description = "Python-native X12 270/271 parsing, encoding, and validation tools."
 readme = "README.md"
 requires-python = ">=3.11"

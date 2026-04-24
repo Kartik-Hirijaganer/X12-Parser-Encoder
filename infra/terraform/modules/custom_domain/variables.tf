@@ -22,18 +22,6 @@ variable "hosted_zone_id" {
   default     = null
 }
 
-variable "cloudfront_distribution_domain_name" {
-  description = "CloudFront distribution domain name used as the custom-domain DNS target."
-  type        = string
-  default     = null
-}
-
-variable "cloudfront_distribution_hosted_zone_id" {
-  description = "CloudFront distribution hosted zone ID used by Route 53 ALIAS records."
-  type        = string
-  default     = null
-}
-
 variable "tags" {
   description = "Tags applied to custom-domain resources that support tagging."
   type        = map(string)

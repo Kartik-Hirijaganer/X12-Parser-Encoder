@@ -20,8 +20,8 @@ def test_export_xlsx_includes_parser_issues_sheet_when_present(
     client: TestClient,
 ) -> None:
     payload = _export_payload()
-    payload["parser_issue_count"] = 1
-    payload["parser_issues"] = [
+    payload["parserIssueCount"] = 1
+    payload["parserIssues"] = [
         {
             "transaction_index": 1,
             "transaction_control_number": "0002",

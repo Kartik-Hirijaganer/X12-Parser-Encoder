@@ -20,12 +20,12 @@ export function PatientIssueDrawer({
             Patient #{row.index + 1}
           </p>
           <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">
-            {row.member_name}
+            {row.memberName}
           </h3>
           <p className="text-xs text-[var(--color-text-secondary)]">
-            {row.member_id ? `Member ID ${row.member_id}` : 'Member ID not provided'}
-            {row.service_date ? ` • Service ${formatDate(row.service_date)}` : ''}
-            {row.transaction_control_number ? ` • ST ${row.transaction_control_number}` : ''}
+            {row.memberId ? `Member ID ${row.memberId}` : 'Member ID not provided'}
+            {row.serviceDate ? ` • Service ${formatDate(row.serviceDate)}` : ''}
+            {row.transactionControlNumber ? ` • ST ${row.transactionControlNumber}` : ''}
           </p>
         </div>
         <div className="flex items-center gap-3">

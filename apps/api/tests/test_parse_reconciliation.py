@@ -49,11 +49,11 @@ def test_parse_reconciliation_mismatch_returns_200_and_increments_counter(
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["source_transaction_count"] == 3
-    assert payload["parsed_result_count"] == 1
-    assert payload["parser_issue_count"] == 1
-    assert payload["transaction_count"] == 3
-    assert payload["parser_issues"][0]["transaction_control_number"] == "0002"
+    assert payload["sourceTransactionCount"] == 3
+    assert payload["parsedResultCount"] == 1
+    assert payload["parserIssueCount"] == 1
+    assert payload["transactionCount"] == 3
+    assert payload["parserIssues"][0]["transactionControlNumber"] == "0002"
     assert _mismatch_counter_value(client) == before + 1
 
 

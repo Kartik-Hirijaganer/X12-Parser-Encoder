@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 
 import { Button } from './Button'
 import { CloseIcon } from './Icons'
+import { useReducedMotionPreference } from '../../hooks/useReducedMotionPreference'
 import { cn } from '../../utils/cn'
 
 interface ModalProps {
@@ -26,11 +27,19 @@ export function Modal({
   open,
   title,
 }: ModalProps) {
+  const prefersReducedMotion = useReducedMotionPreference()
+
   return (
     <Dialog.Root onOpenChange={onOpenChange} open={open}>
       <Dialog.Portal>
-        <Dialog.Overlay className={cn('ui-dialog-overlay', overlayClass)} />
-        <Dialog.Content className={cn('ui-dialog-content', contentClass, className)}>
+        <Dialog.Overlay
+          className={cn('ui-dialog-overlay', overlayClass)}
+          data-reduced-motion={prefersReducedMotion}
+        />
+        <Dialog.Content
+          className={cn('ui-dialog-content', contentClass, className)}
+          data-reduced-motion={prefersReducedMotion}
+        >
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
               <Dialog.Title className="text-lg font-semibold text-[var(--color-text-primary)]">

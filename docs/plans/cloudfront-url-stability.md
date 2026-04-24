@@ -1,5 +1,8 @@
 # CloudFront URL Stability — Production Plan
 
+> Archived historical plan. This document describes the pre-serverless deployment
+> path and is excluded from current legacy-reference cleanup gates.
+
 | | |
 |---|---|
 | **Status** | Draft, awaiting sign-off |

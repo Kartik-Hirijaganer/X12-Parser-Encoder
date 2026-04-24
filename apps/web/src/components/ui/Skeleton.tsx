@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 
+import { useReducedMotionPreference } from '../../hooks/useReducedMotionPreference'
 import { cn } from '../../utils/cn'
 
 type RadiusToken = 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'pill'
@@ -19,6 +20,7 @@ export function Skeleton({
   className,
   'aria-label': ariaLabel = 'Loading',
 }: SkeletonProps) {
+  const prefersReducedMotion = useReducedMotionPreference()
   const style: CSSProperties = {
     width,
     height,
@@ -29,12 +31,13 @@ export function Skeleton({
     <span
       aria-busy="true"
       aria-label={ariaLabel}
-      className={cn(skeletonBaseClass, className)}
+      className={cn(
+        'inline-block bg-[var(--color-surface-secondary)]',
+        !prefersReducedMotion && 'animate-pulse',
+        className,
+      )}
       role="status"
       style={style}
     />
   )
 }
-
-const skeletonBaseClass =
-  'inline-block animate-pulse bg-[var(--color-surface-secondary)]'

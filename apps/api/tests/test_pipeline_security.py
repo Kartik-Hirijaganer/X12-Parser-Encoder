@@ -64,10 +64,10 @@ def test_pipeline_happy_path_and_invalid_rows(
     )
 
     assert success.status_code == 200
-    assert success.json()["x12_content"].startswith("ISA*")
-    assert success.json()["validation_result"]["is_valid"] is True
+    assert success.json()["x12Content"].startswith("ISA*")
+    assert success.json()["validationResult"]["isValid"] is True
     assert failure.status_code == 200
-    assert failure.json()["x12_content"] is None
+    assert failure.json()["x12Content"] is None
     assert failure.json()["errors"]
 
 

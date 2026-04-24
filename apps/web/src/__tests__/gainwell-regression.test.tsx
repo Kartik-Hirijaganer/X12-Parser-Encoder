@@ -30,19 +30,19 @@ const EXPECTED_UNKNOWN = 4
 function buildResults(): EligibilityResult[] {
   const rows: EligibilityResult[] = []
   let index = 0
-  const emit = (status: EligibilityResult['overall_status'], count: number, reason: string): void => {
+  const emit = (status: EligibilityResult['overallStatus'], count: number, reason: string): void => {
     for (let i = 0; i < count; i += 1) {
       index += 1
       rows.push({
-        member_name: `MEMBER${String(index).padStart(4, '0')}, TEST`,
-        member_id: `SUB${String(index).padStart(6, '0')}`,
-        overall_status: status,
-        status_reason: reason,
-        st_control_number: String(index).padStart(4, '0'),
-        trace_number: `TRACE${String(index).padStart(6, '0')}`,
-        eligibility_segments: [],
-        benefit_entities: [],
-        aaa_errors: [],
+        memberName: `MEMBER${String(index).padStart(4, '0')}, TEST`,
+        memberId: `SUB${String(index).padStart(6, '0')}`,
+        overallStatus: status,
+        statusReason: reason,
+        stControlNumber: String(index).padStart(4, '0'),
+        traceNumber: `TRACE${String(index).padStart(6, '0')}`,
+        eligibilitySegments: [],
+        benefitEntities: [],
+        aaaErrors: [],
       })
     }
   }
@@ -58,19 +58,19 @@ const gainwellSummary: EligibilitySummary = {
   active: EXPECTED_ACTIVE,
   inactive: EXPECTED_INACTIVE,
   error: EXPECTED_ERROR,
-  not_found: EXPECTED_NOT_FOUND,
+  notFound: EXPECTED_NOT_FOUND,
   unknown: EXPECTED_UNKNOWN,
 }
 
 const gainwellResponse: ParseResponse = {
   filename: 'gainwell_271_redacted.edi',
-  source_transaction_count: EXPECTED_TOTAL,
-  parsed_result_count: EXPECTED_TOTAL,
-  parser_issue_count: 0,
-  parser_issues: [],
-  transaction_count: EXPECTED_TOTAL,
+  sourceTransactionCount: EXPECTED_TOTAL,
+  parsedResultCount: EXPECTED_TOTAL,
+  parserIssueCount: 0,
+  parserIssues: [],
+  transactionCount: EXPECTED_TOTAL,
   summary: gainwellSummary,
-  payer_name: 'GAINWELL TEST PAYER',
+  payerName: 'GAINWELL TEST PAYER',
   results: buildResults(),
 }
 
@@ -139,10 +139,10 @@ describe('Gainwell 271 dashboard regression', () => {
     })
 
     const matching = gainwellResponse.results.filter(
-      (result) => result.overall_status === filterValue,
+      (result) => result.overallStatus === filterValue,
     )
     expect(matching).toHaveLength(expectedCount)
-    expect(screen.getByText(matching[0].member_name)).toBeInTheDocument()
+    expect(screen.getByText(matching[0].memberName)).toBeInTheDocument()
   })
 
   it('exports every parsed row regardless of the applied filter', async () => {
@@ -162,10 +162,10 @@ describe('Gainwell 271 dashboard regression', () => {
 
     const payload = exportEligibilityWorkbookMock.mock.calls[0][0] as {
       results: EligibilityResult[]
-      parser_issue_count: number
+      parserIssueCount: number
     }
     expect(payload.results).toHaveLength(EXPECTED_TOTAL)
-    expect(payload.parser_issue_count).toBe(0)
+    expect(payload.parserIssueCount).toBe(0)
     expect(downloadBlobMock).toHaveBeenCalledTimes(1)
   })
 })

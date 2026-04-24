@@ -76,7 +76,7 @@ dns_provider  = "route53"
 hosted_zone_id = "Z1234567890"
 ```
 
-Terraform creates the `us-east-1` ACM certificate, DNS validation records, a Route 53 `A` ALIAS record to CloudFront, and attaches the hostname to the CloudFront distribution. The raw `*.cloudfront.net` hostname remains available.
+Terraform creates the `us-east-1` ACM certificate and DNS validation records before CloudFront consumes the certificate. The environment root then creates the Route 53 `A` ALIAS record to CloudFront. The raw `*.cloudfront.net` hostname remains available.
 
 For non-Route-53 DNS, set `dns_provider = "external"` and read `custom_domain_validation_records` plus `custom_domain_cname_record` from Terraform outputs. Add those records at the external provider, then re-apply after ACM has issued the certificate.
 

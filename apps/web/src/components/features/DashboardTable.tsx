@@ -1,6 +1,8 @@
 import type { EligibilityResult } from '../../types/api'
 import { formatStatusLabel, statusVariantFromValue, summarizePlan } from '../../utils/formatters'
 import { Badge } from '../ui/Badge'
+import { EmptyState } from '../ui/EmptyState'
+import { SearchIcon } from '../ui/Icons'
 import { Table } from '../ui/Table'
 import { DashboardRow } from './DashboardRow'
 
@@ -17,24 +19,24 @@ export function DashboardTable({ results }: { results: EligibilityResult[] }) {
         {
           id: 'member_name',
           header: 'Name',
-          cell: (result) => result.member_name,
-          sortValue: (result) => result.member_name,
+          cell: (result) => result.memberName,
+          sortValue: (result) => result.memberName,
         },
         {
           id: 'member_id',
           header: 'Member ID',
-          cell: (result) => result.member_id ?? 'Not returned',
-          sortValue: (result) => result.member_id ?? '',
+          cell: (result) => result.memberId ?? 'Not returned',
+          sortValue: (result) => result.memberId ?? '',
         },
         {
           id: 'status',
           header: 'Status',
           cell: (result) => (
-            <Badge variant={statusVariantFromValue(result.overall_status)}>
-              {formatStatusLabel(result.overall_status)}
+            <Badge variant={statusVariantFromValue(result.overallStatus)}>
+              {formatStatusLabel(result.overallStatus)}
             </Badge>
           ),
-          sortValue: (result) => result.overall_status,
+          sortValue: (result) => result.overallStatus,
         },
         {
           id: 'plan',
@@ -44,12 +46,20 @@ export function DashboardTable({ results }: { results: EligibilityResult[] }) {
         },
       ]}
       emptyMessage="No eligibility rows match the current filter."
+      emptyState={
+        <EmptyState
+          className="border-0 bg-transparent py-6"
+          description="Adjust the status filter to bring rows back into view."
+          icon={<SearchIcon className="h-8 w-8" />}
+          title="No matching eligibility rows"
+        />
+      }
       pageSize={8}
       renderExpandedRow={(result) => <DashboardRow result={result} />}
       rowKey={(result, index) =>
-        result.st_control_number ??
-        result.trace_number ??
-        `${result.member_name}-${result.member_id ?? index}`
+        result.stControlNumber ??
+        result.traceNumber ??
+        `${result.memberName}-${result.memberId ?? index}`
       }
       rows={results}
     />

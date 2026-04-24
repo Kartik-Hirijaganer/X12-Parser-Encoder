@@ -77,8 +77,16 @@
   animation: dialog-fade-in var(--duration-normal) var(--ease-out);
 }
 
+.ui-dialog-overlay[data-reduced-motion='true'] {
+  animation: none;
+}
+
 .ui-dialog-content[data-state='open'] {
   animation: dialog-scale-in var(--duration-normal) var(--ease-out);
+}
+
+.ui-dialog-content[data-reduced-motion='true'] {
+  animation: none;
 }
 
 .ui-drawer-content[data-side='right'][data-state='open'] {
@@ -87,4 +95,14 @@
 
 .ui-drawer-content[data-side='left'][data-state='open'] {
   animation: drawer-slide-in-left var(--duration-slow) var(--ease-out);
+}
+
+.ui-drawer-content[data-reduced-motion='true'] {
+  animation: none;
+}
+
+.ui-toast-reduced-motion,
+.ui-toast-reduced-motion * {
+  animation: none !important;
+  transition: none !important;
 }

@@ -69,15 +69,15 @@ export function statusVariantFromValue(value: string):
 }
 
 export function summarizePlan(result: EligibilityResult): string {
-  const segment = result.eligibility_segments[0]
+  const segment = result.eligibilitySegments[0]
   if (!segment) {
-    return result.aaa_errors[0]?.message ?? 'No plan details returned'
+    return result.aaaErrors[0]?.message ?? 'No plan details returned'
   }
 
   return (
-    segment.plan_coverage_description ??
-    segment.service_type_code ??
-    segment.coverage_level_code ??
+    segment.planCoverageDescription ??
+    segment.serviceTypeCode ??
+    segment.coverageLevelCode ??
     'Coverage returned'
   )
 }

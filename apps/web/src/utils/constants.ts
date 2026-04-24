@@ -61,12 +61,12 @@ export function nextIsaControlNumber(last: number | null): number {
   return last + 1
 }
 export function highestIsa13(response: GenerateResponse): number | null {
-  if (response.archive_entries.length === 0) {
-    return parseIsa13(response.control_numbers.isa13)
+  if (response.archiveEntries.length === 0) {
+    return parseIsa13(response.controlNumbers.isa13)
   }
 
-  const archiveIsaValues = response.archive_entries
-    .map((entry) => parseIsa13(entry.control_numbers.isa13))
+  const archiveIsaValues = response.archiveEntries
+    .map((entry) => parseIsa13(entry.controlNumbers.isa13))
     .filter((value): value is number => value !== null)
 
   return archiveIsaValues.length > 0 ? Math.max(...archiveIsaValues) : null

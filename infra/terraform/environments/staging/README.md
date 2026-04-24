@@ -21,4 +21,4 @@ Staging keeps Phase 4 production knobs conservative by default:
 
 Set `enable_waf = true` temporarily in staging when testing WAF behavior before applying production.
 
-To test the optional Phase 5 hostname path, set `custom_domain`, `dns_provider`, and `hosted_zone_id` in `terraform.tfvars`. Route 53 mode provisions the ACM certificate, validation records, CloudFront alias, and Route 53 ALIAS record.
+To test the optional Phase 5 hostname path, set `custom_domain`, `dns_provider`, and `hosted_zone_id` in `terraform.tfvars`. Route 53 mode provisions the ACM certificate and validation records first, then attaches the CloudFront alias and creates the Route 53 ALIAS record from the environment root.

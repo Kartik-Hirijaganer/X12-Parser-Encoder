@@ -755,8 +755,8 @@ The generator only touches content inside matching markers. A missing start tag 
 - PR simulation: a branch that edits `infra/terraform/modules/lambda_api/main.tf` gets the architecture-review-nudge comment but is not blocked.
 - `README.md` renders the architecture Mermaid diagram correctly on GitHub.
 - All six runbooks have a "you should be done in < 5 min" at the top.
-- `grep -r "legacy managed container service" docs/ README.md` returns zero matches.
-- `grep -r "ECR" docs/ README.md` returns only legacy/migration references.
+- `rg "legacy managed container service" README.md CLAUDE.md docs --glob '!docs/plans/**'` returns zero matches; archived plans under `docs/plans/` are retained as historical decision records and are intentionally excluded.
+- `rg "ECR" README.md CLAUDE.md docs --glob '!docs/plans/**'` returns only current container-image fallback references; archived plans under `docs/plans/` are intentionally excluded.
 - The hand-written sections of README and `architecture.md` are byte-identical before and after `make docs-regenerate` (the marker-block system never touches prose).
 
 ### Demo

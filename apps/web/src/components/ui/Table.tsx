@@ -16,6 +16,7 @@ export interface TableColumn<T> {
 interface TableProps<T> {
   columns: Array<TableColumn<T>>
   emptyMessage?: string
+  emptyState?: React.ReactNode
   pageSize?: number
   renderExpandedRow?: (row: T) => React.ReactNode
   rowKey: (row: T, index: number) => string
@@ -25,6 +26,7 @@ interface TableProps<T> {
 export function Table<T>({
   columns,
   emptyMessage = 'No rows to display.',
+  emptyState,
   pageSize = 10,
   renderExpandedRow,
   rowKey,
@@ -108,7 +110,7 @@ export function Table<T>({
                   className="px-4 py-8 text-center text-sm text-[var(--color-text-secondary)]"
                   colSpan={columns.length + (renderExpandedRow ? 1 : 0)}
                 >
-                  {emptyMessage}
+                  {emptyState ?? emptyMessage}
                 </td>
               </tr>
             ) : null}
