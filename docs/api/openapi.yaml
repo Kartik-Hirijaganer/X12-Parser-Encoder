@@ -1532,60 +1532,7 @@
         "title": "RowError",
         "type": "object"
       },
-      "ValidateResponse-Input": {
-        "additionalProperties": false,
-        "properties": {
-          "errorCount": {
-            "title": "Errorcount",
-            "type": "integer"
-          },
-          "filename": {
-            "title": "Filename",
-            "type": "string"
-          },
-          "isValid": {
-            "title": "Isvalid",
-            "type": "boolean"
-          },
-          "issues": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationIssue"
-            },
-            "title": "Issues",
-            "type": "array"
-          },
-          "patients": {
-            "items": {
-              "$ref": "#/components/schemas/PatientValidationRow"
-            },
-            "title": "Patients",
-            "type": "array"
-          },
-          "summary": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ValidationSummary"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "warningCount": {
-            "title": "Warningcount",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "filename",
-          "isValid",
-          "errorCount",
-          "warningCount"
-        ],
-        "title": "ValidateResponse",
-        "type": "object"
-      },
-      "ValidateResponse-Output": {
+      "ValidateResponse": {
         "additionalProperties": false,
         "properties": {
           "errorCount": {
@@ -1913,7 +1860,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ValidateResponse-Input"
+                "$ref": "#/components/schemas/ValidateResponse"
               }
             }
           },
@@ -2257,7 +2204,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ValidateResponse-Output"
+                  "$ref": "#/components/schemas/ValidateResponse"
                 }
               }
             },
