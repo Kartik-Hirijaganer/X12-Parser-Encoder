@@ -131,3 +131,52 @@ resource "aws_lambda_permission" "function_url_public" {
   qualifier              = aws_lambda_alias.live.name
   function_url_auth_type = "NONE"
 }
+
+resource "terraform_data" "function_url_invoke_public_permission" {
+  input = {
+    function_name = aws_lambda_alias.live.function_name
+    qualifier     = aws_lambda_alias.live.name
+    statement_id  = "AllowPublicFunctionInvokeViaFunctionUrl"
+  }
+
+  triggers_replace = [
+    aws_lambda_alias.live.function_name,
+    aws_lambda_alias.live.name,
+  ]
+
+  provisioner "local-exec" {
+    interpreter = ["/bin/bash", "-c"]
+    command     = <<-EOT
+      set -euo pipefail
+      err_file="$(mktemp)"
+      if aws lambda add-permission \
+        --function-name "$FUNCTION_NAME" \
+        --qualifier "$QUALIFIER" \
+        --statement-id "$STATEMENT_ID" \
+        --action lambda:InvokeFunction \
+        --principal "*" \
+        --invoked-via-function-url >/dev/null 2>"$err_file"; then
+        rm -f "$err_file"
+        exit 0
+      fi
+      if grep -q "ResourceConflictException" "$err_file"; then
+        rm -f "$err_file"
+        exit 0
+      fi
+      cat "$err_file" >&2
+      rm -f "$err_file"
+      exit 1
+    EOT
+
+    environment = {
+      FUNCTION_NAME = self.input.function_name
+      QUALIFIER     = self.input.qualifier
+      STATEMENT_ID  = self.input.statement_id
+    }
+  }
+
+  depends_on = [
+    aws_lambda_function_url.live,
+    aws_lambda_permission.function_url_public,
+  ]
+}

@@ -2,7 +2,7 @@ locals {
   domain_enabled  = var.domain_name != null && trimspace(var.domain_name) != ""
   dns_provider    = lower(var.dns_provider)
   route53_enabled = local.domain_enabled && local.dns_provider == "route53"
-  route53_zone_id = coalesce(var.hosted_zone_id, "")
+  route53_zone_id = var.hosted_zone_id == null ? "" : trimspace(var.hosted_zone_id)
 
   validation_records = local.domain_enabled ? {
     for option in aws_acm_certificate.this[0].domain_validation_options : option.domain_name => {

@@ -155,7 +155,7 @@ resource "aws_cloudfront_distribution" "this" {
   viewer_certificate {
     acm_certificate_arn            = local.custom_domain_enabled ? var.acm_certificate_arn : null
     cloudfront_default_certificate = local.custom_domain_enabled ? null : true
-    minimum_protocol_version       = "TLSv1.2_2021"
+    minimum_protocol_version       = local.custom_domain_enabled ? "TLSv1.2_2021" : null
     ssl_support_method             = local.custom_domain_enabled ? "sni-only" : null
   }
 
