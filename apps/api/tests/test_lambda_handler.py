@@ -3,19 +3,21 @@ from __future__ import annotations
 import base64
 import json
 import logging
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import pytest
-from app.core.config import settings
+from app.core.config import REPO_ROOT, AppSettings, settings
 from app.main import create_app
 from fastapi.testclient import TestClient
-from mangum import Mangum
 
 from tests.helpers import fixture_text
 
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
+SHARED_NAMES_PATH = REPO_ROOT / "infra" / "shared" / "names.json"
+TERRAFORM_EXAMPLE_MAIN_PATH = (
+    REPO_ROOT / "infra" / "terraform" / "environments" / "example" / "main.tf"
+)
 
 
 def test_lambda_handler_import_and_health_round_trip() -> None:
@@ -28,10 +30,10 @@ def test_lambda_handler_import_and_health_round_trip() -> None:
     assert json.loads(response["body"])["status"] == "ok"
 
 
-def test_lambda_handler_accepts_base64_multipart_upload(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    handler = _configured_lambda_handler(monkeypatch)
+def test_lambda_handler_accepts_base64_multipart_upload() -> None:
+    from app.lambda_handler import handler
+
+    shared_names = _load_shared_names()
     body, content_type = _multipart_file_body(
         field_name="file",
         filename="valid.x12",
@@ -40,7 +42,7 @@ def test_lambda_handler_accepts_base64_multipart_upload(
     )
     event = _function_url_event(
         method="POST",
-        path="/api/v1/validate",
+        path=f"{shared_names['api_prefix']}/validate",
         headers={
             "content-type": content_type,
             "content-length": str(len(body)),
@@ -62,10 +64,16 @@ def test_origin_secret_middleware_rejects_missing_header(
     _configure_lambda_settings(monkeypatch)
 
     with TestClient(create_app()) as client:
-        response = client.get("/api/v1/health")
+        response = client.get("/api/v1/health", headers={"X-Correlation-ID": "test-request-id"})
 
     assert response.status_code == 403
-    assert response.json() == {"detail": "Forbidden."}
+    assert response.headers["X-Correlation-ID"] == "test-request-id"
+    assert response.json() == {
+        "code": "FORBIDDEN",
+        "message": "Forbidden.",
+        "details": {},
+        "requestId": "test-request-id",
+    }
 
 
 def test_origin_secret_middleware_accepts_current_or_previous_secret(
@@ -141,11 +149,31 @@ def test_lambda_app_does_not_mount_frontend_or_metrics(
     assert health.status_code == 200
 
 
-def _configured_lambda_handler(
-    monkeypatch: pytest.MonkeyPatch,
-) -> Callable[[dict[str, Any], Any], Any]:
-    _configure_lambda_settings(monkeypatch)
-    return Mangum(create_app(), lifespan="off")
+def test_shared_names_contract_matches_api_settings_and_terraform() -> None:
+    shared_names = _load_shared_names()
+    env_prefix = AppSettings.model_config["env_prefix"]
+    app_env_fields = [
+        "deployment_target",
+        "origin_secret_enabled",
+        "origin_secret",
+        "origin_secret_previous",
+        "environment",
+        "serve_frontend",
+        "metrics_enabled",
+    ]
+
+    assert shared_names["api_prefix"] == settings.api_v1_prefix
+    assert shared_names["env_var_names"] == [
+        f"{env_prefix}{field_name.upper()}" for field_name in app_env_fields
+    ]
+
+    terraform_main = TERRAFORM_EXAMPLE_MAIN_PATH.read_text(encoding="utf-8")
+    assert "../../../shared/names.json" in terraform_main
+    assert "zipmap(local.names.env_var_names, local.lambda_contract_environment_values)" in (
+        terraform_main
+    )
+    for env_var_name in shared_names["env_var_names"]:
+        assert env_var_name not in terraform_main
 
 
 def _configure_lambda_settings(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -157,6 +185,10 @@ def _configure_lambda_settings(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _load_event(name: str) -> dict[str, Any]:
     return json.loads((FIXTURES_DIR / name).read_text(encoding="utf-8"))
+
+
+def _load_shared_names() -> dict[str, Any]:
+    return json.loads(SHARED_NAMES_PATH.read_text(encoding="utf-8"))
 
 
 def _function_url_event(

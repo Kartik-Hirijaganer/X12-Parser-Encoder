@@ -46,7 +46,12 @@ class OriginSecretMiddleware(BaseHTTPMiddleware):
         started_at = perf_counter()
         response = JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            content={"detail": "Forbidden."},
+            content={
+                "code": "FORBIDDEN",
+                "message": "Forbidden.",
+                "details": {},
+                "requestId": correlation_id,
+            },
         )
         response.headers["X-Correlation-ID"] = correlation_id
         duration_ms = round((perf_counter() - started_at) * 1000, 2)

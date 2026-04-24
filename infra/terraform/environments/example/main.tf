@@ -35,16 +35,18 @@ locals {
     startswith(var.lambda_zip_path, "/") ? var.lambda_zip_path : abspath("${path.module}/${var.lambda_zip_path}")
   )
 
+  lambda_contract_environment_values = [
+    "lambda",
+    "true",
+    var.origin_verify_header_value,
+    var.origin_verify_header_previous_value == null ? "" : var.origin_verify_header_previous_value,
+    var.app_env,
+    "false",
+    "true",
+  ]
+
   lambda_environment_vars = merge(
-    {
-      X12_API_DEPLOYMENT_TARGET      = "lambda"
-      X12_API_ORIGIN_SECRET_ENABLED  = "true"
-      X12_API_ORIGIN_SECRET          = var.origin_verify_header_value
-      X12_API_ORIGIN_SECRET_PREVIOUS = var.origin_verify_header_previous_value == null ? "" : var.origin_verify_header_previous_value
-      X12_API_ENVIRONMENT            = var.app_env
-      X12_API_SERVE_FRONTEND         = "false"
-      X12_API_METRICS_ENABLED        = "true"
-    },
+    zipmap(local.names.env_var_names, local.lambda_contract_environment_values),
     var.lambda_environment_vars
   )
 
