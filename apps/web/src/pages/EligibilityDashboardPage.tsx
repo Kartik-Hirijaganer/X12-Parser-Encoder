@@ -20,7 +20,7 @@ export function EligibilityDashboardPage() {
     return (
       <AppShell title="Dashboard unavailable">
         <Card className="space-y-4">
-          <p className="text-[16px] text-[var(--color-text-secondary)]">
+          <p className="text-base text-[var(--color-text-secondary)]">
             Upload a 271 response from the home page to review eligibility results.
           </p>
           <Button onClick={() => navigate('/')} variant="primary">
@@ -38,9 +38,11 @@ export function EligibilityDashboardPage() {
       setError(null)
       const workbook = await exportEligibilityWorkbook({
         filename: 'eligibility_results.xlsx',
-        payer_name: dashboardState.response.payer_name,
+        payerName: dashboardState.response.payerName,
         summary: dashboardState.response.summary,
         results: dashboardState.response.results,
+        parserIssueCount: dashboardState.response.parserIssueCount,
+        parserIssues: dashboardState.response.parserIssues,
       })
       downloadBlob(workbook, 'eligibility_results.xlsx')
     } catch (caughtError) {
@@ -54,6 +56,12 @@ export function EligibilityDashboardPage() {
       title="Eligibility Results Dashboard"
     >
       {error ? <Banner variant="error">{error}</Banner> : null}
+      {dashboardState.response.parserIssueCount > 0 ? (
+        <Banner title="Parser Issues" variant="warning">
+          {dashboardState.response.parserIssueCount} transaction(s) could not be fully parsed. The table
+          shows all recovered rows and the export includes parser issue details.
+        </Banner>
+      ) : null}
       <EligibilityDashboard
         onExport={() => void handleExport()}
         results={dashboardState.response.results}

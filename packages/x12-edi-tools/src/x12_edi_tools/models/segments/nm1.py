@@ -10,6 +10,11 @@ from x12_edi_tools.common.enums import EntityIdentifierCode
 from x12_edi_tools.common.types import ElementMap
 from x12_edi_tools.models.base import X12Segment
 
+BENEFIT_ENTITY_IDENTIFIER_CODES = frozenset({"1I", "P3", "P5"})
+OUTBOUND_ENTITY_IDENTIFIER_CODES = frozenset(
+    {*(code.value for code in EntityIdentifierCode), *BENEFIT_ENTITY_IDENTIFIER_CODES}
+)
+
 
 class NM1Segment(X12Segment):
     segment_id: ClassVar[str] = "NM1"
@@ -25,7 +30,7 @@ class NM1Segment(X12Segment):
         9: "id_code",
     }
 
-    entity_identifier_code: EntityIdentifierCode
+    entity_identifier_code: str
     entity_type_qualifier: str | None = None
     last_name: str | None = None
     first_name: str | None = None

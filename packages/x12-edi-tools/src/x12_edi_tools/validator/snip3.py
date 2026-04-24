@@ -6,6 +6,7 @@ from x12_edi_tools.models.transactions import FunctionalGroup, Interchange
 from x12_edi_tools.validator.base import (
     SnipLevel,
     ValidationError,
+    annotate_transaction_issues,
     as_list,
     count_transaction_segments,
     issue,
@@ -109,11 +110,12 @@ def validate_snip3(interchange: Interchange) -> list[ValidationError]:
             f"FunctionalGroup[{tx_context.functional_group_index}].Transaction"
             f"[{tx_context.transaction_index}]"
         )
+        transaction_issues: list[ValidationError] = []
 
         if se is not None:
             reported_segment_count = getattr(se, "number_of_included_segments", None)
             if reported_segment_count != actual_segment_count:
-                issues.append(
+                transaction_issues.append(
                     issue(
                         level=SnipLevel.SNIP3,
                         code="SNIP3_SE01_COUNT_MISMATCH",
@@ -133,7 +135,7 @@ def validate_snip3(interchange: Interchange) -> list[ValidationError]:
             )
             se_control = normalize_str(getattr(se, "transaction_set_control_number", None))
             if st_control and se_control and st_control != se_control:
-                issues.append(
+                transaction_issues.append(
                     issue(
                         level=SnipLevel.SNIP3,
                         code="SNIP3_ST02_SE02_MISMATCH",
@@ -144,5 +146,6 @@ def validate_snip3(interchange: Interchange) -> list[ValidationError]:
                         suggestion="Use the same transaction control number in ST02 and SE02.",
                     )
                 )
+        issues.extend(annotate_transaction_issues(transaction_issues, tx_context))
 
     return issues

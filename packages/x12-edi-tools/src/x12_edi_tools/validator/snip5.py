@@ -27,7 +27,9 @@ from x12_edi_tools.models.transactions import (
 )
 from x12_edi_tools.validator.base import (
     SnipLevel,
+    TransactionContext,
     ValidationError,
+    annotate_transaction_issues,
     as_list,
     issue,
     normalize_str,
@@ -125,7 +127,17 @@ def validate_snip5(interchange: Interchange) -> list[ValidationError]:
         for transaction_index, transaction in enumerate(as_list(group.transactions)):
             if not isinstance(transaction, Transaction270 | Transaction271):
                 continue
-            issues.extend(_validate_transaction_codes(transaction, group_index, transaction_index))
+            tx_context = TransactionContext(
+                functional_group_index=group_index,
+                transaction_index=transaction_index,
+                transaction=transaction,
+            )
+            issues.extend(
+                annotate_transaction_issues(
+                    _validate_transaction_codes(transaction, group_index, transaction_index),
+                    tx_context,
+                )
+            )
 
     return issues
 

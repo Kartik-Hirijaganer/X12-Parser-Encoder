@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from calendar import monthrange
 from collections.abc import Iterator, Sequence
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import date, datetime
 from enum import Enum, StrEnum
 from typing import Any, Literal, Protocol
@@ -26,6 +26,7 @@ from x12_edi_tools.models.loops import (
     Loop2100C_271,
     Loop2110C_270,
     Loop2110C_271,
+    Loop2120C_271,
 )
 from x12_edi_tools.models.transactions import (
     FunctionalGroup,
@@ -89,6 +90,8 @@ class ValidationError:
     element: str | None = None
     suggestion: str | None = None
     profile: str | None = None
+    transaction_index: int | None = None
+    transaction_control_number: str | None = None
 
 
 @dataclass(slots=True)
@@ -175,6 +178,14 @@ class TransactionContext:
     transaction_index: int
     transaction: TransactionModel
 
+    @property
+    def transaction_control_number(self) -> str | None:
+        """Return the ST02 control number when the transaction header is present."""
+
+        return normalize_str(
+            getattr(getattr(self.transaction, "st", None), "transaction_set_control_number", None)
+        )
+
 
 def issue(
     *,
@@ -187,6 +198,8 @@ def issue(
     element: str | None = None,
     suggestion: str | None = None,
     profile: str | None = None,
+    transaction_index: int | None = None,
+    transaction_control_number: str | None = None,
 ) -> ValidationError:
     """Build a normalized validation issue."""
 
@@ -200,7 +213,42 @@ def issue(
         element=element,
         suggestion=suggestion,
         profile=profile,
+        transaction_index=transaction_index,
+        transaction_control_number=transaction_control_number,
     )
+
+
+def annotate_transaction_issue(
+    validation_issue: ValidationError,
+    tx_context: TransactionContext,
+) -> ValidationError:
+    """Fill transaction metadata onto a transaction-scoped validation issue."""
+
+    transaction_index = validation_issue.transaction_index
+    transaction_control_number = validation_issue.transaction_control_number
+    if transaction_index is not None and transaction_control_number is not None:
+        return validation_issue
+
+    return replace(
+        validation_issue,
+        transaction_index=(
+            tx_context.transaction_index if transaction_index is None else transaction_index
+        ),
+        transaction_control_number=(
+            tx_context.transaction_control_number
+            if transaction_control_number is None
+            else transaction_control_number
+        ),
+    )
+
+
+def annotate_transaction_issues(
+    issues: Sequence[ValidationError],
+    tx_context: TransactionContext,
+) -> list[ValidationError]:
+    """Fill transaction metadata onto every transaction-scoped validation issue."""
+
+    return [annotate_transaction_issue(issue, tx_context) for issue in issues]
 
 
 def iter_transactions(interchange: Interchange) -> Iterator[TransactionContext]:
@@ -429,12 +477,26 @@ def _iter_loop_2110c_271(loop: Loop2110C_271) -> Iterator[X12Segment]:
     for aaa_segment in as_list(loop.aaa_segments):
         if isinstance(aaa_segment, X12Segment):
             yield aaa_segment
-    for maybe_segment in (loop.ls_segment, loop.le_segment):
-        if isinstance(maybe_segment, X12Segment):
-            yield maybe_segment
+    child_loops = as_list(loop.loop_2120c)
+    if not child_loops and isinstance(loop.ls_segment, X12Segment):
+        yield loop.ls_segment
     for ref_segment in as_list(loop.ref_segments):
         if isinstance(ref_segment, X12Segment):
             yield ref_segment
+    if not child_loops and isinstance(loop.le_segment, X12Segment):
+        yield loop.le_segment
     for dtp_segment in as_list(loop.dtp_segments):
         if isinstance(dtp_segment, X12Segment):
             yield dtp_segment
+    for child_loop in child_loops:
+        if isinstance(child_loop, Loop2120C_271):
+            yield from _iter_loop_2120c_271(child_loop)
+
+
+def _iter_loop_2120c_271(loop: Loop2120C_271) -> Iterator[X12Segment]:
+    yield loop.ls
+    yield loop.nm1
+    for per_segment in as_list(loop.per_segments):
+        if isinstance(per_segment, X12Segment):
+            yield per_segment
+    yield loop.le

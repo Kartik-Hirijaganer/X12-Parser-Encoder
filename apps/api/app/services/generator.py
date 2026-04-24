@@ -189,12 +189,12 @@ def generate_270_response(
         return response
 
     manifest = {
-        "split_count": len(rendered_documents),
-        "record_count": total_transactions,
-        "excluded_row_count": len(normalized.errors),
-        "batch_summary_file_name": batch_summary_file_name,
-        "service_date_range": _service_date_range(normalized.patients),
-        "files": [entry.model_dump() for entry in archive_entries],
+        "splitCount": len(rendered_documents),
+        "recordCount": total_transactions,
+        "excludedRowCount": len(normalized.errors),
+        "batchSummaryFileName": batch_summary_file_name,
+        "serviceDateRange": _service_date_range(normalized.patients),
+        "files": [entry.model_dump(by_alias=True) for entry in archive_entries],
     }
     zip_file_name = _build_zip_file_name(
         trading_partner_id=config.trading_partner_id,

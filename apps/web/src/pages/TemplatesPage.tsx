@@ -70,8 +70,8 @@ export function TemplatesPage() {
     >
       <section className="grid gap-6 md:grid-cols-2">
         <Card className="space-y-4">
-          <h2 className="text-[20px] font-semibold text-[var(--color-text-primary)]">Excel Template</h2>
-          <p className="text-[14px] text-[var(--color-text-secondary)]">
+          <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">Excel Template</h2>
+          <p className="text-sm text-[var(--color-text-secondary)]">
             Recommended for non-technical users who fill in the workbook manually.
           </p>
           <Button href={templateUrl(DEFAULT_TEMPLATE_NAMES.xlsx)} variant="primary">
@@ -79,8 +79,8 @@ export function TemplatesPage() {
           </Button>
         </Card>
         <Card className="space-y-4">
-          <h2 className="text-[20px] font-semibold text-[var(--color-text-primary)]">CSV Template</h2>
-          <p className="text-[14px] text-[var(--color-text-secondary)]">
+          <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">CSV Template</h2>
+          <p className="text-sm text-[var(--color-text-secondary)]">
             Use this when data is exported from another system and mapped into the canonical headers.
           </p>
           <Button href={templateUrl(DEFAULT_TEMPLATE_NAMES.csv)} variant="primary">
@@ -91,7 +91,7 @@ export function TemplatesPage() {
 
       <Card className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-[20px] font-semibold text-[var(--color-text-primary)]">Required Columns</h2>
+          <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">Required Columns</h2>
           <Button href={templateUrl(DEFAULT_TEMPLATE_NAMES.spec)} target="_blank" variant="ghost">
             Open Template Spec
           </Button>
@@ -130,8 +130,8 @@ export function TemplatesPage() {
       </Card>
 
       <Card className="space-y-4">
-        <h2 className="text-[20px] font-semibold text-[var(--color-text-primary)]">DC Medicaid Rules</h2>
-        <ul className="space-y-2 text-[14px] leading-6 text-[var(--color-text-primary)]">
+        <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">DC Medicaid Rules</h2>
+        <ul className="space-y-2 text-sm leading-6 text-[var(--color-text-primary)]">
           <li>Member ID plus at least one additional search criterion is required.</li>
           <li>Service dates cannot be in the future and cannot be older than 13 months.</li>
           <li>Generate requests above 5000 rows are automatically split into multiple interchanges.</li>

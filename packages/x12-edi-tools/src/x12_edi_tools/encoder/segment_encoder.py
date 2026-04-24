@@ -9,6 +9,7 @@ from typing import Protocol
 
 from x12_edi_tools.common.delimiters import Delimiters
 from x12_edi_tools.models.base import GenericSegment, X12Segment
+from x12_edi_tools.models.segments import EBSegment
 
 
 class SegmentLike(Protocol):
@@ -30,6 +31,12 @@ def encode_segment(
     rendered_elements = [
         _render_element(value, delimiters=delimiters) for value in segment.to_elements()
     ]
+    if (
+        isinstance(segment, EBSegment)
+        and len(rendered_elements) >= 3
+        and segment.service_type_codes
+    ):
+        rendered_elements[2] = delimiters.repetition.join(segment.service_type_codes)
     while rendered_elements and rendered_elements[-1] == "":
         rendered_elements.pop()
 

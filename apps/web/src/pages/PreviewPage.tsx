@@ -6,13 +6,14 @@ import type { PreviewRouteState } from '../types/workflow'
 import { useSettings } from '../hooks/useSettings'
 import { ApiError, ApiTimeoutError, generate270, parse271, validate270 } from '../services/api'
 import { highestIsa13, nextIsaControlNumber } from '../utils/constants'
-import { formatDate } from '../utils/formatters'
+import { formatBytes, formatDate } from '../utils/formatters'
 import { AppShell } from '../components/layout/AppShell'
 import { Banner } from '../components/ui/Banner'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
+import { ProgressBar } from '../components/ui/ProgressBar'
+import { Skeleton } from '../components/ui/Skeleton'
 import { Table } from '../components/ui/Table'
-import { Spinner } from '../components/ui/Spinner'
 
 export function PreviewPage() {
   const location = useLocation()
@@ -30,7 +31,7 @@ export function PreviewPage() {
     return (
       <AppShell title="Preview unavailable">
         <Card className="space-y-4">
-          <p className="text-[16px] text-[var(--color-text-secondary)]">
+          <p className="text-base text-[var(--color-text-secondary)]">
             Start from the home page to preview a file before processing it.
           </p>
           <Button onClick={() => navigate('/')} variant="primary">
@@ -54,7 +55,7 @@ export function PreviewPage() {
 
       try {
         if (previewState.flow === 'generate') {
-          setProcessingLabel(`Generating X12 file for ${previewState.response.record_count} records...`)
+          setProcessingLabel(`Generating X12 file for ${previewState.response.recordCount} records...`)
           const nextIcn = nextIsaControlNumber(settings.lastIsaControlNumber)
           const response = await generate270(settings, previewState.response.patients, nextIcn)
           navigate('/generate/result', {
@@ -124,11 +125,37 @@ export function PreviewPage() {
     await run()
   }
 
+  const rowCount =
+    previewState.flow === 'generate'
+      ? previewState.response.recordCount
+      : previewState.preview.subscriberNames.length
+  const rowLabel =
+    previewState.flow === 'generate'
+      ? `${rowCount} ${rowCount === 1 ? 'row' : 'rows'}`
+      : `${rowCount} ${rowCount === 1 ? 'subscriber' : 'subscribers'}`
+  const isProcessing = processingLabel !== null
+
   return (
     <AppShell
       subtitle="Review the file summary before sending it to the backend. Corrections and excluded rows are shown here so the operator can decide whether to continue."
       title="Preview"
     >
+      <Card className="flex flex-wrap items-center justify-between gap-4">
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="text-caption font-medium uppercase tracking-[0.04em] text-[var(--color-text-tertiary)]">
+            File
+          </p>
+          <p className="truncate text-base font-semibold text-[var(--color-text-primary)]">
+            {previewState.filename}
+          </p>
+          <p className="text-caption text-[var(--color-text-secondary)]">
+            {previewState.fileSize !== undefined ? formatBytes(previewState.fileSize) : 'Size unknown'}
+            {' • '}
+            {rowLabel}
+          </p>
+        </div>
+      </Card>
+
       {previewState.flow === 'generate'
         ? previewState.response.corrections.map((correction, index) =>
             dismissedCorrectionIndexes[index] ? null : (
@@ -219,16 +246,24 @@ export function PreviewPage() {
       ) : null}
 
       {processingLabel ? (
-        <Card className="flex items-center gap-3">
-          <Spinner />
-          <p className="text-[14px] text-[var(--color-text-secondary)]">{processingLabel}</p>
+        <Card className="space-y-3">
+          <p className="text-sm text-[var(--color-text-secondary)]">{processingLabel}</p>
+          <ProgressBar label={processingLabel} variant="indeterminate" />
         </Card>
       ) : null}
 
-      {previewState.flow === 'generate' ? (
+      {isProcessing ? (
+        <Card className="space-y-3">
+          <Skeleton aria-label="Loading summary row" height="1.5rem" width="30%" />
+          <Skeleton aria-label="Loading table row" height="1rem" />
+          <Skeleton aria-label="Loading table row" height="1rem" />
+          <Skeleton aria-label="Loading table row" height="1rem" />
+          <Skeleton aria-label="Loading table row" height="1rem" />
+        </Card>
+      ) : previewState.flow === 'generate' ? (
         <div className="space-y-6">
           <Card className="grid gap-4 md:grid-cols-4">
-            <SummaryCard label="Rows ready" value={String(previewState.response.record_count)} />
+            <SummaryCard label="Rows ready" value={String(previewState.response.recordCount)} />
             <SummaryCard label="Warnings" value={String(previewState.response.warnings.length)} />
             <SummaryCard label="Corrections" value={String(previewState.response.corrections.length)} />
             <SummaryCard label="Excluded rows" value={String(previewState.response.errors.length)} />
@@ -236,8 +271,8 @@ export function PreviewPage() {
 
           <Card className="space-y-4">
             <div>
-              <h2 className="text-[20px] font-semibold text-[var(--color-text-primary)]">First five rows</h2>
-              <p className="mt-2 text-[14px] text-[var(--color-text-secondary)]">
+              <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">First five rows</h2>
+              <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
                 Provider and payer identity come from Settings, not the template itself.
               </p>
             </div>
@@ -246,39 +281,39 @@ export function PreviewPage() {
                 {
                   id: 'member',
                   header: 'Member',
-                  cell: (patient) => `${patient.last_name}, ${patient.first_name}`,
-                  sortValue: (patient) => `${patient.last_name}, ${patient.first_name}`,
+                  cell: (patient) => `${patient.lastName}, ${patient.firstName}`,
+                  sortValue: (patient) => `${patient.lastName}, ${patient.firstName}`,
                 },
                 {
                   id: 'dob',
                   header: 'DOB',
-                  cell: (patient) => formatDate(patient.date_of_birth),
-                  sortValue: (patient) => patient.date_of_birth,
+                  cell: (patient) => formatDate(patient.dateOfBirth),
+                  sortValue: (patient) => patient.dateOfBirth,
                 },
                 {
                   id: 'member_id',
                   header: 'Member ID',
-                  cell: (patient) => patient.member_id ?? 'Not provided',
-                  sortValue: (patient) => patient.member_id ?? '',
+                  cell: (patient) => patient.memberId ?? 'Not provided',
+                  sortValue: (patient) => patient.memberId ?? '',
                 },
                 {
                   id: 'service_date',
                   header: 'Service Date',
-                  cell: (patient) => formatDate(patient.service_date),
-                  sortValue: (patient) => patient.service_date,
+                  cell: (patient) => formatDate(patient.serviceDate),
+                  sortValue: (patient) => patient.serviceDate,
                 },
               ]}
               emptyMessage="No patient rows were returned."
               pageSize={5}
-              rowKey={(patient, index) => `${patient.last_name}-${patient.first_name}-${index}`}
+              rowKey={(patient, index) => `${patient.lastName}-${patient.firstName}-${index}`}
               rows={previewState.response.patients.slice(0, 5)}
             />
           </Card>
 
           {showRowErrorDetails ? (
             <Card className="space-y-3">
-              <h2 className="text-[20px] font-semibold text-[var(--color-text-primary)]">Excluded row details</h2>
-              <ul className="space-y-3 text-[14px] text-[var(--color-text-primary)]">
+              <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">Excluded row details</h2>
+              <ul className="space-y-3 text-sm text-[var(--color-text-primary)]">
                 {previewState.response.errors.map((rowError, index) => (
                   <li key={`${rowError.row}-${rowError.field}-${index}`}>
                     Row {rowError.row}
@@ -305,13 +340,13 @@ export function PreviewPage() {
           </Card>
 
           <Card className="space-y-4">
-            <h2 className="text-[20px] font-semibold text-[var(--color-text-primary)]">Detected subscribers</h2>
+            <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">Detected subscribers</h2>
             {previewState.preview.subscriberNames.length === 0 ? (
-              <p className="text-[14px] text-[var(--color-text-secondary)]">
+              <p className="text-sm text-[var(--color-text-secondary)]">
                 No subscriber names were detected in the preview pass.
               </p>
             ) : (
-              <ul className="space-y-2 text-[14px] text-[var(--color-text-primary)]">
+              <ul className="space-y-2 text-sm text-[var(--color-text-primary)]">
                 {previewState.preview.subscriberNames.map((name) => (
                   <li key={name}>{name}</li>
                 ))}
@@ -325,7 +360,7 @@ export function PreviewPage() {
         <Button onClick={() => navigate('/')} variant="secondary">
           Cancel
         </Button>
-        <Button onClick={() => void handleProcess(false)} variant="primary">
+        <Button disabled={isProcessing} onClick={() => void handleProcess(false)} variant="primary">
           Process
         </Button>
       </div>
@@ -336,10 +371,10 @@ export function PreviewPage() {
 function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
     <Card className="p-5">
-      <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-[var(--color-text-tertiary)]">
+      <p className="text-caption font-medium uppercase tracking-[0.04em] text-[var(--color-text-tertiary)]">
         {label}
       </p>
-      <p className="mt-3 break-all text-[24px] font-semibold text-[var(--color-text-primary)]">{value}</p>
+      <p className="mt-3 break-all text-2xl font-semibold text-[var(--color-text-primary)]">{value}</p>
     </Card>
   )
 }

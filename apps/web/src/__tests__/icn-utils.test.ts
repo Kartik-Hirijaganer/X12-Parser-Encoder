@@ -35,8 +35,8 @@ describe('nextIsaControlNumber', () => {
 describe('highestIsa13', () => {
   it('falls back to the top-level control number for a single-file response', () => {
     const response = generateResponse({
-      control_numbers: { isa13: '000000042', gs06: '42', st02_range: [] },
-      archive_entries: [],
+      controlNumbers: { isa13: '000000042', gs06: '42', st02Range: [] },
+      archiveEntries: [],
     })
 
     const highestIcn = highestIsa13(response)
@@ -47,8 +47,8 @@ describe('highestIsa13', () => {
 
   it('returns the highest archive entry control number for a split response', () => {
     const response = generateResponse({
-      control_numbers: { isa13: '000000042', gs06: '42', st02_range: [] },
-      archive_entries: [
+      controlNumbers: { isa13: '000000042', gs06: '42', st02Range: [] },
+      archiveEntries: [
         archiveEntry('000000042'),
         archiveEntry('000000044'),
         archiveEntry('000000043'),
@@ -63,8 +63,8 @@ describe('highestIsa13', () => {
 
   it('returns null when every archive entry has an unparseable control number', () => {
     const response = generateResponse({
-      control_numbers: { isa13: '000000042', gs06: '42', st02_range: [] },
-      archive_entries: [archiveEntry('not-a-number'), archiveEntry('')],
+      controlNumbers: { isa13: '000000042', gs06: '42', st02Range: [] },
+      archiveEntries: [archiveEntry('not-a-number'), archiveEntry('')],
     })
 
     expect(highestIsa13(response)).toBeNull()
@@ -73,17 +73,17 @@ describe('highestIsa13', () => {
 
 function generateResponse(overrides: Partial<GenerateResponse>): GenerateResponse {
   return {
-    x12_content: 'ISA*00*...~',
-    zip_content_base64: null,
-    download_file_name: 'ACME123456_270_20260412_000000042.txt',
-    batch_summary_text: null,
-    batch_summary_file_name: null,
-    transaction_count: 1,
-    segment_count: 13,
-    file_size_bytes: 128,
-    split_count: 1,
-    control_numbers: { isa13: '000000042', gs06: '42', st02_range: [] },
-    archive_entries: [],
+    x12Content: 'ISA*00*...~',
+    zipContentBase64: null,
+    downloadFileName: 'ACME123456_270_20260412_000000042.txt',
+    batchSummaryText: null,
+    batchSummaryFileName: null,
+    transactionCount: 1,
+    segmentCount: 13,
+    fileSizeBytes: 128,
+    splitCount: 1,
+    controlNumbers: { isa13: '000000042', gs06: '42', st02Range: [] },
+    archiveEntries: [],
     manifest: null,
     errors: [],
     partial: false,
@@ -91,11 +91,11 @@ function generateResponse(overrides: Partial<GenerateResponse>): GenerateRespons
   }
 }
 
-function archiveEntry(isa13: string): GenerateResponse['archive_entries'][number] {
+function archiveEntry(isa13: string): GenerateResponse['archiveEntries'][number] {
   return {
-    file_name: `ACME123456_270_20260412_${isa13}.txt`,
-    record_range_start: 1,
-    record_range_end: 1,
-    control_numbers: { isa13, gs06: String(Number(isa13)), st02_range: [] },
+    fileName: `ACME123456_270_20260412_${isa13}.txt`,
+    recordRangeStart: 1,
+    recordRangeEnd: 1,
+    controlNumbers: { isa13, gs06: String(Number(isa13)), st02Range: [] },
   }
 }

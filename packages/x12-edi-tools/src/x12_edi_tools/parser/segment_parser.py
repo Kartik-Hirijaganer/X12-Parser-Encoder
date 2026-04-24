@@ -74,6 +74,7 @@ def parse_segment(
     *,
     strict: bool = True,
     element_separator: str = "*",
+    repetition_separator: str | None = None,
 ) -> ParsedSegment:
     """Parse one token into its typed segment model."""
 
@@ -105,7 +106,10 @@ def parse_segment(
             ) from exc
 
     try:
-        return segment_model.from_elements(token.elements)
+        return segment_model.from_elements(
+            token.elements,
+            repetition_separator=repetition_separator,
+        )
     except ValidationError as exc:
         raise ParserComponentError(
             f"Segment {token.segment_id} failed validation: {exc}",

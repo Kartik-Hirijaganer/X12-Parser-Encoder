@@ -21,6 +21,10 @@ def test_metrics_endpoint_exposes_prometheus_series(client: TestClient) -> None:
     assert "x12_api_requests_total" in body
     assert "x12_api_request_latency_seconds" in body
     assert re.search(
+        r'parser_accounting_mismatch_total\{path="/api/v1/parse"\}\s+0\.0',
+        body,
+    )
+    assert re.search(
         r'x12_api_requests_total\{method="GET",path="/api/v1/health",status_code="200"\}\s+',
         body,
     )

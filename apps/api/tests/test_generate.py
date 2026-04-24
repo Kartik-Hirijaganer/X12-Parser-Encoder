@@ -56,14 +56,14 @@ def test_generate_single_patient_returns_x12(
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["x12_content"].startswith("ISA*")
-    assert payload["transaction_count"] == 1
-    assert payload["control_numbers"]["isa13"]
-    assert payload["download_file_name"].endswith(f"{payload['control_numbers']['isa13']}.txt")
-    assert payload["batch_summary_file_name"].endswith("_summary.txt")
-    assert "Submission Batch Summary" in payload["batch_summary_text"]
-    assert f"Record count: {payload['transaction_count']}" in payload["batch_summary_text"]
-    x12_content = payload["x12_content"]
+    assert payload["x12Content"].startswith("ISA*")
+    assert payload["transactionCount"] == 1
+    assert payload["controlNumbers"]["isa13"]
+    assert payload["downloadFileName"].endswith(f"{payload['controlNumbers']['isa13']}.txt")
+    assert payload["batchSummaryFileName"].endswith("_summary.txt")
+    assert "Submission Batch Summary" in payload["batchSummaryText"]
+    assert f"Record count: {payload['transactionCount']}" in payload["batchSummaryText"]
+    x12_content = payload["x12Content"]
     dmg_index = x12_content.index("DMG*D8*19900101*F~")
     dtp_index = x12_content.index("DTP*291*D8*20260412~")
     eq_index = x12_content.index("EQ*30~")
@@ -82,7 +82,7 @@ def test_generate_maps_config_values_into_output(
     )
 
     assert response.status_code == 200
-    x12_content = response.json()["x12_content"]
+    x12_content = response.json()["x12Content"]
     assert "*ACMEHOMEHLTH   *ZZ*DCMEDICAID" in x12_content
     assert "NM1*1P*2*ACME HOME HEALTH" in x12_content
     assert "*0*P*:" in x12_content
@@ -123,18 +123,18 @@ def test_generate_auto_splits_into_zip_archive(
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["split_count"] == 2
-    assert payload["x12_content"] is None
-    assert payload["download_file_name"].endswith(".zip")
-    archive = base64.b64decode(payload["zip_content_base64"])
+    assert payload["splitCount"] == 2
+    assert payload["x12Content"] is None
+    assert payload["downloadFileName"].endswith(".zip")
+    archive = base64.b64decode(payload["zipContentBase64"])
     with zipfile.ZipFile(io.BytesIO(archive)) as zip_file:
-        first_file = payload["archive_entries"][0]["file_name"]
-        second_file = payload["archive_entries"][1]["file_name"]
+        first_file = payload["archiveEntries"][0]["fileName"]
+        second_file = payload["archiveEntries"][1]["fileName"]
         assert first_file.endswith(".txt")
         assert second_file.endswith(".txt")
         assert first_file in zip_file.namelist()
         assert second_file in zip_file.namelist()
-        assert payload["batch_summary_file_name"] in zip_file.namelist()
+        assert payload["batchSummaryFileName"] in zip_file.namelist()
         assert "manifest.json" in zip_file.namelist()
 
 
@@ -192,14 +192,14 @@ def test_generate_respects_isa_control_number_start(
 
     assert response.status_code == 200
     payload = response.json()
-    x12_content = payload["x12_content"]
+    x12_content = payload["x12Content"]
     assert x12_content is not None
     isa = _segment_fields(x12_content, "ISA")
     gs = _segment_fields(x12_content, "GS")
     ge = _segment_fields(x12_content, "GE")
     iea = _segment_fields(x12_content, "IEA")
-    assert payload["control_numbers"]["isa13"] == "000000042"
-    assert payload["control_numbers"]["gs06"] == "42"
+    assert payload["controlNumbers"]["isa13"] == "000000042"
+    assert payload["controlNumbers"]["gs06"] == "42"
     assert isa[13] == "000000042"
     assert iea[2] == "000000042"
     assert gs[6] == "42"
@@ -220,23 +220,23 @@ def test_generate_respects_control_number_start_across_split_archive(
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["split_count"] == 2
-    assert payload["control_numbers"]["isa13"] == "000000042"
-    assert payload["control_numbers"]["gs06"] == "42"
-    assert payload["archive_entries"][0]["control_numbers"]["isa13"] == "000000042"
-    assert payload["archive_entries"][0]["control_numbers"]["gs06"] == "42"
-    assert payload["archive_entries"][1]["control_numbers"]["isa13"] == "000000043"
-    assert payload["archive_entries"][1]["control_numbers"]["gs06"] == "43"
+    assert payload["splitCount"] == 2
+    assert payload["controlNumbers"]["isa13"] == "000000042"
+    assert payload["controlNumbers"]["gs06"] == "42"
+    assert payload["archiveEntries"][0]["controlNumbers"]["isa13"] == "000000042"
+    assert payload["archiveEntries"][0]["controlNumbers"]["gs06"] == "42"
+    assert payload["archiveEntries"][1]["controlNumbers"]["isa13"] == "000000043"
+    assert payload["archiveEntries"][1]["controlNumbers"]["gs06"] == "43"
 
-    archive = base64.b64decode(payload["zip_content_base64"])
+    archive = base64.b64decode(payload["zipContentBase64"])
     with zipfile.ZipFile(io.BytesIO(archive)) as zip_file:
         for entry, expected_isa, expected_gs in zip(
-            payload["archive_entries"],
+            payload["archiveEntries"],
             ("000000042", "000000043"),
             ("42", "43"),
             strict=True,
         ):
-            x12_content = zip_file.read(entry["file_name"]).decode("utf-8")
+            x12_content = zip_file.read(entry["fileName"]).decode("utf-8")
             assert _segment_fields(x12_content, "ISA")[13] == expected_isa
             assert _segment_fields(x12_content, "IEA")[2] == expected_isa
             assert _segment_fields(x12_content, "GS")[6] == expected_gs
@@ -257,20 +257,20 @@ def test_generate_gainwell_regression_places_single_dtp291_in_2100c_and_sequence
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["split_count"] == 2
-    assert payload["control_numbers"]["isa13"] == "000000042"
-    assert payload["archive_entries"][0]["control_numbers"]["isa13"] == "000000042"
-    assert payload["archive_entries"][1]["control_numbers"]["isa13"] == "000000043"
+    assert payload["splitCount"] == 2
+    assert payload["controlNumbers"]["isa13"] == "000000042"
+    assert payload["archiveEntries"][0]["controlNumbers"]["isa13"] == "000000042"
+    assert payload["archiveEntries"][1]["controlNumbers"]["isa13"] == "000000043"
 
-    archive = base64.b64decode(payload["zip_content_base64"])
+    archive = base64.b64decode(payload["zipContentBase64"])
     with zipfile.ZipFile(io.BytesIO(archive)) as zip_file:
         for entry, expected_isa, expected_gs in zip(
-            payload["archive_entries"],
+            payload["archiveEntries"],
             ("000000042", "000000043"),
             ("42", "43"),
             strict=True,
         ):
-            x12_content = zip_file.read(entry["file_name"]).decode("utf-8")
+            x12_content = zip_file.read(entry["fileName"]).decode("utf-8")
             assert _segment_fields(x12_content, "ISA")[13] == expected_isa
             assert _segment_fields(x12_content, "IEA")[2] == expected_isa
             assert _segment_fields(x12_content, "GS")[6] == expected_gs

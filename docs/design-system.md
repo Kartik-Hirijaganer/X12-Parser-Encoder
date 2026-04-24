@@ -1,5 +1,7 @@
 # Design System — Eligibility Workbench
 
+> **Frontend agents start at [`docs/design-spec.md`](./design-spec.md).** This document remains the detailed visual appendix; `design-spec.md` is the single enforceable contract for UI work.
+
 > **This is the visual and frontend source of truth.** It merges the former `DESIGN.md` (visual spec) and `docs/frontend-standards.md` (frontend rules) into a single document.
 >
 > Inspired by **Meta (Store)** via [awesome-design-md](https://github.com/VoltAgent/awesome-design-md), adapted for a healthcare eligibility workbench serving non-technical users doing bulk Medicaid 270/271 workflows — and extended to cover 837I/837P/835 claim and remittance workflows.
@@ -130,6 +132,7 @@ A near-black `--color-surface-dark` → `--color-surface-dark-end` gradient for 
 
 - White background, 1px default border, 8px radius (`--radius-md`), 10×14 padding, 16px body text.
 - Label above at 14px/500 with 4px gap. Helper text 13px below at 4px gap.
+- Text fields use the `Input` primitive; dropdowns use the `Select` primitive. Feature and page code should not render raw form controls directly.
 - Focus: border switches to action-blue, 3px ring at 25% blue.
 - Error: border in inactive-500, label and helper text in inactive-500.
 - Disabled: warm-gray fill, disabled text.
@@ -314,6 +317,8 @@ The Eligibility Workbench uses a flat elevation model. Most differentiation come
 ### Shared primitives
 
 - Interactive controls must use [`Button`](../apps/web/src/components/ui/Button.tsx).
+- Text fields must use [`Input`](../apps/web/src/components/ui/Input.tsx).
+- Select dropdowns must use [`Select`](../apps/web/src/components/ui/Select.tsx).
 - File inputs must use [`FileUpload`](../apps/web/src/components/ui/FileUpload.tsx).
 - Tabular data must use [`Table`](../apps/web/src/components/ui/Table.tsx).
 - Status indicators must use [`Badge`](../apps/web/src/components/ui/Badge.tsx).

@@ -30,8 +30,14 @@ export function formatStatusLabel(value: string): string {
       return 'Inactive'
     case 'error':
       return 'Error'
-    case 'unknown':
+    case 'not_found':
       return 'Not Found'
+    case 'unknown':
+      return 'Unknown'
+    case 'valid':
+      return 'Valid'
+    case 'invalid':
+      return 'Invalid'
     default:
       return value
   }
@@ -45,28 +51,33 @@ export function statusVariantFromValue(value: string):
   switch (value) {
     case 'active':
     case 'pass':
+    case 'valid':
       return 'active'
     case 'inactive':
     case 'fail':
     case 'error':
+    case 'invalid':
       return 'inactive'
     case 'warning':
       return 'warning'
+    case 'not_found':
+    case 'unknown':
+      return 'notfound'
     default:
       return 'notfound'
   }
 }
 
 export function summarizePlan(result: EligibilityResult): string {
-  const segment = result.eligibility_segments[0]
+  const segment = result.eligibilitySegments[0]
   if (!segment) {
-    return result.aaa_errors[0]?.message ?? 'No plan details returned'
+    return result.aaaErrors[0]?.message ?? 'No plan details returned'
   }
 
   return (
-    segment.plan_coverage_description ??
-    segment.service_type_code ??
-    segment.coverage_level_code ??
+    segment.planCoverageDescription ??
+    segment.serviceTypeCode ??
+    segment.coverageLevelCode ??
     'Coverage returned'
   )
 }

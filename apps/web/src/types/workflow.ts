@@ -21,12 +21,14 @@ export interface X12PreviewSummary {
 export interface GeneratePreviewState {
   flow: 'generate'
   filename: string
+  fileSize?: number
   response: ConvertResponse
 }
 
 export interface X12PreviewState {
   flow: 'validate' | 'parse'
   filename: string
+  fileSize?: number
   rawText: string
   preview: X12PreviewSummary
 }

@@ -15,7 +15,8 @@ from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.metrics import observe_segment_count
 from app.schemas.common import ValidationIssue
-from app.schemas.validate import ValidateResponse
+from app.schemas.validate import ValidateResponse, ValidationSummary
+from app.services.validation_projector import project_patient_rows
 
 _SAFE_DELIMITER_CHARS = set(string.punctuation)
 logger = get_logger(__name__)
@@ -45,6 +46,12 @@ def validate_document(
 
     error_count = sum(1 for issue in issues if issue.severity == "error")
     warning_count = sum(1 for issue in issues if issue.severity == "warning")
+    patients = project_patient_rows(parse_result.interchange, issues)
+    summary = ValidationSummary(
+        total_patients=len(patients),
+        valid_patients=sum(1 for patient in patients if patient.status == "valid"),
+        invalid_patients=sum(1 for patient in patients if patient.status == "invalid"),
+    )
     observe_segment_count(
         path=metrics_path,
         operation="validated_segments",
@@ -56,6 +63,8 @@ def validate_document(
         error_count=error_count,
         warning_count=warning_count,
         issues=issues,
+        patients=patients,
+        summary=summary,
     )
     logger.info(
         "validate_document_completed",
@@ -144,4 +153,6 @@ def _parse_error_issue(error: TransactionParseError) -> ValidationIssue:
         location=f"segment_position:{error.segment_position}",
         segment_id=error.segment_id,
         suggestion=error.suggestion,
+        transaction_index=error.transaction_index,
+        transaction_control_number=error.st_control_number,
     )

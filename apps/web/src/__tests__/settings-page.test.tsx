@@ -15,7 +15,7 @@ describe('SettingsPage', () => {
           profiles: [
             {
               name: 'dc_medicaid',
-              display_name: 'DC Medicaid',
+              displayName: 'DC Medicaid',
               description: 'DC Medicaid eligibility profile.',
             },
           ],
@@ -42,7 +42,7 @@ describe('SettingsPage', () => {
             profiles: [
               {
                 name: 'dc_medicaid',
-                display_name: 'DC Medicaid',
+                displayName: 'DC Medicaid',
                 description: 'DC Medicaid eligibility profile.',
               },
             ],
@@ -51,12 +51,12 @@ describe('SettingsPage', () => {
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({
-            payer_name: 'DC MEDICAID',
-            payer_id: 'DCMEDICAID',
-            interchange_receiver_id: 'DCMEDICAID',
-            receiver_id_qualifier: 'ZZ',
-            default_service_type_code: '30',
-            max_batch_size: 5000,
+            payerName: 'DC MEDICAID',
+            payerId: 'DCMEDICAID',
+            interchangeReceiverId: 'DCMEDICAID',
+            receiverIdQualifier: 'ZZ',
+            defaultServiceTypeCode: '30',
+            maxBatchSize: 5000,
           }),
         }),
     )
@@ -89,7 +89,7 @@ describe('SettingsPage', () => {
           profiles: [
             {
               name: 'dc_medicaid',
-              display_name: 'DC Medicaid',
+              displayName: 'DC Medicaid',
               description: 'DC Medicaid eligibility profile.',
             },
           ],

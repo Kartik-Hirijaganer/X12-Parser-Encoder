@@ -24,6 +24,8 @@ from x12_edi_tools.validator.base import (
     SnipLevel,
     TransactionContext,
     ValidationError,
+    annotate_transaction_issue,
+    annotate_transaction_issues,
     as_list,
     issue,
     iter_transaction_body_segments,
@@ -101,7 +103,10 @@ def validate_snip2(interchange: Interchange) -> list[ValidationError]:
             if tx_context.functional_group_index != group_index:
                 continue
             issues.extend(
-                _validate_transaction_required_content(tx_context.transaction, tx_context)
+                annotate_transaction_issues(
+                    _validate_transaction_required_content(tx_context.transaction, tx_context),
+                    tx_context,
+                )
             )
 
     issues.extend(_validate_segment_lengths(interchange))
@@ -430,19 +435,19 @@ def _require_nm1_last_name(nm1: object, *, location: str, message: str) -> list[
 
 def _validate_segment_lengths(interchange: Interchange) -> list[ValidationError]:
     issues: list[ValidationError] = []
-    segments: list[tuple[str, X12Segment]] = []
+    segments: list[tuple[str, X12Segment, TransactionContext | None]] = []
 
     isa = getattr(interchange, "isa", None)
     if isinstance(isa, X12Segment):
-        segments.append(("ISA", isa))
+        segments.append(("ISA", isa, None))
 
     for group_index, group in enumerate(as_list(getattr(interchange, "functional_groups", []))):
         if not isinstance(group, FunctionalGroup):
             continue
         if isinstance(getattr(group, "gs", None), X12Segment):
-            segments.append((f"FunctionalGroup[{group_index}].GS", group.gs))
+            segments.append((f"FunctionalGroup[{group_index}].GS", group.gs, None))
         if isinstance(getattr(group, "ge", None), X12Segment):
-            segments.append((f"FunctionalGroup[{group_index}].GE", group.ge))
+            segments.append((f"FunctionalGroup[{group_index}].GE", group.ge, None))
         for tx_context in iter_transactions(interchange):
             if tx_context.functional_group_index != group_index:
                 continue
@@ -453,11 +458,11 @@ def _validate_segment_lengths(interchange: Interchange) -> list[ValidationError]
             for segment_name in ("st", "bht", "se"):
                 segment = getattr(transaction, segment_name, None)
                 if isinstance(segment, X12Segment):
-                    segments.append((f"{tx_prefix}.{segment.segment_id}", segment))
+                    segments.append((f"{tx_prefix}.{segment.segment_id}", segment, tx_context))
             for segment in iter_transaction_body_segments(transaction):
-                segments.append((tx_prefix, segment))
+                segments.append((tx_prefix, segment, tx_context))
 
-    for prefix, segment in segments:
+    for prefix, segment, segment_tx_context in segments:
         reverse_map = {
             field_name: position for position, field_name in segment._element_map.items()
         }
@@ -475,20 +480,21 @@ def _validate_segment_lengths(interchange: Interchange) -> list[ValidationError]
             location = f"{prefix}.{segment.segment_id}"
             if position is not None:
                 location = f"{location}.{position:02d}"
-            issues.append(
-                issue(
-                    level=SnipLevel.SNIP2,
-                    code="SNIP2_ELEMENT_TOO_LONG",
-                    message=(
-                        f"{segment.segment_id}{position or ''} allows at most {max_length} "
-                        f"characters, got {len(rendered)}."
-                    ),
-                    location=location,
-                    segment_id=segment.segment_id,
-                    element=f"{position:02d}" if position is not None else None,
-                    suggestion="Trim the element to the maximum allowed X12 length.",
-                )
+            validation_issue = issue(
+                level=SnipLevel.SNIP2,
+                code="SNIP2_ELEMENT_TOO_LONG",
+                message=(
+                    f"{segment.segment_id}{position or ''} allows at most {max_length} "
+                    f"characters, got {len(rendered)}."
+                ),
+                location=location,
+                segment_id=segment.segment_id,
+                element=f"{position:02d}" if position is not None else None,
+                suggestion="Trim the element to the maximum allowed X12 length.",
             )
+            if segment_tx_context is not None:
+                validation_issue = annotate_transaction_issue(validation_issue, segment_tx_context)
+            issues.append(validation_issue)
 
     return issues
 

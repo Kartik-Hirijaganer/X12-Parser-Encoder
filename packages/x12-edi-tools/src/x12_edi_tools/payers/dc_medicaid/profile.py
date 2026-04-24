@@ -37,8 +37,10 @@ from x12_edi_tools.payers.dc_medicaid.profile_270 import validate_270_dtp_placem
 from x12_edi_tools.payers.dc_medicaid.search_criteria import evaluate_search_criteria
 from x12_edi_tools.validator.base import (
     ValidationError,
+    annotate_transaction_issues,
     as_list,
     issue,
+    iter_transactions,
     normalize_str,
     parse_date_yyyymmdd,
     subtract_months,
@@ -67,18 +69,26 @@ class DCMedicaidProfile(PayerProfile):
         issues.extend(self._validate_envelope_values(interchange))
         issues.extend(self._validate_transaction_limits(interchange))
 
-        for group_index, group in enumerate(as_list(getattr(interchange, "functional_groups", []))):
-            if not isinstance(group, FunctionalGroup):
-                continue
-            for transaction_index, transaction in enumerate(as_list(group.transactions)):
-                if isinstance(transaction, Transaction270):
-                    issues.extend(
-                        self._validate_270_transaction(transaction, group_index, transaction_index)
+        for tx_context in iter_transactions(interchange):
+            transaction_issues: list[ValidationError] = []
+            transaction = tx_context.transaction
+            if isinstance(transaction, Transaction270):
+                transaction_issues.extend(
+                    self._validate_270_transaction(
+                        transaction,
+                        tx_context.functional_group_index,
+                        tx_context.transaction_index,
                     )
-                elif isinstance(transaction, Transaction271):
-                    issues.extend(
-                        self._validate_271_transaction(transaction, group_index, transaction_index)
+                )
+            elif isinstance(transaction, Transaction271):
+                transaction_issues.extend(
+                    self._validate_271_transaction(
+                        transaction,
+                        tx_context.functional_group_index,
+                        tx_context.transaction_index,
                     )
+                )
+            issues.extend(annotate_transaction_issues(transaction_issues, tx_context))
 
         return issues
 

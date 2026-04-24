@@ -23,6 +23,7 @@ from x12_edi_tools.models.loops import (
     Loop2100C_271,
     Loop2110C_270,
     Loop2110C_271,
+    Loop2120C_271,
 )
 from x12_edi_tools.models.segments import (
     AAASegment,
@@ -44,12 +45,14 @@ from x12_edi_tools.models.segments import (
     STSegment,
     TRNSegment,
 )
+from x12_edi_tools.models.segments.nm1 import BENEFIT_ENTITY_IDENTIFIER_CODES
 from x12_edi_tools.models.transactions import Transaction270, Transaction271
 from x12_edi_tools.parser._exceptions import ParserComponentError
 from x12_edi_tools.parser.segment_parser import ParsedSegment, render_raw_segment
 
 ParsedSegmentPair: TypeAlias = tuple[ParsedSegment, SegmentToken]
 SegmentModelT = TypeVar("SegmentModelT", bound=X12Segment)
+_MAX_2120C_PER_SEGMENTS = 3
 
 
 def build_transaction(
@@ -108,6 +111,12 @@ def build_transaction(
         error="unsupported_transaction",
         suggestion="Only 270 and 271 transactions are supported in Phase 2",
     )
+
+
+def _code(value: object) -> str | None:
+    if value is None:
+        return None
+    return str(getattr(value, "value", value))
 
 
 @dataclass(slots=True)
@@ -227,6 +236,7 @@ class _Loop2110C271State:
     aaa_segments: list[AAASegment] = field(default_factory=list)
     ref_segments: list[REFSegment] = field(default_factory=list)
     dtp_segments: list[DTPSegment] = field(default_factory=list)
+    loop_2120c: list[_Loop2120C271State] = field(default_factory=list)
     ls_segment: LSSegment | None = None
     le_segment: LESegment | None = None
 
@@ -236,8 +246,27 @@ class _Loop2110C271State:
             aaa_segments=list(self.aaa_segments),
             ref_segments=list(self.ref_segments),
             dtp_segments=list(self.dtp_segments),
+            loop_2120c=[item.build() for item in self.loop_2120c],
             ls_segment=self.ls_segment,
             le_segment=self.le_segment,
+        )
+
+
+@dataclass(slots=True)
+class _Loop2120C271State:
+    ls_segment: LSSegment
+    nm1: NM1Segment
+    per_segments: list[PERSegment] = field(default_factory=list)
+    le_segment: LESegment | None = None
+
+    def build(self) -> Loop2120C_271:
+        if self.le_segment is None:
+            raise ValueError("Loop 2120C (271) is missing the closing LE segment")
+        return Loop2120C_271(
+            ls=self.ls_segment,
+            nm1=self.nm1,
+            per_segments=list(self.per_segments),
+            le=self.le_segment,
         )
 
 
@@ -393,7 +422,8 @@ def _build_270_hierarchy(
                 continue
 
         if isinstance(segment, NM1Segment):
-            if segment.entity_identifier_code == EntityIdentifierCode.PAYER:
+            entity_identifier_code = _code(segment.entity_identifier_code)
+            if entity_identifier_code == EntityIdentifierCode.PAYER.value:
                 if current_2000a is None:
                     _raise_builder_error(
                         token,
@@ -403,7 +433,7 @@ def _build_270_hierarchy(
                     )
                 current_2000a.loop_2100a = _Loop2100A270State(nm1=segment)
                 continue
-            if segment.entity_identifier_code == EntityIdentifierCode.PROVIDER:
+            if entity_identifier_code == EntityIdentifierCode.PROVIDER.value:
                 if current_2000b is None:
                     _raise_builder_error(
                         token,
@@ -413,7 +443,7 @@ def _build_270_hierarchy(
                     )
                 current_2000b.loop_2100b = _Loop2100B270State(nm1=segment)
                 continue
-            if segment.entity_identifier_code == EntityIdentifierCode.SUBSCRIBER:
+            if entity_identifier_code == EntityIdentifierCode.SUBSCRIBER.value:
                 if current_2000c is None:
                     _raise_builder_error(
                         token,
@@ -583,10 +613,26 @@ def _build_271_hierarchy(
     current_2000b: _Loop2000B271State | None = None
     current_2000c: _Loop2000C271State | None = None
     current_2110c: _Loop2110C271State | None = None
+    current_2120c: _Loop2120C271State | None = None
+    pending_2120c_ls_segment: LSSegment | None = None
+    pending_2120c_token: SegmentToken | None = None
 
     for segment, token in body:
         if isinstance(segment, GenericSegment):
             continue
+        if pending_2120c_token is not None and not isinstance(
+            segment,
+            (LESegment, NM1Segment, PERSegment, REFSegment),
+        ):
+            _raise_builder_error(
+                token,
+                element_separator=element_separator,
+                message=(
+                    "Only NM1*P3, NM1*P5, NM1*1I, PER, REF, and LE are allowed inside "
+                    "a 271 LS/LE benefit-entity wrapper"
+                ),
+                error=f"unexpected_{segment.segment_id.lower()}",
+            )
 
         if isinstance(segment, HLSegment):
             if segment.hierarchical_level_code == HierarchicalLevelCode.INFORMATION_SOURCE:
@@ -595,6 +641,9 @@ def _build_271_hierarchy(
                 current_2000b = None
                 current_2000c = None
                 current_2110c = None
+                current_2120c = None
+                pending_2120c_ls_segment = None
+                pending_2120c_token = None
                 continue
             if segment.hierarchical_level_code == HierarchicalLevelCode.INFORMATION_RECEIVER:
                 if current_2000a is None:
@@ -608,6 +657,9 @@ def _build_271_hierarchy(
                 current_2000a.loop_2000b.append(current_2000b)
                 current_2000c = None
                 current_2110c = None
+                current_2120c = None
+                pending_2120c_ls_segment = None
+                pending_2120c_token = None
                 continue
             if segment.hierarchical_level_code == HierarchicalLevelCode.SUBSCRIBER:
                 if current_2000b is None:
@@ -620,10 +672,43 @@ def _build_271_hierarchy(
                 current_2000c = _Loop2000C271State(hl=segment)
                 current_2000b.loop_2000c.append(current_2000c)
                 current_2110c = None
+                current_2120c = None
+                pending_2120c_ls_segment = None
+                pending_2120c_token = None
                 continue
 
         if isinstance(segment, NM1Segment):
-            if segment.entity_identifier_code == EntityIdentifierCode.PAYER:
+            entity_identifier_code = _code(segment.entity_identifier_code)
+            if pending_2120c_ls_segment is not None:
+                if current_2120c is not None:
+                    _raise_builder_error(
+                        token,
+                        element_separator=element_separator,
+                        message=(
+                            "Loop 2120C (271) supports only one NM1 benefit entity "
+                            "per LS/LE wrapper"
+                        ),
+                        error="unexpected_nm1",
+                    )
+                if entity_identifier_code in BENEFIT_ENTITY_IDENTIFIER_CODES:
+                    if current_2110c is not None:
+                        current_2110c.ls_segment = None
+                        current_2110c.le_segment = None
+                    current_2120c = _Loop2120C271State(
+                        ls_segment=pending_2120c_ls_segment,
+                        nm1=segment,
+                    )
+                    continue
+                _raise_builder_error(
+                    token,
+                    element_separator=element_separator,
+                    message=(
+                        "Only NM1*P3, NM1*P5, or NM1*1I may appear inside a 271 LS/LE "
+                        "benefit-entity wrapper"
+                    ),
+                    error="unexpected_nm1",
+                )
+            if entity_identifier_code == EntityIdentifierCode.PAYER.value:
                 if current_2000a is None:
                     _raise_builder_error(
                         token,
@@ -633,7 +718,7 @@ def _build_271_hierarchy(
                     )
                 current_2000a.loop_2100a = _Loop2100A271State(nm1=segment)
                 continue
-            if segment.entity_identifier_code == EntityIdentifierCode.PROVIDER:
+            if entity_identifier_code == EntityIdentifierCode.PROVIDER.value:
                 if current_2000b is None:
                     _raise_builder_error(
                         token,
@@ -643,7 +728,7 @@ def _build_271_hierarchy(
                     )
                 current_2000b.loop_2100b = _Loop2100B271State(nm1=segment)
                 continue
-            if segment.entity_identifier_code == EntityIdentifierCode.SUBSCRIBER:
+            if entity_identifier_code == EntityIdentifierCode.SUBSCRIBER.value:
                 if current_2000c is None:
                     _raise_builder_error(
                         token,
@@ -678,6 +763,17 @@ def _build_271_hierarchy(
             continue
 
         if isinstance(segment, PERSegment):
+            if current_2120c is not None:
+                if len(current_2120c.per_segments) < _MAX_2120C_PER_SEGMENTS:
+                    current_2120c.per_segments.append(segment)
+                continue
+            if pending_2120c_ls_segment is not None:
+                _raise_builder_error(
+                    token,
+                    element_separator=element_separator,
+                    message="PER inside a 271 LS/LE wrapper must follow NM1*P3, NM1*P5, or NM1*1I",
+                    error="unexpected_per",
+                )
             target = current_2000b.loop_2100b if current_2000b else None
             if target is None:
                 _raise_builder_error(
@@ -732,6 +828,13 @@ def _build_271_hierarchy(
             continue
 
         if isinstance(segment, REFSegment):
+            if (
+                pending_2120c_ls_segment is not None
+                and current_2120c is None
+                and current_2110c is not None
+                and current_2110c.ls_segment is None
+            ):
+                current_2110c.ls_segment = pending_2120c_ls_segment
             _append_271_ref(
                 ref_segment=segment,
                 current_2000a=current_2000a,
@@ -754,6 +857,9 @@ def _build_271_hierarchy(
             if current_2110c is None:
                 current_2110c = _Loop2110C271State()
                 current_2000c.loop_2110c.append(current_2110c)
+            current_2120c = None
+            pending_2120c_ls_segment = None
+            pending_2120c_token = None
             current_2110c.eb_segments.append(segment)
             continue
 
@@ -776,7 +882,16 @@ def _build_271_hierarchy(
                     message="LS must appear within loop 2110C",
                     error="unexpected_ls",
                 )
+            if pending_2120c_ls_segment is not None:
+                _raise_builder_error(
+                    token,
+                    element_separator=element_separator,
+                    message="Nested LS wrappers are not supported within loop 2110C",
+                    error="unexpected_ls",
+                )
             current_2110c.ls_segment = segment
+            pending_2120c_ls_segment = segment
+            pending_2120c_token = token
             continue
 
         if isinstance(segment, LESegment):
@@ -787,7 +902,14 @@ def _build_271_hierarchy(
                     message="LE must appear within loop 2110C",
                     error="unexpected_le",
                 )
-            current_2110c.le_segment = segment
+            if current_2120c is not None:
+                current_2120c.le_segment = segment
+                current_2110c.loop_2120c.append(current_2120c)
+                current_2120c = None
+            else:
+                current_2110c.le_segment = segment
+            pending_2120c_ls_segment = None
+            pending_2120c_token = None
             continue
 
         _raise_builder_error(
@@ -805,6 +927,15 @@ def _build_271_hierarchy(
             message="Transaction is missing the 2000A hierarchy",
             error="missing_hierarchy",
             suggestion="Start the body with HL*...*20",
+        )
+
+    if pending_2120c_token is not None:
+        _raise_builder_error(
+            pending_2120c_token,
+            element_separator=element_separator,
+            message="Loop 2120C (271) did not close with an LE segment",
+            error="incomplete_loop",
+            suggestion="Ensure each LS*2120 wrapper is closed by LE*2120",
         )
 
     try:

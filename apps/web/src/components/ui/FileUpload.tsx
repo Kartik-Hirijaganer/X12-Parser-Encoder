@@ -70,7 +70,7 @@ export function FileUpload({
       />
       <div
         className={cn(
-          'flex w-full flex-col items-center justify-center gap-3 rounded-[var(--radius-xl)] border-2 border-dashed px-6 py-10 text-center transition-[background-color,border-color] duration-[var(--duration-normal)] ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]',
+          'flex w-full flex-col items-center justify-center gap-3 rounded-[var(--radius-xl)] border-2 border-dashed px-6 py-10 text-center transition-[background-color,border-color] duration-[var(--duration-normal)] ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-[var(--focus-ring-width)] focus-visible:ring-[var(--color-focus-ring)]',
           disabled
             ? 'cursor-not-allowed border-[var(--color-border-default)] bg-[var(--color-surface-secondary)] text-[var(--color-text-disabled)]'
             : 'cursor-pointer border-[var(--color-border-default)] bg-[linear-gradient(to_bottom,var(--color-surface-tertiary),var(--color-surface-wash))] text-[var(--color-text-primary)] hover:border-[var(--color-action-500)] hover:bg-[var(--color-action-50)]',
@@ -114,8 +114,8 @@ export function FileUpload({
         <span className="rounded-full bg-[var(--color-surface-primary)] p-4 text-[var(--color-text-secondary)] shadow-[var(--shadow-sm)]">
           <UploadIcon className="h-8 w-8" />
         </span>
-        <span className="text-[16px] font-medium">{title ?? 'Drag & drop any file here'}</span>
-        <span className="max-w-xl text-[14px] text-[var(--color-text-secondary)]">
+        <span className="text-base font-medium">{title ?? 'Drag & drop any file here'}</span>
+        <span className="max-w-xl text-sm text-[var(--color-text-secondary)]">
           {description ?? 'or click to browse (.xlsx .csv .x12 .edi)'}
         </span>
         <Button disabled={disabled} onClick={openPicker} variant="primary">

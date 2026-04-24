@@ -1,0 +1,164 @@
+name: Terraform Plan
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      DEPLOY_ENV: staging
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-2' }}
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+      APP_NAME: ${{ vars.APP_NAME || 'x12-parser-encoder' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate plan configuration
+        id: plan-config
+        env:
+          TERRAFORM_TFVARS: ${{ secrets.TERRAFORM_TFVARS }}
+        run: |
+          missing=()
+          if [[ -z "${AWS_ACCOUNT_ID}" ]]; then
+            missing+=("AWS_ACCOUNT_ID repository variable")
+          fi
+          if [[ -z "${TERRAFORM_TFVARS}" ]]; then
+            missing+=("TERRAFORM_TFVARS staging environment secret")
+          fi
+
+          if (( ${#missing[@]} > 0 )); then
+            missing_text="$(printf '%s, ' "${missing[@]}")"
+            missing_text="${missing_text%, }"
+            echo "configured=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice::Terraform plan skipped; missing ${missing_text}."
+            {
+              echo "### Terraform plan skipped"
+              echo
+              echo "Missing ${missing_text}."
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          echo "configured=true" >> "${GITHUB_OUTPUT}"
+
+      - uses: hashicorp/setup-terraform@v3
+        if: steps.plan-config.outputs.configured == 'true'
+        with:
+          terraform_version: "1.6.6"
+
+      - uses: terraform-linters/setup-tflint@v4
+        if: steps.plan-config.outputs.configured == 'true'
+
+      - uses: actions/setup-go@v5
+        if: steps.plan-config.outputs.configured == 'true'
+        with:
+          go-version: "1.23"
+
+      - name: Install tfsec
+        if: steps.plan-config.outputs.configured == 'true'
+        run: |
+          go install github.com/aquasecurity/tfsec/cmd/tfsec@v1.28.14
+          echo "$(go env GOPATH)/bin" >> "${GITHUB_PATH}"
+
+      - name: Configure AWS credentials with OIDC role
+        if: steps.plan-config.outputs.configured == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/${{ env.APP_NAME }}-deploy-${{ env.DEPLOY_ENV }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Prepare Terraform inputs
+        if: steps.plan-config.outputs.configured == 'true'
+        env:
+          TERRAFORM_TFVARS: ${{ secrets.TERRAFORM_TFVARS }}
+        run: |
+          tfstate_bucket="${APP_NAME}-tfstate-${AWS_ACCOUNT_ID}-${AWS_REGION}"
+          env_dir="infra/terraform/environments/${DEPLOY_ENV}"
+
+          cat > "${env_dir}/backend.hcl" <<EOF
+          bucket         = "${tfstate_bucket}"
+          key            = "${DEPLOY_ENV}/terraform.tfstate"
+          region         = "${AWS_REGION}"
+          dynamodb_table = "${APP_NAME}-tflocks"
+          encrypt        = true
+          EOF
+
+          printf '%s\n' "${TERRAFORM_TFVARS}" > "${env_dir}/terraform.tfvars"
+
+          {
+            echo "TFSTATE_BUCKET=${tfstate_bucket}"
+            echo "TF_ENV_DIR=${env_dir}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Terraform fmt
+        if: steps.plan-config.outputs.configured == 'true'
+        run: terraform fmt -check -recursive infra/terraform
+
+      - name: Terraform validate
+        if: steps.plan-config.outputs.configured == 'true'
+        run: |
+          terraform -chdir="${TF_ENV_DIR}" init -backend-config=backend.hcl
+          terraform -chdir="${TF_ENV_DIR}" validate
+
+      - name: TFLint
+        if: steps.plan-config.outputs.configured == 'true'
+        run: |
+          cd infra/terraform
+          tflint --init --config "${GITHUB_WORKSPACE}/infra/terraform/.tflint.hcl"
+          tflint --recursive --config "${GITHUB_WORKSPACE}/infra/terraform/.tflint.hcl"
+
+      - name: tfsec critical scan
+        if: steps.plan-config.outputs.configured == 'true'
+        run: tfsec --force-all-dirs --minimum-severity CRITICAL infra/terraform
+
+      - name: Terraform plan
+        if: steps.plan-config.outputs.configured == 'true'
+        run: |
+          plan_args=()
+          if terraform -chdir="${TF_ENV_DIR}" state list | grep -q '^module.lambda_api.aws_lambda_function.this$'; then
+            current_key="$(
+              terraform -chdir="${TF_ENV_DIR}" state show module.lambda_api.aws_lambda_function.this \
+                | awk -F' = ' '/^[[:space:]]*s3_key[[:space:]]*=/{gsub("\"", "", $2); print $2; exit}'
+            )"
+            if [[ -n "${current_key}" ]]; then
+              plan_args+=("-var" "lambda_zip_s3_bucket=${TFSTATE_BUCKET}")
+              plan_args+=("-var" "lambda_zip_s3_key=${current_key}")
+            fi
+          fi
+
+          terraform -chdir="${TF_ENV_DIR}" plan \
+            -no-color \
+            -input=false \
+            -var-file=terraform.tfvars \
+            "${plan_args[@]}" \
+            > "${RUNNER_TEMP}/terraform-plan.txt"
+
+      - name: Comment plan
+        if: steps.plan-config.outputs.configured == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync(process.env.RUNNER_TEMP + '/terraform-plan.txt', 'utf8');
+            const body = [
+              '### Terraform plan: staging',
+              '',
+              '```text',
+              plan.slice(0, 60000),
+              plan.length > 60000 ? '\n... plan truncated for GitHub comment length ...' : '',
+              '```',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });

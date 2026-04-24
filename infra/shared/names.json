@@ -1,0 +1,15 @@
+{
+  "app_name": "x12-parser-encoder",
+  "function_name_prefix": "x12-parser-encoder-api",
+  "log_group_prefix": "/aws/lambda/x12-parser-encoder-api",
+  "api_prefix": "/api/v1",
+  "env_var_names": [
+    "X12_API_DEPLOYMENT_TARGET",
+    "X12_API_ORIGIN_SECRET_ENABLED",
+    "X12_API_ORIGIN_SECRET",
+    "X12_API_ORIGIN_SECRET_PREVIOUS",
+    "X12_API_ENVIRONMENT",
+    "X12_API_SERVE_FRONTEND",
+    "X12_API_METRICS_ENABLED"
+  ]
+}

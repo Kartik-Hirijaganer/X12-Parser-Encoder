@@ -1,0 +1,48 @@
+name: Architecture Review Nudge
+
+on:
+  pull_request:
+    paths:
+      - "infra/terraform/modules/**"
+      - "apps/api/app/main.py"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  nudge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post architecture review reminder
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- architecture-review-nudge -->';
+            const body = [
+              marker,
+              'You changed infrastructure or the app entrypoint. Please confirm `docs/architecture.md` and the README Mermaid diagram still reflect the target state, or update them in this PR.',
+            ].join('\n');
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) => comment.body && comment.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

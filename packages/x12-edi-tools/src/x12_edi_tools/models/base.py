@@ -25,7 +25,12 @@ class X12Segment(X12BaseModel):
     _element_map: ClassVar[ElementMap] = {}
 
     @classmethod
-    def from_elements(cls, elements: Sequence[ElementValue]) -> Self:
+    def from_elements(
+        cls,
+        elements: Sequence[ElementValue],
+        *,
+        repetition_separator: str | None = None,
+    ) -> Self:
         """Build a segment from positional X12 elements."""
 
         data = {
