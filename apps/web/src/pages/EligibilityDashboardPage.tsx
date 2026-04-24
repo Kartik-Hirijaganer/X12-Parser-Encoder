@@ -20,7 +20,7 @@ export function EligibilityDashboardPage() {
     return (
       <AppShell title="Dashboard unavailable">
         <Card className="space-y-4">
-          <p className="text-[16px] text-[var(--color-text-secondary)]">
+          <p className="text-base text-[var(--color-text-secondary)]">
             Upload a 271 response from the home page to review eligibility results.
           </p>
           <Button onClick={() => navigate('/')} variant="primary">

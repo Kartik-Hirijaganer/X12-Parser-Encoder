@@ -105,6 +105,20 @@ jobs:
       - name: Build
         run: cd apps/web && npm run build
 
+  design-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install web dependencies
+        run: cd apps/web && npm ci
+      - name: Design lint
+        run: make design-lint
+
   security:
     runs-on: ubuntu-latest
     steps:

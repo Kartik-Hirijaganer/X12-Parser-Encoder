@@ -107,7 +107,7 @@ Phase 0/1/7 note: 837I/837P/835 symbols (`ClaimBuildOptions`, `PartitioningStrat
 
 ### Documentation sources of truth
 
-Conflicts between docs: `apps/web/src/styles/tokens.css` wins for values, `docs/design-system.md` wins for rules/roles, `docs/ui-components.md` wins for primitive APIs. `docs/architecture.md` covers system-level boundaries.
+Conflicts between frontend docs: `apps/web/src/styles/tokens.css` wins for concrete values, `docs/design-spec.md` wins for enforceable rules and roles, and `docs/ui-components.md` remains the primitive API appendix. `docs/architecture.md` covers system-level boundaries.
 
 ## Conventions
 
@@ -133,12 +133,12 @@ Conflicts between docs: `apps/web/src/styles/tokens.css` wins for values, `docs/
 ### Frontend
 
 - Use React + TypeScript + Vite.
-- **Before writing any UI code, read `docs/design-system.md` (visual + composition rules) and `docs/ui-components.md` (primitive API catalog).** These two documents plus `apps/web/src/styles/tokens.css` are the authoritative frontend spec; do not guess from memory.
+- **Before writing any UI code, read `docs/design-spec.md`.** It is the single enforceable frontend design contract and links to the detailed visual and primitive appendices.
 - **Token source of truth**: `apps/web/src/styles/tokens.css` is the only place concrete hex values, radii, shadows, fonts, and motion tokens live. Never hardcode hex values, pixel spacing, or arbitrary Tailwind values (`bg-[#...]`, `p-[13px]`). If you need a new value, add it to `tokens.css` first as a named token, then reference the token.
 - **Primitive-first**: every interactive element, table, file input, card, badge, banner, and spinner must use the matching primitive under `apps/web/src/components/ui/` (`Button`, `Table`, `FileUpload`, `Card`, `Badge`, `Banner`, `Spinner`, `Icons`). Do not hand-roll raw `<button>`, `<table>`, or `<input type="file">`, and do not duplicate an existing primitive with a one-off component.
 - **Storage boundary**: do not persist patient data in `localStorage`, `sessionStorage`, or `IndexedDB`. The only sanctioned `localStorage` key is `x12_submitter_config` for non-PHI submitter configuration.
-- **Every new visual pattern lands as a triplet**: update `docs/design-system.md` (role / rule), update `docs/ui-components.md` (primitive API + usage), and add or extend the primitive's test. If the pattern needs a new token, update `tokens.css` in the same change.
-- **When rules conflict**: `tokens.css` wins for values, `docs/design-system.md` wins for rules and roles, `docs/ui-components.md` wins for primitive APIs. Fix the drift in the same PR rather than working around it.
+- **Every new visual pattern lands as a triplet**: update `docs/design-spec.md`, update or add the primitive, and add or extend the primitive's test. If the pattern needs a new token, update `tokens.css` in the same change.
+- **When rules conflict**: `tokens.css` wins for values, `docs/design-spec.md` wins for rules and roles, and `docs/ui-components.md` wins for primitive APIs. Fix the drift in the same PR rather than working around it.
 
 ### Release
 

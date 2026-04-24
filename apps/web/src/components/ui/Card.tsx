@@ -21,6 +21,6 @@ const cardClasses: Record<CardVariant, string> = {
   content: cn(sharedCardClass, 'p-6 shadow-[var(--shadow-sm)]'),
   action: cn(
     sharedCardClass,
-    'p-6 shadow-[var(--shadow-md)] transition-[box-shadow,transform] duration-[var(--duration-slow)] ease-[var(--ease-out)] hover:translate-y-[-2px] hover:shadow-[var(--shadow-lg)]',
+    'p-6 shadow-[var(--shadow-md)] transition-[box-shadow,transform] duration-[var(--duration-slow)] ease-[var(--ease-out)] hover:translate-y-[var(--motion-lift-md)] hover:shadow-[var(--shadow-lg)]',
   ),
 }

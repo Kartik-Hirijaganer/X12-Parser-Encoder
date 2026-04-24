@@ -18,7 +18,7 @@ export function GenerateResultPage() {
     return (
       <AppShell title="Generate result unavailable">
         <Card className="space-y-4">
-          <p className="text-[16px] text-[var(--color-text-secondary)]">
+          <p className="text-base text-[var(--color-text-secondary)]">
             Generate a 270 from the preview step to see the output here.
           </p>
           <Button onClick={() => navigate('/')} variant="primary">
@@ -49,16 +49,16 @@ export function GenerateResultPage() {
       ) : null}
 
       <Card className="space-y-3">
-        <h2 className="text-[20px] font-semibold text-[var(--color-text-primary)]">
+        <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">
           Submission package
         </h2>
-        <p className="text-[14px] text-[var(--color-text-secondary)]">
+        <p className="text-sm text-[var(--color-text-secondary)]">
           Recommended download name
         </p>
-        <p className="rounded-[var(--radius-md)] bg-[var(--color-surface-subtle)] px-4 py-3 font-mono text-[14px] text-[var(--color-text-primary)]">
+        <p className="rounded-[var(--radius-md)] bg-[var(--color-surface-subtle)] px-4 py-3 font-mono text-sm text-[var(--color-text-primary)]">
           {primaryDownloadName}
         </p>
-        <p className="text-[14px] text-[var(--color-text-secondary)]">
+        <p className="text-sm text-[var(--color-text-secondary)]">
           Submit the output to Gainwell using the channel defined in your trading partner
           agreement, then keep the filename and ISA13 together for audit matching.
         </p>
@@ -73,7 +73,7 @@ export function GenerateResultPage() {
 
       {response.split_count > 1 && response.archive_entries.length > 0 ? (
         <Card className="space-y-4">
-          <h2 className="text-[20px] font-semibold text-[var(--color-text-primary)]">Archive manifest</h2>
+          <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">Archive manifest</h2>
           <Table
             columns={[
               {
@@ -106,18 +106,18 @@ export function GenerateResultPage() {
         <Card className="space-y-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-[20px] font-semibold text-[var(--color-text-primary)]">
+              <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">
                 Batch summary
               </h2>
-              <p className="mt-2 text-[14px] text-[var(--color-text-secondary)]">
+              <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
                 Human-readable handoff notes for manual submission and audit trail matching.
               </p>
             </div>
-            <p className="text-[13px] text-[var(--color-text-secondary)]">
+            <p className="text-caption text-[var(--color-text-secondary)]">
               {batchSummaryFileName}
             </p>
           </div>
-          <pre className="max-h-[320px] overflow-auto rounded-[var(--radius-lg)] bg-[var(--color-surface-subtle)] p-5 font-mono text-[13px] leading-6 text-[var(--color-text-primary)]">
+          <pre className="max-h-[var(--layout-preview-max-height)] overflow-auto rounded-[var(--radius-lg)] bg-[var(--color-surface-subtle)] p-5 font-mono text-caption leading-6 text-[var(--color-text-primary)]">
             {response.batch_summary_text}
           </pre>
         </Card>
@@ -126,12 +126,12 @@ export function GenerateResultPage() {
       {response.x12_content ? (
         <Card className="space-y-4">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-[20px] font-semibold text-[var(--color-text-primary)]">Raw X12 preview</h2>
-            <p className="text-[13px] text-[var(--color-text-secondary)]">
+            <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">Raw X12 preview</h2>
+            <p className="text-caption text-[var(--color-text-secondary)]">
               ISA13 {response.control_numbers.isa13 ?? 'unknown'} • GS06 {response.control_numbers.gs06 ?? 'unknown'}
             </p>
           </div>
-          <pre className="max-h-[400px] overflow-auto rounded-[var(--radius-lg)] bg-[linear-gradient(to_bottom,var(--color-surface-dark),var(--color-surface-dark-end))] p-5 font-mono text-[14px] leading-6 text-[var(--color-code-text)]">
+          <pre className="max-h-[var(--layout-x12-preview-max-height)] overflow-auto rounded-[var(--radius-lg)] bg-[linear-gradient(to_bottom,var(--color-surface-dark),var(--color-surface-dark-end))] p-5 font-mono text-sm leading-6 text-[var(--color-code-text)]">
             {response.x12_content}
           </pre>
         </Card>
@@ -193,10 +193,10 @@ export function GenerateResultPage() {
 function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
     <Card className="p-5">
-      <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-[var(--color-text-tertiary)]">
+      <p className="text-caption font-medium uppercase tracking-[0.04em] text-[var(--color-text-tertiary)]">
         {label}
       </p>
-      <p className="mt-3 text-[24px] font-semibold text-[var(--color-text-primary)]">{value}</p>
+      <p className="mt-3 text-2xl font-semibold text-[var(--color-text-primary)]">{value}</p>
     </Card>
   )
 }

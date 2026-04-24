@@ -26,8 +26,8 @@ export function ActionCard({
         {icon}
       </div>
       <div>
-        <h3 className="text-[20px] font-semibold text-[var(--color-text-primary)]">{title}</h3>
-        <p className="mt-2 text-[14px] leading-6 text-[var(--color-text-secondary)]">{description}</p>
+        <h3 className="text-xl font-semibold text-[var(--color-text-primary)]">{title}</h3>
+        <p className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">{description}</p>
       </div>
       <div className="mt-auto flex flex-col gap-3">
         <FileUpload

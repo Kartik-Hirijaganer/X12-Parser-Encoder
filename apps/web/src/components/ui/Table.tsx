@@ -93,7 +93,7 @@ export function Table<T>({
                       {column.header}
                     </Button>
                   ) : (
-                    <span className="text-[13px] font-semibold uppercase tracking-[0.04em] text-[var(--color-text-primary)]">
+                    <span className="text-caption font-semibold uppercase tracking-[0.04em] text-[var(--color-text-primary)]">
                       {column.header}
                     </span>
                   )}
@@ -105,7 +105,7 @@ export function Table<T>({
             {visibleRows.length === 0 ? (
               <tr>
                 <td
-                  className="px-4 py-8 text-center text-[14px] text-[var(--color-text-secondary)]"
+                  className="px-4 py-8 text-center text-sm text-[var(--color-text-secondary)]"
                   colSpan={columns.length + (renderExpandedRow ? 1 : 0)}
                 >
                   {emptyMessage}
@@ -145,7 +145,7 @@ export function Table<T>({
                     {columns.map((column) => (
                       <td
                         className={cn(
-                          'px-4 py-3 text-[14px] leading-6 text-[var(--color-text-primary)]',
+                          'px-4 py-3 text-sm leading-6 text-[var(--color-text-primary)]',
                           column.className,
                         )}
                         key={`${key}-${column.id}`}
@@ -169,7 +169,7 @@ export function Table<T>({
       </div>
       {totalPages > 1 ? (
         <div className="flex items-center justify-between border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-tertiary)] px-4 py-3">
-          <p className="text-[13px] text-[var(--color-text-secondary)]">
+          <p className="text-caption text-[var(--color-text-secondary)]">
             Page {currentPage + 1} of {totalPages}
           </p>
           <div className="flex gap-2">

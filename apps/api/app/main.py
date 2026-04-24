@@ -30,13 +30,14 @@ def create_app() -> FastAPI:
             "version": settings.app_version,
         }
 
-    if settings.metrics_enabled:
+    if settings.metrics_enabled and settings.deployment_target != "lambda":
 
         @app.get(settings.metrics_path, include_in_schema=False)
         async def metrics() -> Response:
             return render_metrics_response()
 
-    _register_frontend(app)
+    if settings.deployment_target != "lambda":
+        _register_frontend(app)
     return app
 
 

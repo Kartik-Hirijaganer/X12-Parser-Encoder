@@ -8,6 +8,8 @@ import re
 import sys
 from pathlib import Path
 
+from versioning import require_semver
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 EXPECTED = (REPO_ROOT / "VERSION").read_text(encoding="utf-8").strip()
 README_FILE = REPO_ROOT / "README.md"
@@ -18,15 +20,59 @@ def check_text_pattern(path: Path, pattern: str) -> str | None:
     return match.group(1) if match else None
 
 
+def check_json_version(path: Path, *keys: str) -> str | None:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    value = data
+    for key in keys:
+        if not isinstance(value, dict) or key not in value:
+            return None
+        value = value[key]
+    return value if isinstance(value, str) else None
+
+
+def record_check(
+    checks: dict[str, str | None],
+    mismatches: list[str],
+    *,
+    path: str,
+    actual: str | None,
+) -> None:
+    checks[path] = actual
+    if actual is None:
+        mismatches.append(f"{path}: expected {EXPECTED}, found missing version")
+        return
+    try:
+        require_semver(actual, label=path)
+    except SystemExit as exc:
+        mismatches.append(str(exc))
+        return
+    if actual != EXPECTED:
+        mismatches.append(f"{path}: expected {EXPECTED}, found {actual}")
+
+
 def main() -> None:
     mismatches: list[str] = []
+    try:
+        require_semver(EXPECTED, label="VERSION")
+    except SystemExit as exc:
+        print(str(exc), file=sys.stderr)
+        raise SystemExit(1) from exc
 
-    checks = {
-        "packages/x12-edi-tools/pyproject.toml": check_text_pattern(
+    checks: dict[str, str | None] = {}
+    record_check(
+        checks,
+        mismatches,
+        path="packages/x12-edi-tools/pyproject.toml",
+        actual=check_text_pattern(
             REPO_ROOT / "packages" / "x12-edi-tools" / "pyproject.toml",
             r'^version = "([^"]+)"$',
         ),
-        "packages/x12-edi-tools/src/x12_edi_tools/__about__.py": check_text_pattern(
+    )
+    record_check(
+        checks,
+        mismatches,
+        path="packages/x12-edi-tools/src/x12_edi_tools/__about__.py",
+        actual=check_text_pattern(
             REPO_ROOT
             / "packages"
             / "x12-edi-tools"
@@ -35,29 +81,61 @@ def main() -> None:
             / "__about__.py",
             r'^__version__ = "([^"]+)"$',
         ),
-        "apps/api/pyproject.toml": check_text_pattern(
+    )
+    record_check(
+        checks,
+        mismatches,
+        path="apps/api/pyproject.toml",
+        actual=check_text_pattern(
             REPO_ROOT / "apps" / "api" / "pyproject.toml",
             r'^version = "([^"]+)"$',
         ),
-        "README.md": check_text_pattern(
-            README_FILE,
-            r"\| Monorepo \| `([^`]+)` \|",
+    )
+    for artifact in ("Monorepo", "Python package", "API app", "Web app"):
+        record_check(
+            checks,
+            mismatches,
+            path=f"README.md ({artifact})",
+            actual=check_text_pattern(
+                README_FILE,
+                rf"\| {re.escape(artifact)} \| `([^`]+)` \|",
+            ),
+        )
+
+    record_check(
+        checks,
+        mismatches,
+        path="apps/web/package.json",
+        actual=check_json_version(
+            REPO_ROOT / "apps" / "web" / "package.json",
+            "version",
         ),
-    }
-
-    package_json = json.loads(
-        (REPO_ROOT / "apps" / "web" / "package.json").read_text(encoding="utf-8")
     )
-    checks["apps/web/package.json"] = str(package_json.get("version"))
-
-    package_lock = json.loads(
-        (REPO_ROOT / "apps" / "web" / "package-lock.json").read_text(encoding="utf-8")
+    record_check(
+        checks,
+        mismatches,
+        path="apps/web/package-lock.json",
+        actual=check_json_version(
+            REPO_ROOT / "apps" / "web" / "package-lock.json",
+            "version",
+        ),
     )
-    checks["apps/web/package-lock.json"] = str(package_lock.get("version"))
+    record_check(
+        checks,
+        mismatches,
+        path="apps/web/package-lock.json (root package)",
+        actual=check_json_version(
+            REPO_ROOT / "apps" / "web" / "package-lock.json",
+            "packages",
+            "",
+            "version",
+        ),
+    )
 
-    for path, actual in checks.items():
-        if actual != EXPECTED:
-            mismatches.append(f"{path}: expected {EXPECTED}, found {actual}")
+    # The checks dict is kept explicit so this script fails loudly if a version
+    # source is accidentally removed while refactoring release metadata.
+    if not checks:
+        mismatches.append("No version-bearing files were checked")
 
     if mismatches:
         print("Version drift detected:", file=sys.stderr)

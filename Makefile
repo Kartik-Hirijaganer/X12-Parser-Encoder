@@ -18,7 +18,7 @@ ECR_REPOSITORY ?= $(APP_NAME)-api
 APP_RUNNER_SERVICE ?= $(APP_NAME)-api
 APP_RUNNER_ECR_ACCESS_ROLE ?= $(APP_NAME)-apprunner-ecr-access
 
-.PHONY: install lint typecheck format test test-lib test-api test-web coverage-lib coverage-api coverage-web coverage build-lib check-version-sync check-oss check-hygiene docs rebuild deploy clean
+.PHONY: install lint typecheck format test test-lib test-api test-web coverage-lib coverage-api coverage-web coverage build-lib check-version-sync check-oss check-hygiene design-lint docs rebuild deploy clean
 
 $(VENV_PYTHON):
 	$(PYTHON) -m venv $(VENV_DIR)
@@ -80,6 +80,9 @@ check-oss: $(VENV_PYTHON)
 
 check-hygiene: $(VENV_PYTHON)
 	PATH="$(VENV_BIN):$$PATH" $(VENV_PYTHON) scripts/check_repo_hygiene.py
+
+design-lint:
+	cd $(WEB_DIR) && npm run lint:design
 
 docs: $(VENV_PYTHON)
 	PATH="$(VENV_BIN):$$PATH" $(VENV_PYTHON) -m openapi_spec_validator docs/api/openapi.yaml

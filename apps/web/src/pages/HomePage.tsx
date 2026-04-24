@@ -99,7 +99,7 @@ export function HomePage() {
         <Banner variant="error">
           <p>{error.message}</p>
           {error.suggestion ? (
-            <p className="mt-1 text-[13px] text-[inherit]">Suggested fix: {error.suggestion}</p>
+            <p className="mt-1 text-caption text-[inherit]">Suggested fix: {error.suggestion}</p>
           ) : null}
         </Banner>
       ) : null}
@@ -130,7 +130,7 @@ export function HomePage() {
           disabled={!hasRequiredSettings || isProcessing}
           helper={
             !hasRequiredSettings ? (
-              <p className="flex items-center gap-2 text-[13px] text-[var(--color-warning-500)]">
+              <p className="flex items-center gap-2 text-caption text-[var(--color-warning-500)]">
                 <WarningIcon className="h-4 w-4" />
                 Configure your provider details in Settings first.
               </p>
@@ -161,15 +161,15 @@ export function HomePage() {
       <Card className="space-y-4">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="text-[20px] font-semibold text-[var(--color-text-primary)]">
+            <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">
               Or drag and drop any file here
             </h2>
-            <p className="mt-2 text-[14px] text-[var(--color-text-secondary)]">
+            <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
               The workbench routes spreadsheets to Generate and detects 270 vs 271 from the X12 content.
             </p>
           </div>
           {isProcessing ? (
-            <div className="flex items-center gap-2 text-[14px] text-[var(--color-text-secondary)]">
+            <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
               <Spinner />
               Processing upload...
             </div>

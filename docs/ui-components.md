@@ -1,5 +1,7 @@
 # UI Component Catalog
 
+> **Frontend agents start at [`docs/design-spec.md`](./design-spec.md).** This document remains the primitive API appendix; `design-spec.md` is the single enforceable contract for UI work.
+
 > One-page reference for every shared primitive in [`apps/web/src/components/ui/`](../apps/web/src/components/ui/). Each entry lists import path, purpose, prop API, usage snippet, and accessibility notes.
 >
 > **Rules of engagement:**

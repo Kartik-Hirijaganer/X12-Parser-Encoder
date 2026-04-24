@@ -19,4 +19,4 @@ export function Select({ children, className, wrapperClassName, ...props }: Sele
 }
 
 const selectClass =
-  'min-h-11 w-full appearance-none rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-surface-primary)] px-3 py-2 pr-10 text-base text-[var(--color-text-primary)] transition-[border-color,box-shadow] duration-[var(--duration-fast)] ease-[var(--ease-out)] focus:border-[var(--color-action-500)] focus:outline-none focus:ring-[3px] focus:ring-[var(--color-focus-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-surface-secondary)] disabled:text-[var(--color-text-disabled)]'
+  'min-h-11 w-full appearance-none rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-surface-primary)] px-3 py-2 pr-10 text-base text-[var(--color-text-primary)] transition-[border-color,box-shadow] duration-[var(--duration-fast)] ease-[var(--ease-out)] focus:border-[var(--color-action-500)] focus:outline-none focus:ring-[var(--focus-ring-width)] focus:ring-[var(--color-focus-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-surface-secondary)] disabled:text-[var(--color-text-disabled)]'

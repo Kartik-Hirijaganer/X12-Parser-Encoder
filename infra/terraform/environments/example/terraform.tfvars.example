@@ -1,0 +1,18 @@
+app_env    = "example"
+aws_region = "us-east-2"
+
+# Phase 2 uses a placeholder file so terraform plan can run before Phase 3
+# produces the real Lambda zip.
+lambda_zip_path     = "placeholder-lambda.zip"
+lambda_architecture = "x86_64"
+enable_snapstart    = false
+memory_mb           = 1024
+timeout_s           = 30
+
+price_class = "PriceClass_100"
+enable_waf  = false
+
+# Replace before applying. This value is stored in Terraform state because
+# CloudFront custom origin headers are stateful configuration.
+origin_verify_header_value          = "replace-with-at-least-32-random-characters"
+origin_verify_header_previous_value = ""

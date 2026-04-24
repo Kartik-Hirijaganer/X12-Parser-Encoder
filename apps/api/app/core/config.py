@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -54,6 +55,7 @@ class AppSettings(BaseSettings):
     app_name: str = "Eligibility Workbench API"
     app_version: str = Field(default_factory=_read_version)
     environment: str = "development"
+    deployment_target: Literal["lambda", "container", "local"] = "local"
     api_v1_prefix: str = "/api/v1"
     frontend_dist_dir: Path = Field(default_factory=_default_frontend_dist_dir)
     serve_frontend: bool = True
@@ -73,7 +75,18 @@ class AppSettings(BaseSettings):
     requests_per_minute: int = 60
     concurrent_upload_limit: int = 5
 
+    origin_secret_enabled: bool = True
+    origin_secret: str | None = None
+    origin_secret_previous: str | None = None
+
     model_config = SettingsConfigDict(env_prefix="X12_API_", extra="ignore")
+
+    def model_post_init(self, __context: object) -> None:
+        if self.deployment_target == "lambda" and self.rate_limit_enabled:
+            logging.getLogger(__name__).warning(
+                "rate_limit_enabled_ignored_under_lambda",
+                extra={"deployment_target": self.deployment_target},
+            )
 
     @field_validator("cors_allowed_origins", mode="before")
     @classmethod

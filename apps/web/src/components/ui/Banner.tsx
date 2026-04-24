@@ -28,8 +28,8 @@ export function Banner({
         <Icon className="h-5 w-5" />
       </div>
       <div className="min-w-0 flex-1">
-        {title ? <p className="text-[14px] font-semibold">{title}</p> : null}
-        <div className="text-[14px] leading-6">{children}</div>
+        {title ? <p className="text-sm font-semibold">{title}</p> : null}
+        <div className="text-sm leading-6">{children}</div>
         {actions ? <div className="mt-3 flex flex-wrap gap-2">{actions}</div> : null}
       </div>
       {onDismiss ? (

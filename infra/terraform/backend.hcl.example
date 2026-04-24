@@ -1,0 +1,5 @@
+bucket         = "x12-parser-encoder-tfstate-<aws-account-id>-<aws-region>"
+key            = "example/terraform.tfstate"
+region         = "us-east-2"
+dynamodb_table = "x12-parser-encoder-tflocks"
+encrypt        = true

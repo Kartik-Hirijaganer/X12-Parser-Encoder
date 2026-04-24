@@ -135,7 +135,7 @@ export function SettingsPage() {
         </Button>
       </div>
 
-      <div className="mx-auto grid max-w-[640px] gap-6">
+      <div className="mx-auto grid max-w-[var(--layout-settings-max)] gap-6">
         <SettingsGroup description="These values identify the provider in the 270 transaction." title="Submitter / Provider Identity">
           <TextField
             label="Organization Name*"
@@ -305,8 +305,8 @@ function SettingsGroup({
   return (
     <Card className="space-y-5">
       <div className="space-y-2 border-b border-[var(--color-border-subtle)] pb-4">
-        <h2 className="text-[20px] font-semibold text-[var(--color-text-primary)]">{title}</h2>
-        <p className="text-[14px] text-[var(--color-text-secondary)]">{description}</p>
+        <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">{title}</h2>
+        <p className="text-sm text-[var(--color-text-secondary)]">{description}</p>
       </div>
       <div className="grid gap-4">{children}</div>
     </Card>
@@ -327,15 +327,15 @@ function TextField({
   value: string
 }) {
   return (
-    <label className="grid gap-2 text-[14px] font-medium text-[var(--color-text-primary)]">
+    <label className="grid gap-2 text-sm font-medium text-[var(--color-text-primary)]">
       {label}
       <input
-        className="min-h-11 rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-surface-primary)] px-3 py-2 text-[16px] font-normal text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:border-[var(--color-action-500)] focus:outline-none focus:ring-[3px] focus:ring-[var(--color-focus-ring)]"
+        className="min-h-11 rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-surface-primary)] px-3 py-2 text-base font-normal text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:border-[var(--color-action-500)] focus:outline-none focus:ring-[var(--focus-ring-width)] focus:ring-[var(--color-focus-ring)]"
         name={name}
         onChange={onChange}
         value={value}
       />
-      {helperText ? <span className="text-[13px] font-normal text-[var(--color-text-secondary)]">{helperText}</span> : null}
+      {helperText ? <span className="text-caption font-normal text-[var(--color-text-secondary)]">{helperText}</span> : null}
     </label>
   )
 }
@@ -354,10 +354,10 @@ function SelectField({
   value: string
 }) {
   return (
-    <label className="grid gap-2 text-[14px] font-medium text-[var(--color-text-primary)]">
+    <label className="grid gap-2 text-sm font-medium text-[var(--color-text-primary)]">
       {label}
       <select
-        className="min-h-11 rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-surface-primary)] px-3 py-2 text-[16px] font-normal text-[var(--color-text-primary)] focus:border-[var(--color-action-500)] focus:outline-none focus:ring-[3px] focus:ring-[var(--color-focus-ring)]"
+        className="min-h-11 rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-surface-primary)] px-3 py-2 text-base font-normal text-[var(--color-text-primary)] focus:border-[var(--color-action-500)] focus:outline-none focus:ring-[var(--focus-ring-width)] focus:ring-[var(--color-focus-ring)]"
         name={name}
         onChange={onChange}
         value={value}
@@ -374,9 +374,9 @@ function SelectField({
 
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
-    <label className="grid gap-2 text-[14px] font-medium text-[var(--color-text-primary)]">
+    <label className="grid gap-2 text-sm font-medium text-[var(--color-text-primary)]">
       {label}
-      <div className="min-h-11 rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-surface-tertiary)] px-3 py-2 text-[16px] font-normal text-[var(--color-text-secondary)]">
+      <div className="min-h-11 rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-surface-tertiary)] px-3 py-2 text-base font-normal text-[var(--color-text-secondary)]">
         {value}
       </div>
     </label>

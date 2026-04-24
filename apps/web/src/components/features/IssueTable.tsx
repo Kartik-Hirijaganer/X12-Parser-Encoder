@@ -35,7 +35,7 @@ export function IssueTable({ issues }: { issues: ValidationIssue[] }) {
             <div className="space-y-1">
               <p>{issue.message}</p>
               {issue.suggestion ? (
-                <p className="text-[13px] text-[var(--color-text-secondary)]">
+                <p className="text-caption text-[var(--color-text-secondary)]">
                   Suggested fix: {issue.suggestion}
                 </p>
               ) : null}

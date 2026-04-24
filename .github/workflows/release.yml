@@ -11,7 +11,25 @@ permissions:
   packages: write
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
+      make_latest: ${{ steps.release.outputs.make_latest }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Check version sync
+        run: python scripts/check_version_sync.py
+      - name: Validate release tag
+        id: release
+        run: python scripts/validate_release.py "${GITHUB_REF_NAME}"
+
   release:
+    needs: validate
     runs-on: ubuntu-latest
     environment: pypi
     steps:
@@ -56,10 +74,12 @@ jobs:
             ${{ steps.image.outputs.version }}
             ${{ steps.image.outputs.latest }}
       - name: Generate release notes from changelog
-        run: python scripts/changelog_excerpt.py "${GITHUB_REF_NAME#v}" > release-notes.md
+        run: python scripts/changelog_excerpt.py "${{ needs.validate.outputs.version }}" > release-notes.md
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
           body_path: release-notes.md
+          prerelease: ${{ needs.validate.outputs.prerelease }}
+          make_latest: ${{ needs.validate.outputs.make_latest }}
           files: |
             packages/x12-edi-tools/dist/*

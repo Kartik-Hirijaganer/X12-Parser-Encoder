@@ -30,7 +30,7 @@ export function PreviewPage() {
     return (
       <AppShell title="Preview unavailable">
         <Card className="space-y-4">
-          <p className="text-[16px] text-[var(--color-text-secondary)]">
+          <p className="text-base text-[var(--color-text-secondary)]">
             Start from the home page to preview a file before processing it.
           </p>
           <Button onClick={() => navigate('/')} variant="primary">
@@ -221,7 +221,7 @@ export function PreviewPage() {
       {processingLabel ? (
         <Card className="flex items-center gap-3">
           <Spinner />
-          <p className="text-[14px] text-[var(--color-text-secondary)]">{processingLabel}</p>
+          <p className="text-sm text-[var(--color-text-secondary)]">{processingLabel}</p>
         </Card>
       ) : null}
 
@@ -236,8 +236,8 @@ export function PreviewPage() {
 
           <Card className="space-y-4">
             <div>
-              <h2 className="text-[20px] font-semibold text-[var(--color-text-primary)]">First five rows</h2>
-              <p className="mt-2 text-[14px] text-[var(--color-text-secondary)]">
+              <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">First five rows</h2>
+              <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
                 Provider and payer identity come from Settings, not the template itself.
               </p>
             </div>
@@ -277,8 +277,8 @@ export function PreviewPage() {
 
           {showRowErrorDetails ? (
             <Card className="space-y-3">
-              <h2 className="text-[20px] font-semibold text-[var(--color-text-primary)]">Excluded row details</h2>
-              <ul className="space-y-3 text-[14px] text-[var(--color-text-primary)]">
+              <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">Excluded row details</h2>
+              <ul className="space-y-3 text-sm text-[var(--color-text-primary)]">
                 {previewState.response.errors.map((rowError, index) => (
                   <li key={`${rowError.row}-${rowError.field}-${index}`}>
                     Row {rowError.row}
@@ -305,13 +305,13 @@ export function PreviewPage() {
           </Card>
 
           <Card className="space-y-4">
-            <h2 className="text-[20px] font-semibold text-[var(--color-text-primary)]">Detected subscribers</h2>
+            <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">Detected subscribers</h2>
             {previewState.preview.subscriberNames.length === 0 ? (
-              <p className="text-[14px] text-[var(--color-text-secondary)]">
+              <p className="text-sm text-[var(--color-text-secondary)]">
                 No subscriber names were detected in the preview pass.
               </p>
             ) : (
-              <ul className="space-y-2 text-[14px] text-[var(--color-text-primary)]">
+              <ul className="space-y-2 text-sm text-[var(--color-text-primary)]">
                 {previewState.preview.subscriberNames.map((name) => (
                   <li key={name}>{name}</li>
                 ))}
@@ -336,10 +336,10 @@ export function PreviewPage() {
 function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
     <Card className="p-5">
-      <p className="text-[13px] font-medium uppercase tracking-[0.04em] text-[var(--color-text-tertiary)]">
+      <p className="text-caption font-medium uppercase tracking-[0.04em] text-[var(--color-text-tertiary)]">
         {label}
       </p>
-      <p className="mt-3 break-all text-[24px] font-semibold text-[var(--color-text-primary)]">{value}</p>
+      <p className="mt-3 break-all text-2xl font-semibold text-[var(--color-text-primary)]">{value}</p>
     </Card>
   )
 }

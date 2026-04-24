@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
+import json
+import sys
+from collections.abc import Mapping
+from time import time
 from typing import Final
 
 from fastapi import Request, Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 
+from app.core.config import settings
+
+_EMF_NAMESPACE: Final = "X12ParserEncoder/API"
 _REQUEST_LATENCY_BUCKETS: Final[tuple[float, ...]] = (
     0.05,
     0.1,
@@ -115,6 +122,25 @@ def record_request(
     """Record request counters and latency histograms."""
 
     status_label = str(status_code)
+    if settings.deployment_target == "lambda":
+        dimensions = {
+            "Method": method,
+            "Path": path,
+            "StatusCode": status_label,
+        }
+        _emit_emf("RequestCount", 1, "Count", dimensions)
+        _emit_emf("RequestLatency", duration_seconds * 1000, "Milliseconds", dimensions)
+        if status_code >= 400:
+            _emit_emf(
+                "RequestErrors",
+                1,
+                "Count",
+                {
+                    **dimensions,
+                    "ErrorCode": error_code or f"http_{status_code}",
+                },
+            )
+
     REQUESTS_TOTAL.labels(method=method, path=path, status_code=status_label).inc()
     REQUEST_LATENCY_SECONDS.labels(
         method=method,
@@ -127,6 +153,29 @@ def record_request(
             path=path,
             error_code=error_code or f"http_{status_code}",
         ).inc()
+
+
+def _emit_emf(
+    metric_name: str,
+    value: int | float,
+    unit: str,
+    dimensions: Mapping[str, str],
+) -> None:
+    payload: dict[str, object] = {
+        "_aws": {
+            "Timestamp": int(time() * 1000),
+            "CloudWatchMetrics": [
+                {
+                    "Namespace": _EMF_NAMESPACE,
+                    "Dimensions": [list(dimensions.keys())],
+                    "Metrics": [{"Name": metric_name, "Unit": unit}],
+                }
+            ],
+        },
+        **dimensions,
+        metric_name: value,
+    }
+    sys.stdout.write(f"{json.dumps(payload, separators=(',', ':'))}\n")
 
 
 def observe_upload_size(*, path: str, file_type: str, byte_size: int) -> None:

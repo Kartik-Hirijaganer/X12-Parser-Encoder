@@ -1,5 +1,7 @@
 # Design System — Eligibility Workbench
 
+> **Frontend agents start at [`docs/design-spec.md`](./design-spec.md).** This document remains the detailed visual appendix; `design-spec.md` is the single enforceable contract for UI work.
+
 > **This is the visual and frontend source of truth.** It merges the former `DESIGN.md` (visual spec) and `docs/frontend-standards.md` (frontend rules) into a single document.
 >
 > Inspired by **Meta (Store)** via [awesome-design-md](https://github.com/VoltAgent/awesome-design-md), adapted for a healthcare eligibility workbench serving non-technical users doing bulk Medicaid 270/271 workflows — and extended to cover 837I/837P/835 claim and remittance workflows.
