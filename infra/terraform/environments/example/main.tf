@@ -34,6 +34,8 @@ locals {
     var.spa_bucket_name,
     "${local.app_name}-spa-${var.app_env}-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
   )
+  custom_domain_enabled         = var.custom_domain != null && trimspace(var.custom_domain) != ""
+  route53_custom_domain_enabled = local.custom_domain_enabled && lower(var.dns_provider) == "route53"
 
   lambda_zip_path = (
     var.lambda_zip_path == null ? null :
@@ -128,12 +130,41 @@ module "custom_domain" {
     aws = aws.global
   }
 
-  domain_name                            = var.custom_domain
-  dns_provider                           = var.dns_provider
-  hosted_zone_id                         = var.hosted_zone_id
-  cloudfront_distribution_domain_name    = module.cloudfront_distribution.domain_name
-  cloudfront_distribution_hosted_zone_id = module.cloudfront_distribution.hosted_zone_id
-  tags                                   = local.common_tags
+  domain_name    = var.custom_domain
+  dns_provider   = var.dns_provider
+  hosted_zone_id = var.hosted_zone_id
+  tags           = local.common_tags
+}
+
+resource "terraform_data" "custom_domain_route53_alias_inputs" {
+  count = local.route53_custom_domain_enabled ? 1 : 0
+
+  input = {
+    hosted_zone_id = var.hosted_zone_id
+  }
+
+  lifecycle {
+    precondition {
+      condition     = var.hosted_zone_id != null && trimspace(var.hosted_zone_id) != ""
+      error_message = "hosted_zone_id is required when dns_provider is route53 and custom_domain is set."
+    }
+  }
+}
+
+resource "aws_route53_record" "custom_domain_alias" {
+  count = local.route53_custom_domain_enabled ? 1 : 0
+
+  zone_id = coalesce(var.hosted_zone_id, "")
+  name    = var.custom_domain
+  type    = "A"
+
+  alias {
+    name                   = module.cloudfront_distribution.domain_name
+    zone_id                = module.cloudfront_distribution.hosted_zone_id
+    evaluate_target_health = false
+  }
+
+  depends_on = [terraform_data.custom_domain_route53_alias_inputs]
 }
 
 data "aws_iam_policy_document" "spa_oac_read" {

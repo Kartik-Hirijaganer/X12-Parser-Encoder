@@ -41,7 +41,7 @@ module "lambda_api" {
 
   environment_vars = {
     X12_API_DEPLOYMENT_TARGET       = "lambda"
-    X12_API_ORIGIN_SECRET_ENABLED   = "true"
+    X12_API_ORIGIN_SECRET_ENABLED   = "true" # pragma: allowlist secret
     X12_API_ORIGIN_SECRET           = var.origin_verify_header_value
     X12_API_ORIGIN_SECRET_PREVIOUS  = ""
     X12_API_ENVIRONMENT             = "example"

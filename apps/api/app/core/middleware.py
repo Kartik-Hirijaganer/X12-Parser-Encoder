@@ -19,7 +19,7 @@ from app.core.metrics import IN_FLIGHT_REQUESTS, metric_path_for_request, record
 
 logger = get_logger(__name__)
 
-_ORIGIN_SECRET_HEADER = "X-Origin-Verify"
+_ORIGIN_SECRET_HEADER = "X-Origin-Verify"  # pragma: allowlist secret
 
 
 class OriginSecretMiddleware(BaseHTTPMiddleware):
