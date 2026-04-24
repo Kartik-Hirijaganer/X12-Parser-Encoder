@@ -26,6 +26,15 @@
 | [`Spinner`](#spinner) | [`ui/Spinner.tsx`](../apps/web/src/components/ui/Spinner.tsx) | Indeterminate loading indicator. |
 | [`Table`](#table) | [`ui/Table.tsx`](../apps/web/src/components/ui/Table.tsx) | Sortable, paginated, expandable typed data table. |
 | [`Icons`](#icons) | [`ui/Icons.tsx`](../apps/web/src/components/ui/Icons.tsx) | Stroke-based inline SVG icon set (upload, document, shield, etc.). |
+| [`Toast`](#toast) | [`ui/Toast.tsx`](../apps/web/src/components/ui/Toast.tsx) | Headless toast pipeline (wraps `sonner`) with variant-only API. |
+| [`Modal`](#modal) | [`ui/Modal.tsx`](../apps/web/src/components/ui/Modal.tsx) | Focus-trapped centered dialog with ESC/overlay dismiss (Radix Dialog). |
+| [`Drawer`](#drawer) | [`ui/Drawer.tsx`](../apps/web/src/components/ui/Drawer.tsx) | Side sheet sliding in from left or right (Radix Dialog). |
+| [`Tooltip`](#tooltip) | [`ui/Tooltip.tsx`](../apps/web/src/components/ui/Tooltip.tsx) | Hover/focus tooltip with 300 ms open delay (Radix Tooltip). |
+| [`Skeleton`](#skeleton) | [`ui/Skeleton.tsx`](../apps/web/src/components/ui/Skeleton.tsx) | Pulsing placeholder surface while content is loading. |
+| [`ProgressBar`](#progressbar) | [`ui/ProgressBar.tsx`](../apps/web/src/components/ui/ProgressBar.tsx) | Determinate + indeterminate progress indicator. |
+| [`EmptyState`](#emptystate) | [`ui/EmptyState.tsx`](../apps/web/src/components/ui/EmptyState.tsx) | Icon + headline + copy + optional CTA for empty views. |
+| [`ErrorBoundary`](#errorboundary) | [`ui/ErrorBoundary.tsx`](../apps/web/src/components/ui/ErrorBoundary.tsx) | Route-level React error boundary with `EmptyState` fallback. |
+| [`ConfirmationDialog`](#confirmationdialog) | [`ui/ConfirmationDialog.tsx`](../apps/web/src/components/ui/ConfirmationDialog.tsx) | Opinionated confirm/cancel dialog composed over `Modal`. |
 
 ---
 
@@ -496,6 +505,323 @@ import { UploadIcon, DownloadIcon, ChevronRightIcon } from '../components/ui/Ico
 
 ---
 
+## Toast
+
+**Path:** [`apps/web/src/components/ui/Toast.tsx`](../apps/web/src/components/ui/Toast.tsx)
+
+Wraps [`sonner`](https://sonner.emilkowal.ski/) and forces variant-only usage. Feature code must import `toast` and `Toaster` from this file, **not from `sonner` directly**. Mount one `<Toaster />` at the app root (`App.tsx`).
+
+### API
+
+```ts
+export const toast = {
+  success: (message: string, options?: ToastOptions) => string | number
+  info:    (message: string, options?: ToastOptions) => string | number
+  warning: (message: string, options?: ToastOptions) => string | number
+  error:   (message: string, options?: ToastOptions) => string | number
+  dismiss: (id?: string | number) => void
+}
+
+interface ToastOptions {
+  description?: string
+  duration?: number
+  id?: string | number
+}
+```
+
+### Usage
+
+```tsx
+import { toast, Toaster } from '../components/ui/Toast'
+
+// Root:
+<Toaster />
+
+// Anywhere:
+toast.success('Copied X12 to clipboard')
+toast.error('The server had a problem completing this request. Please try again.')
+```
+
+### Rules
+
+- Do not import `sonner` directly anywhere except `Toast.tsx`.
+- Toast copy must not include raw X12, filenames, member IDs, or other sensitive values.
+- Use `toast.success` for transient success, `toast.info` for low-urgency info, `toast.warning` for soft warnings, and `toast.error` for 5xx / network awareness only — actionable errors still render in a `Banner`.
+
+---
+
+## Modal
+
+**Path:** [`apps/web/src/components/ui/Modal.tsx`](../apps/web/src/components/ui/Modal.tsx)
+
+Centered dialog backed by `@radix-ui/react-dialog`. Provides focus trap, ESC dismiss, overlay click-to-close, and token-driven fade/scale animation.
+
+### Props
+
+```ts
+interface ModalProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  title: string
+  description?: string
+  children?: ReactNode
+  footer?: ReactNode
+  className?: string
+  closeLabel?: string   // default: 'Close dialog'
+}
+```
+
+### Usage
+
+```tsx
+import { Modal } from '../components/ui/Modal'
+
+<Modal
+  open={open}
+  onOpenChange={setOpen}
+  title="Batch submitted"
+  description="Your file is in the queue."
+>
+  <p>You can close this dialog and return to the dashboard.</p>
+</Modal>
+```
+
+### Accessibility
+
+- Enforced `role="dialog"` and `aria-modal="true"` via Radix.
+- Focus is trapped inside the modal; ESC restores focus to the trigger.
+- Close button carries `aria-label="Close dialog"` (override via `closeLabel`).
+
+---
+
+## Drawer
+
+**Path:** [`apps/web/src/components/ui/Drawer.tsx`](../apps/web/src/components/ui/Drawer.tsx)
+
+Side-sheet dialog backed by `@radix-ui/react-dialog`. Animates in from the `side`.
+
+### Props
+
+```ts
+interface DrawerProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  title: string
+  description?: string
+  side?: 'left' | 'right'   // default: 'right'
+  children?: ReactNode
+  footer?: ReactNode
+  className?: string
+  closeLabel?: string       // default: 'Close drawer'
+}
+```
+
+### Usage
+
+```tsx
+import { Drawer } from '../components/ui/Drawer'
+
+<Drawer open={open} onOpenChange={setOpen} title="Filters">
+  {/* filter form */}
+</Drawer>
+```
+
+---
+
+## Tooltip
+
+**Path:** [`apps/web/src/components/ui/Tooltip.tsx`](../apps/web/src/components/ui/Tooltip.tsx)
+
+Hover and focus tooltip backed by `@radix-ui/react-tooltip`. Default 300 ms open delay matches `--duration-slow`.
+
+### Props
+
+```ts
+interface TooltipProps {
+  content: ReactNode
+  children: ReactNode
+  side?: 'top' | 'right' | 'bottom' | 'left'
+  align?: 'start' | 'center' | 'end'
+  delayDuration?: number   // default: 300
+  className?: string
+}
+```
+
+### Usage
+
+```tsx
+import { Tooltip } from '../components/ui/Tooltip'
+
+<Tooltip content="Copies X12 output to the system clipboard">
+  <Button variant="secondary">Copy</Button>
+</Tooltip>
+```
+
+---
+
+## Skeleton
+
+**Path:** [`apps/web/src/components/ui/Skeleton.tsx`](../apps/web/src/components/ui/Skeleton.tsx)
+
+Pulsing placeholder surface. Width and height accept any CSS length; `radius` maps to a `--radius-*` token.
+
+### Props
+
+```ts
+interface SkeletonProps {
+  width?: string                 // default: '100%'
+  height?: string                // default: '1rem'
+  radius?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'pill'  // default: 'md'
+  className?: string
+  'aria-label'?: string          // default: 'Loading'
+}
+```
+
+### Usage
+
+```tsx
+import { Skeleton } from '../components/ui/Skeleton'
+
+<Skeleton height="2rem" radius="md" width="60%" />
+```
+
+### Accessibility
+
+- Renders with `role="status"` and `aria-busy="true"` for assistive tech.
+
+---
+
+## ProgressBar
+
+**Path:** [`apps/web/src/components/ui/ProgressBar.tsx`](../apps/web/src/components/ui/ProgressBar.tsx)
+
+Two variants: `determinate` (0–100) and `indeterminate` (animated slide).
+
+### Props
+
+```ts
+interface ProgressBarProps {
+  variant?: 'determinate' | 'indeterminate'   // default: 'determinate'
+  value?: number                              // clamped to 0–100 when determinate
+  label?: string                              // aria-label
+  className?: string
+}
+```
+
+### Usage
+
+```tsx
+import { ProgressBar } from '../components/ui/ProgressBar'
+
+<ProgressBar label="Uploading" value={uploadPct} />
+<ProgressBar label="Processing" variant="indeterminate" />
+```
+
+---
+
+## EmptyState
+
+**Path:** [`apps/web/src/components/ui/EmptyState.tsx`](../apps/web/src/components/ui/EmptyState.tsx)
+
+Composes an optional icon, a title, an optional description, and an optional CTA into a single empty-view surface.
+
+### Props
+
+```ts
+interface EmptyStateProps {
+  icon?: ReactNode
+  title: string
+  description?: string
+  action?: ReactNode
+  className?: string
+}
+```
+
+### Usage
+
+```tsx
+import { EmptyState } from '../components/ui/EmptyState'
+import { DocumentIcon } from '../components/ui/Icons'
+
+<EmptyState
+  icon={<DocumentIcon className="h-10 w-10" />}
+  title="No rows yet"
+  description="Upload a spreadsheet to populate this dashboard."
+  action={<Button>Upload file</Button>}
+/>
+```
+
+---
+
+## ErrorBoundary
+
+**Path:** [`apps/web/src/components/ui/ErrorBoundary.tsx`](../apps/web/src/components/ui/ErrorBoundary.tsx)
+
+React error boundary that renders a friendly `EmptyState` fallback with a reload action. Wrap the route tree at the top of `App.tsx`; wrap individual routes for finer-grained isolation so a single route failure doesn't blow away the rest of the app.
+
+### Props
+
+```ts
+interface ErrorBoundaryProps {
+  children: ReactNode
+  fallback?: (reset: () => void) => ReactNode
+  onError?: (error: Error, info: ErrorInfo) => void
+}
+```
+
+### Usage
+
+```tsx
+import { ErrorBoundary } from '../components/ui/ErrorBoundary'
+
+<ErrorBoundary>
+  <AppRoutes />
+</ErrorBoundary>
+```
+
+---
+
+## ConfirmationDialog
+
+**Path:** [`apps/web/src/components/ui/ConfirmationDialog.tsx`](../apps/web/src/components/ui/ConfirmationDialog.tsx)
+
+Opinionated confirm/cancel dialog composed over `Modal`. Closes itself after the user presses confirm or cancel.
+
+### Props
+
+```ts
+interface ConfirmationDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  title: string
+  description?: string
+  confirmLabel?: string   // default: 'Confirm'
+  cancelLabel?: string    // default: 'Cancel'
+  destructive?: boolean   // tints confirm button with --color-inactive-500
+  onConfirm: () => void
+  onCancel?: () => void
+  children?: ReactNode
+}
+```
+
+### Usage
+
+```tsx
+import { ConfirmationDialog } from '../components/ui/ConfirmationDialog'
+
+<ConfirmationDialog
+  open={open}
+  onOpenChange={setOpen}
+  title="Delete this record?"
+  description="This cannot be undone."
+  confirmLabel="Delete"
+  destructive
+  onConfirm={handleDelete}
+/>
+```
+
+---
+
 ## Adding a new primitive
 
 Before creating a new file in `components/ui/`:
@@ -513,5 +839,6 @@ Before creating a new file in `components/ui/`:
 
 | Version | Date | Change |
 |---|---|---|
+| 1.2 | 2026-04-24 | Phase 7 — added Toast, Modal, Drawer, Tooltip, Skeleton, ProgressBar, EmptyState, ErrorBoundary, ConfirmationDialog. |
 | 1.1 | 2026-04-24 | Added Input and Select primitives for shared form controls. |
 | 1.0 | 2026-04-17 | Initial catalog. Covers all 8 primitives currently in `components/ui/`. |

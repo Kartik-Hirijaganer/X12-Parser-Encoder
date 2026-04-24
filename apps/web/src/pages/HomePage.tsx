@@ -1,9 +1,13 @@
 import { useState } from 'react'
+import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 
+import { useFileDropAffordance } from '../hooks/useFileDropAffordance'
+import { useReducedMotionPreference } from '../hooks/useReducedMotionPreference'
 import { useSettings } from '../hooks/useSettings'
 import { convertUpload, ApiError, ApiTimeoutError } from '../services/api'
 import { buildX12PreviewSummary, detectWorkflowFromFile } from '../utils/fileDetection'
+import { cn } from '../utils/cn'
 import { ActionCard } from '../components/features/ActionCard'
 import { AppShell } from '../components/layout/AppShell'
 import { Banner } from '../components/ui/Banner'
@@ -24,6 +28,9 @@ export function HomePage() {
   const [error, setError] = useState<HomeErrorState | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [timeoutFile, setTimeoutFile] = useState<File | null>(null)
+  const isDraggingWindow = useFileDropAffordance()
+  const prefersReducedMotion = useReducedMotionPreference()
+  const shouldPulse = isDraggingWindow && !isProcessing && !prefersReducedMotion
 
   async function handleFile(file: File, preferredFlow?: 'generate' | 'validate' | 'parse') {
     setError(null)
@@ -50,6 +57,7 @@ export function HomePage() {
           state: {
             flow: 'generate',
             filename: file.name,
+            fileSize: file.size,
             response,
           },
         })
@@ -64,6 +72,7 @@ export function HomePage() {
           state: {
             flow: workflow,
             filename: file.name,
+            fileSize: file.size,
             rawText: detection.rawText,
             preview: buildX12PreviewSummary(detection.rawText),
           },
@@ -136,7 +145,7 @@ export function HomePage() {
               </p>
             ) : null
           }
-          icon={<DocumentIcon className="h-6 w-6" />}
+          icon={<DocumentIcon className="h-7 w-7" />}
           onFileSelect={(file) => void handleFile(file, 'generate')}
           title="Generate 270"
         />
@@ -144,7 +153,7 @@ export function HomePage() {
           accept=".x12,.edi,.txt"
           description="Upload an X12 270 file to run the current validator and see actionable issues."
           disabled={isProcessing}
-          icon={<ShieldIcon className="h-6 w-6" />}
+          icon={<ShieldIcon className="h-7 w-7" />}
           onFileSelect={(file) => void handleFile(file, 'validate')}
           title="Validate 270"
         />
@@ -152,31 +161,43 @@ export function HomePage() {
           accept=".x12,.edi,.txt"
           description="Upload an X12 271 response to review eligibility status, plan details, and AAA rejects."
           disabled={isProcessing}
-          icon={<SearchIcon className="h-6 w-6" />}
+          icon={<SearchIcon className="h-7 w-7" />}
           onFileSelect={(file) => void handleFile(file, 'parse')}
           title="Parse 271"
         />
       </section>
 
-      <Card className="space-y-4">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">
-              Or drag and drop any file here
-            </h2>
-            <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
-              The workbench routes spreadsheets to Generate and detects 270 vs 271 from the X12 content.
-            </p>
-          </div>
-          {isProcessing ? (
-            <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
-              <Spinner />
-              Processing upload...
+      <motion.div
+        animate={shouldPulse ? { scale: 1.01 } : { scale: 1 }}
+        aria-live="polite"
+        className={cn('rounded-[var(--radius-2xl)]', shouldPulse ? 'shadow-[var(--shadow-md)]' : '')}
+        data-drop-pulsing={shouldPulse ? 'true' : 'false'}
+        transition={
+          prefersReducedMotion
+            ? { duration: 0 }
+            : { duration: 1, ease: 'easeInOut', repeat: shouldPulse ? Infinity : 0, repeatType: 'reverse' }
+        }
+      >
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">
+                Or drag and drop any file here
+              </h2>
+              <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+                The workbench routes spreadsheets to Generate and detects 270 vs 271 from the X12 content.
+              </p>
             </div>
-          ) : null}
-        </div>
-        <FileUpload disabled={isProcessing} onFileSelect={(file) => void handleFile(file)} />
-      </Card>
+            {isProcessing ? (
+              <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
+                <Spinner />
+                Processing upload...
+              </div>
+            ) : null}
+          </div>
+          <FileUpload disabled={isProcessing} onFileSelect={(file) => void handleFile(file)} />
+        </Card>
+      </motion.div>
     </AppShell>
   )
 }

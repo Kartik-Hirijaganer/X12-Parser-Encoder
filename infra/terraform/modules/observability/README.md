@@ -1,6 +1,13 @@
 # observability
 
-Creates Phase 2 CloudWatch metric filters and alarms for the Lambda API log group.
+Creates CloudWatch metric filters and the Phase 4 Lambda API alarms.
+
+Alarms:
+
+- 5xx responses greater than 1% of Lambda invocations over 5 minutes
+- Throttles greater than 0 over 5 minutes
+- Lambda duration p95 greater than 3 seconds over 5 minutes
+- Lambda errors greater than 5 over 5 minutes
 
 ## Inputs
 

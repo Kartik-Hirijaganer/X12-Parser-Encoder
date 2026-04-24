@@ -9,6 +9,6 @@ output "alarm_names" {
     aws_cloudwatch_metric_alarm.http_5xx.alarm_name,
     aws_cloudwatch_metric_alarm.throttles.alarm_name,
     aws_cloudwatch_metric_alarm.latency_p95.alarm_name,
-    aws_cloudwatch_metric_alarm.cold_starts.alarm_name,
+    aws_cloudwatch_metric_alarm.lambda_errors.alarm_name,
   ]
 }

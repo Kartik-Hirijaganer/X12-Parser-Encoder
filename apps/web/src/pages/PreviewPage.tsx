@@ -6,13 +6,14 @@ import type { PreviewRouteState } from '../types/workflow'
 import { useSettings } from '../hooks/useSettings'
 import { ApiError, ApiTimeoutError, generate270, parse271, validate270 } from '../services/api'
 import { highestIsa13, nextIsaControlNumber } from '../utils/constants'
-import { formatDate } from '../utils/formatters'
+import { formatBytes, formatDate } from '../utils/formatters'
 import { AppShell } from '../components/layout/AppShell'
 import { Banner } from '../components/ui/Banner'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
+import { ProgressBar } from '../components/ui/ProgressBar'
+import { Skeleton } from '../components/ui/Skeleton'
 import { Table } from '../components/ui/Table'
-import { Spinner } from '../components/ui/Spinner'
 
 export function PreviewPage() {
   const location = useLocation()
@@ -124,11 +125,37 @@ export function PreviewPage() {
     await run()
   }
 
+  const rowCount =
+    previewState.flow === 'generate'
+      ? previewState.response.record_count
+      : previewState.preview.subscriberNames.length
+  const rowLabel =
+    previewState.flow === 'generate'
+      ? `${rowCount} ${rowCount === 1 ? 'row' : 'rows'}`
+      : `${rowCount} ${rowCount === 1 ? 'subscriber' : 'subscribers'}`
+  const isProcessing = processingLabel !== null
+
   return (
     <AppShell
       subtitle="Review the file summary before sending it to the backend. Corrections and excluded rows are shown here so the operator can decide whether to continue."
       title="Preview"
     >
+      <Card className="flex flex-wrap items-center justify-between gap-4">
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="text-caption font-medium uppercase tracking-[0.04em] text-[var(--color-text-tertiary)]">
+            File
+          </p>
+          <p className="truncate text-base font-semibold text-[var(--color-text-primary)]">
+            {previewState.filename}
+          </p>
+          <p className="text-caption text-[var(--color-text-secondary)]">
+            {previewState.fileSize !== undefined ? formatBytes(previewState.fileSize) : 'Size unknown'}
+            {' • '}
+            {rowLabel}
+          </p>
+        </div>
+      </Card>
+
       {previewState.flow === 'generate'
         ? previewState.response.corrections.map((correction, index) =>
             dismissedCorrectionIndexes[index] ? null : (
@@ -219,13 +246,21 @@ export function PreviewPage() {
       ) : null}
 
       {processingLabel ? (
-        <Card className="flex items-center gap-3">
-          <Spinner />
+        <Card className="space-y-3">
           <p className="text-sm text-[var(--color-text-secondary)]">{processingLabel}</p>
+          <ProgressBar label={processingLabel} variant="indeterminate" />
         </Card>
       ) : null}
 
-      {previewState.flow === 'generate' ? (
+      {isProcessing ? (
+        <Card className="space-y-3">
+          <Skeleton aria-label="Loading summary row" height="1.5rem" width="30%" />
+          <Skeleton aria-label="Loading table row" height="1rem" />
+          <Skeleton aria-label="Loading table row" height="1rem" />
+          <Skeleton aria-label="Loading table row" height="1rem" />
+          <Skeleton aria-label="Loading table row" height="1rem" />
+        </Card>
+      ) : previewState.flow === 'generate' ? (
         <div className="space-y-6">
           <Card className="grid gap-4 md:grid-cols-4">
             <SummaryCard label="Rows ready" value={String(previewState.response.record_count)} />
@@ -325,7 +360,7 @@ export function PreviewPage() {
         <Button onClick={() => navigate('/')} variant="secondary">
           Cancel
         </Button>
-        <Button onClick={() => void handleProcess(false)} variant="primary">
+        <Button disabled={isProcessing} onClick={() => void handleProcess(false)} variant="primary">
           Process
         </Button>
       </div>

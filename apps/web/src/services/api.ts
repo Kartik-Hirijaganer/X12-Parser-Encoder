@@ -1,3 +1,4 @@
+import { toast } from '../components/ui/Toast'
 import type {
   ConvertResponse,
   ExportWorkbookRequest,
@@ -162,6 +163,10 @@ async function buildApiError(response: Response): Promise<ApiError> {
     }
   } catch {
     message = response.statusText || message
+  }
+
+  if (response.status >= 500) {
+    toast.error('The server had a problem completing this request. Please try again.')
   }
 
   return new ApiError(message, response.status, suggestion)

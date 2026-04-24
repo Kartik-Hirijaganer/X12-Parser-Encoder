@@ -14,13 +14,13 @@
 
 ### Why
 
-The current deploy pipeline runs the API on **AWS App Runner** behind a **CloudFront+S3** SPA. That costs ~$25–40/mo idle, has a churning CloudFront URL (an existing bug tracked by the `cloudfront-url-stability` plan), and forces OSS operators to navigate ECR + App Runner trust roles before they can fork. On top of that, the frontend has an excellent token system but no enforcement, no transient-feedback primitives (toast, modal, error boundary), and no animation layer — the UX is crisp visually but cognitively heavier than it needs to be.
+The current deploy pipeline runs the API on **AWS legacy managed container service** behind a **CloudFront+S3** SPA. That costs ~$25–40/mo idle, has a churning CloudFront URL (an existing bug tracked by the `cloudfront-url-stability` plan), and forces OSS operators to navigate ECR + legacy managed container service trust roles before they can fork. On top of that, the frontend has an excellent token system but no enforcement, no transient-feedback primitives (toast, modal, error boundary), and no animation layer — the UX is crisp visually but cognitively heavier than it needs to be.
 
 ### What
 
 Two mostly-independent tracks, delivered across **ten delivery phases** (five infra + three frontend + docs + release hardening), plus Phase 0 shared contracts and Phase 0.5 release baseline presteps. Three tracks can run in parallel with minimal coordination, so multiple agents can work without interfering:
 
-- **Track A — Serverless migration** (Phases 1–5). Replace App Runner with a single Lambda Function URL behind the existing CloudFront distribution, provisioned entirely via Terraform. Keep the SPA on S3. No VPC, no ALB, no ECS, no ECR unless the Lambda artifact approaches the 250 MB unzipped zip-package ceiling or native dependency packaging forces a container image.
+- **Track A — Serverless migration** (Phases 1–5). Replace legacy managed container service with a single Lambda Function URL behind the existing CloudFront distribution, provisioned entirely via Terraform. Keep the SPA on S3. No VPC, no ALB, no ECS, no ECR unless the Lambda artifact approaches the 250 MB unzipped zip-package ceiling or native dependency packaging forces a container image.
 - **Track B — Frontend design platform** (Phases 6–8). Consolidate the design spec into a single enforceable document, add the missing primitives (Toast, Modal, Drawer, Tooltip, Skeleton, ProgressBar, EmptyState, ErrorBoundary, ConfirmationDialog), add an animation layer (Framer Motion with motion tokens), and lint the whole thing so agents can't drift.
 - **Track C — Documentation consolidation** (Phase 9). Rewrite `docs/architecture.md`, regenerate `docs/api/openapi.yaml` from FastAPI, add Mermaid diagrams to the README, and write an ADR for the serverless decision.
 
@@ -79,11 +79,11 @@ Compliance basis for this call:
 | **Total, minimal demo** | **~$1/mo** |
 | **Total, production-hardened with WAF + custom domain** | **~$8/mo** |
 
-Compare: Netlify Enterprise (to get the BAA) is ~$18,000/yr minimum. Vercel Enterprise is similar. App Runner (our current state) is ~$25–40/mo idle. The serverless-on-AWS path is roughly 20–2000× cheaper than any BAA-eligible alternative.
+Compare: Netlify Enterprise (to get the BAA) is ~$18,000/yr minimum. Vercel Enterprise is similar. legacy managed container service (our current state) is ~$25–40/mo idle. The serverless-on-AWS path is roughly 20–2000× cheaper than any BAA-eligible alternative.
 
 ### 1.3 Versioning & release trajectory
 
-Current version: `0.1.1`. This migration ships as **`1.0.0`** — the major bump is driven by a breaking **deployment contract** (App Runner → Lambda, `make deploy` semantics change, `rate_limit_enabled` env var goes inert, `/metrics` endpoint disabled under Lambda), not by a library API break. The PyPI library `x12-edi-tools` has zero public-API changes in this migration; we accept the monorepo-wide bump per the existing "three artifacts, one release train" philosophy in [CLAUDE.md](../../CLAUDE.md). The release notes must state this explicitly so downstream library consumers (if they ever appear) aren't misled.
+Current version: `0.1.1`. This migration ships as **`1.0.0`** — the major bump is driven by a breaking **deployment contract** (legacy managed container service → Lambda, `make deploy` semantics change, `rate_limit_enabled` env var goes inert, `/metrics` endpoint disabled under Lambda), not by a library API break. The PyPI library `x12-edi-tools` has zero public-API changes in this migration; we accept the monorepo-wide bump per the existing "three artifacts, one release train" philosophy in [CLAUDE.md](../../CLAUDE.md). The release notes must state this explicitly so downstream library consumers (if they ever appear) aren't misled.
 
 Tagging cadence during the migration:
 
@@ -92,7 +92,7 @@ Tagging cadence during the migration:
 1.0.0-rc.1      end of Phase 3  (first working serverless staging)
 1.0.0-rc.2      end of Phase 4  (hardening + SnapStart validated)
 1.0.0-rc.3      end of Phase 7  (frontend primitives landed)
-1.0.0           end of Phase 8  (production cutover, App Runner deleted)
+1.0.0           end of Phase 8  (production cutover, legacy managed container service deleted)
 1.0.1           after Phase 9   (docs + auto-regen, patch-only release)
 
 Going forward:
@@ -174,7 +174,7 @@ Phase 6 (design enforcement) ──► Phase 7 (primitives) ──► Phase 8 (U
 | 4 | **Phase 4 — Hardening** | Run in sequence | Phase 3 | Adds WAF, SnapStart where supported, alarms, and stricter headers after staging works. |
 | 5 | **Phase 5 — Custom domain** | Optional sequence | Phase 4 | Adds branded DNS/certificate support; can be skipped for raw CloudFront-only deployments. |
 | 6 | **Phase 7 — UX primitives** | Run in parallel with infra sequence | Phase 6 | Can proceed while Phases 3-5 continue; adds the missing UI primitives. |
-| 7 | **Phase 8 — UX polish + production cutover** | Run in sequence | Phase 7 + production infra readiness | Applies page-level UX improvements, retires App Runner, and cuts `1.0.0`. |
+| 7 | **Phase 8 — UX polish + production cutover** | Run in sequence | Phase 7 + production infra readiness | Applies page-level UX improvements, retires legacy managed container service, and cuts `1.0.0`. |
 | 8 | **Phase 9 — Docs consolidation** | Run in sequence | Phase 8 | Rewrites architecture docs, runbooks, OpenAPI generation, and drift checks for the final architecture. |
 | 9 | **Phase 10 — Release hardening** | Run last | Phase 9 | Adds release-drafter, tag protection docs, artifact polish, and final release process checks. |
 
@@ -225,7 +225,7 @@ Not really a phase; a five-minute pre-step to prevent merge conflicts between Ph
 
 - [apps/api/app/main.py](apps/api/app/main.py) — keep the existing top-level `/healthz` for local/container use, add the Mangum handler in a separate module, and skip the static-frontend mount when `X12_API_DEPLOYMENT_TARGET=lambda`.
 - [apps/api/app/core/middleware.py](apps/api/app/core/middleware.py) — (a) delete `_rate_limit_lock`, `_request_windows`, `_in_flight_lock`, `_in_flight_uploads`, and the two helper functions; collapse to correlation-id, size check, auth-boundary, logging (CORS block stays as inert defense-in-depth). (b) Add a new `OriginSecretMiddleware` that runs when `deployment_target == "lambda"` and `origin_secret_enabled == True`, rejecting any request whose `X-Origin-Verify` header does not match `settings.origin_secret` or `settings.origin_secret_previous` with a 403 and a structured log line (no secret in the log). Dev/local bypass via config flag. Secret values are supplied via Lambda environment variables; Terraform state is therefore sensitive even if Secrets Manager is used as the source of truth.
-- [apps/api/app/core/config.py](apps/api/app/core/config.py) — add `deployment_target: Literal["lambda","container","local"] = "local"` and origin-secret settings, all under the existing `X12_API_` prefix (`X12_API_DEPLOYMENT_TARGET`, `X12_API_ORIGIN_SECRET_ENABLED`, `X12_API_ORIGIN_SECRET`, `X12_API_ORIGIN_SECRET_PREVIOUS`). Deprecate `rate_limit_enabled` (log a warning if set true under `lambda`).
+- [apps/api/app/core/config.py](apps/api/app/core/config.py) — add `deployment_target: Literal["lambda","container","local"] = "local"` and origin-secret settings under the existing `X12_API_` prefix, including deployment target, enabled flag, current value, and previous value. Deprecate `rate_limit_enabled` (log a warning if set true under `lambda`).
 - [apps/api/app/core/metrics.py](apps/api/app/core/metrics.py) — emit CloudWatch EMF ([Embedded Metric Format](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format_Specification.html)) log lines when `deployment_target=lambda`. EMF is parsed by CloudWatch automatically — no SDK calls, no cold-start hit. Keep the Prometheus endpoint for the container/local path.
 - [apps/api/pyproject.toml](apps/api/pyproject.toml) — add `mangum>=0.18,<1.0` as an extra `[project.optional-dependencies].lambda = ["mangum>=0.18,<1.0"]`.
 - `apps/api/app/lambda_handler.py` (new, ~10 lines) — `from mangum import Mangum; from app.main import app; handler = Mangum(app, lifespan="off")`.
@@ -362,7 +362,7 @@ infra/
 
 ### Scope — files touched
 
-- `.github/workflows/deploy.yml` — replace the App Runner/ECR flow and change the trigger semantics:
+- `.github/workflows/deploy.yml` — replace the legacy managed container service/ECR flow and change the trigger semantics:
   - **Staging** — triggered automatically on `push` to `main` (path-filtered to code that affects the deploy: `apps/**`, `packages/**`, `infra/terraform/**`, `scripts/package_lambda.sh`, `VERSION`). No manual action required; every merge hits staging.
   - **Production** — **manual only**, via `workflow_dispatch` with an `environment` input whose allowed values are `staging` and `production`. Production deploys require clicking "Run workflow" in the Actions UI and selecting `production`. Wire to a GitHub protected environment so production also requires a reviewer approval if you configure one in repo settings.
   - `concurrency: deploy-${{ inputs.environment || 'staging' }}` with `cancel-in-progress: false`, so S3 sync, Terraform apply, and CloudFront invalidation cannot overlap for the same environment.
@@ -378,7 +378,7 @@ infra/
 - `scripts/package_lambda.sh` (new).
 - `scripts/bootstrap_tf_backend.sh` (new) — idempotent bootstrap runner.
 - `Makefile` — **cut over `make deploy` to the serverless path immediately**. Changes:
-  - Rename the existing App Runner target `deploy` → `deploy-apprunner-legacy` (kept through Phase 8 as a break-glass, removed in Phase 8's cleanup).
+  - Rename the existing legacy managed container service target `deploy` → `deploy-apprunner-legacy` (kept through Phase 8 as a break-glass, removed in Phase 8's cleanup).
   - New `make deploy` target = the serverless pipeline. Requires `ENV=staging` or `ENV=production`. Refuses to run without `ENV` set (no default — a missing env is a bug, not a default). Defends against the old muscle memory by `@echo "make deploy now deploys via Lambda+CloudFront. ENV=$(ENV). Ctrl-C to abort."; sleep 3` in the first line.
   - Add supporting targets: `make lambda-package`, `make terraform-plan ENV=...`, `make terraform-apply ENV=...`, `make deploy-invalidate ENV=...`.
   - Both local `make deploy ENV=production` and the GitHub Actions manual run end up in the same Terraform state and produce identical artifacts.
@@ -401,14 +401,14 @@ infra/
    - `curl https://<staging-cf-domain>/api/v1/health` returns 200 via Lambda.
    - Browser loads the SPA, drag-and-drops a fixture file, sees the Preview + Result pages work.
    - CloudWatch Logs show structured JSON with correlation IDs.
-5. **Production serverless readiness gate.** After 48 hours of staging soak with fixture traffic, production may be deployed behind the serverless stack for final verification, but App Runner is not retired until Phase 8.
-6. **Legacy path stays intact.** Keep `make deploy-apprunner-legacy` through Phase 8 as break-glass. Do not move/delete App Runner artifacts in Phase 3.
+5. **Production serverless readiness gate.** After 48 hours of staging soak with fixture traffic, production may be deployed behind the serverless stack for final verification, but legacy managed container service is not retired until Phase 8.
+6. **Legacy path stays intact.** Keep `make deploy-apprunner-legacy` through Phase 8 as break-glass. Do not move/delete legacy managed container service artifacts in Phase 3.
 7. **Cold-start measurement.** Before enabling SnapStart (Phase 4), record baseline p50 / p95 cold-start InitDuration from a 50-request sample with 15-min idle gaps between calls. This is the data we compare against in Phase 4 acceptance.
 
 ### Validation — Phase 3 done when
 
 - A push to `main` with a trivial change triggers the pipeline, which completes in < 5 min and updates the Lambda + SPA without changing the CloudFront distribution ID.
-- `terraform state list` shows every new serverless AWS resource under Terraform management. Legacy App Runner resources may remain outside this state until Phase 8 deletion/import cleanup.
+- `terraform state list` shows every new serverless AWS resource under Terraform management. Legacy legacy managed container service resources may remain outside this state until Phase 8 deletion/import cleanup.
 - Two consecutive deploys output the identical CloudFront domain and distribution ID.
 - The staging URL loads the app and all existing pages work end-to-end.
 - `make test` green.
@@ -644,10 +644,10 @@ Global wiring:
 
 ### Production cutover + release tag at the end of this phase
 
-This is the phase that **retires App Runner**. Tasks specific to cutover:
+This is the phase that **retires legacy managed container service**. Tasks specific to cutover:
 1. Delete `scripts/deploy_aws.sh` and `make deploy-apprunner-legacy`.
-2. Delete the App Runner service + ECR repo via Terraform (or via a documented AWS CLI runbook if they were never imported into Terraform).
-3. Remove all App Runner/ECR references from README, CLAUDE.md, and docs (the Phase 9 grep gate catches residuals).
+2. Delete the legacy managed container service service + ECR repo via Terraform (or via a documented AWS CLI runbook if they were never imported into Terraform).
+3. Remove all legacy managed container service/ECR references from README, CLAUDE.md, and docs (the Phase 9 grep gate catches residuals).
 4. Update the version table, bump: `python scripts/bump_version.py 1.0.0` → tag `v1.0.0` → push.
 5. `release.yml` fires, publishes a GitHub Release marked **"Latest"** (not pre-release), attaches Lambda zip + Docker image + PyPI wheel + Terraform modules tarball. This is the first v1 "stable" release.
 
@@ -743,7 +743,7 @@ The generator only touches content inside matching markers. A missing start tag 
 8. Write `.github/workflows/architecture-review-nudge.yml`.
 9. Write the six runbooks as short (< 1 page) command-forward docs.
 10. Render all Mermaid diagrams and embed in README + architecture.md.
-11. Update `CLAUDE.md` sections that reference App Runner, ECR, or the old deploy script — retire those paragraphs.
+11. Update `CLAUDE.md` sections that reference legacy managed container service, ECR, or the old deploy script — retire those paragraphs.
 12. Run `make docs-regenerate` on `main` so the initial committed state is clean.
 
 ### Validation — Phase 9 done when
@@ -755,7 +755,7 @@ The generator only touches content inside matching markers. A missing start tag 
 - PR simulation: a branch that edits `infra/terraform/modules/lambda_api/main.tf` gets the architecture-review-nudge comment but is not blocked.
 - `README.md` renders the architecture Mermaid diagram correctly on GitHub.
 - All six runbooks have a "you should be done in < 5 min" at the top.
-- `grep -r "App Runner" docs/ README.md` returns zero matches.
+- `grep -r "legacy managed container service" docs/ README.md` returns zero matches.
 - `grep -r "ECR" docs/ README.md` returns only legacy/migration references.
 - The hand-written sections of README and `architecture.md` are byte-identical before and after `make docs-regenerate` (the marker-block system never touches prose).
 

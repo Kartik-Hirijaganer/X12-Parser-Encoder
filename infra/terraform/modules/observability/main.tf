@@ -75,18 +75,49 @@ resource "aws_cloudwatch_log_metric_filter" "cold_start" {
 
 resource "aws_cloudwatch_metric_alarm" "http_5xx" {
   alarm_name          = "${var.function_name}-5xx-rate"
-  alarm_description   = "Lambda API returned elevated 5xx responses."
-  namespace           = local.namespace
-  metric_name         = aws_cloudwatch_log_metric_filter.http_5xx.metric_transformation[0].name
-  statistic           = "Sum"
-  period              = 60
-  evaluation_periods  = 5
-  threshold           = 5
-  comparison_operator = "GreaterThanOrEqualToThreshold"
+  alarm_description   = "Lambda API 5xx responses exceeded 1% of invocations over 5 minutes."
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  threshold           = 1
   treat_missing_data  = "notBreaching"
   alarm_actions       = local.alarm_actions
   ok_actions          = local.alarm_actions
   tags                = var.tags
+
+  metric_query {
+    id          = "http_5xx"
+    return_data = false
+
+    metric {
+      namespace   = local.namespace
+      metric_name = aws_cloudwatch_log_metric_filter.http_5xx.metric_transformation[0].name
+      period      = 300
+      stat        = "Sum"
+    }
+  }
+
+  metric_query {
+    id          = "invocations"
+    return_data = false
+
+    metric {
+      namespace   = "AWS/Lambda"
+      metric_name = "Invocations"
+      period      = 300
+      stat        = "Sum"
+
+      dimensions = {
+        FunctionName = var.function_name
+      }
+    }
+  }
+
+  metric_query {
+    id          = "rate"
+    expression  = "IF(invocations > 0, 100 * http_5xx / invocations, 0)"
+    label       = "5xx percentage"
+    return_data = true
+  }
 }
 
 resource "aws_cloudwatch_metric_alarm" "throttles" {
@@ -95,10 +126,10 @@ resource "aws_cloudwatch_metric_alarm" "throttles" {
   namespace           = "AWS/Lambda"
   metric_name         = "Throttles"
   statistic           = "Sum"
-  period              = 60
+  period              = 300
   evaluation_periods  = 1
   threshold           = 1
-  comparison_operator = "GreaterThanOrEqualToThreshold"
+  comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
   alarm_actions       = local.alarm_actions
   ok_actions          = local.alarm_actions
@@ -111,32 +142,40 @@ resource "aws_cloudwatch_metric_alarm" "throttles" {
 
 resource "aws_cloudwatch_metric_alarm" "latency_p95" {
   alarm_name          = "${var.function_name}-latency-p95"
-  alarm_description   = "Lambda API p95 latency is elevated."
-  namespace           = local.namespace
-  metric_name         = aws_cloudwatch_log_metric_filter.request_latency.metric_transformation[0].name
+  alarm_description   = "Lambda API p95 duration exceeded 3 seconds over 5 minutes."
+  namespace           = "AWS/Lambda"
+  metric_name         = "Duration"
   extended_statistic  = "p95"
-  period              = 60
-  evaluation_periods  = 5
-  threshold           = 5000
-  comparison_operator = "GreaterThanOrEqualToThreshold"
+  period              = 300
+  evaluation_periods  = 1
+  threshold           = 3000
+  comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
   alarm_actions       = local.alarm_actions
   ok_actions          = local.alarm_actions
   tags                = var.tags
+
+  dimensions = {
+    FunctionName = var.function_name
+  }
 }
 
-resource "aws_cloudwatch_metric_alarm" "cold_starts" {
-  alarm_name          = "${var.function_name}-cold-starts"
-  alarm_description   = "Lambda API cold-start frequency is elevated."
-  namespace           = local.namespace
-  metric_name         = aws_cloudwatch_log_metric_filter.cold_start.metric_transformation[0].name
+resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
+  alarm_name          = "${var.function_name}-lambda-errors"
+  alarm_description   = "Lambda API function errors exceeded 5 over 5 minutes."
+  namespace           = "AWS/Lambda"
+  metric_name         = "Errors"
   statistic           = "Sum"
   period              = 300
-  evaluation_periods  = 3
+  evaluation_periods  = 1
   threshold           = 5
-  comparison_operator = "GreaterThanOrEqualToThreshold"
+  comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
   alarm_actions       = local.alarm_actions
   ok_actions          = local.alarm_actions
   tags                = var.tags
+
+  dimensions = {
+    FunctionName = var.function_name
+  }
 }

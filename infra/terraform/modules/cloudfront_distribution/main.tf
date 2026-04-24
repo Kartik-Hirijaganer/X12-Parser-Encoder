@@ -7,6 +7,7 @@ locals {
   caching_disabled_policy_id              = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
   all_viewer_except_host_header_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
   effective_response_headers_policy_id    = var.response_headers_policy_id != null ? var.response_headers_policy_id : aws_cloudfront_response_headers_policy.security[0].id
+  custom_domain_enabled                   = var.custom_domain != null && trimspace(var.custom_domain) != ""
 }
 
 resource "aws_cloudfront_origin_access_control" "s3" {
@@ -50,7 +51,7 @@ resource "aws_cloudfront_response_headers_policy" "security" {
   count = var.response_headers_policy_id == null ? 1 : 0
 
   name    = "${var.name_prefix}-security-headers"
-  comment = "Phase 2 baseline security headers; CSP tightens in Phase 4."
+  comment = "Phase 4 security headers for the CloudFront SPA and API."
 
   security_headers_config {
     content_security_policy {
@@ -68,10 +69,18 @@ resource "aws_cloudfront_response_headers_policy" "security" {
     }
 
     strict_transport_security {
-      access_control_max_age_sec = 31536000
+      access_control_max_age_sec = 63072000
       include_subdomains         = true
       preload                    = true
       override                   = true
+    }
+  }
+
+  custom_headers_config {
+    items {
+      header   = "Permissions-Policy"
+      value    = "camera=(), microphone=(), geolocation=(), payment=()"
+      override = true
     }
   }
 }
@@ -83,6 +92,7 @@ resource "aws_cloudfront_distribution" "this" {
   default_root_object = "index.html"
   price_class         = var.price_class
   web_acl_id          = var.enable_waf ? var.waf_web_acl_arn : null
+  aliases             = local.custom_domain_enabled ? [var.custom_domain] : []
   tags                = var.tags
 
   origin {
@@ -143,14 +153,21 @@ resource "aws_cloudfront_distribution" "this" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
+    acm_certificate_arn            = local.custom_domain_enabled ? var.acm_certificate_arn : null
+    cloudfront_default_certificate = local.custom_domain_enabled ? null : true
     minimum_protocol_version       = "TLSv1.2_2021"
+    ssl_support_method             = local.custom_domain_enabled ? "sni-only" : null
   }
 
   lifecycle {
     precondition {
       condition     = !var.enable_waf || var.waf_web_acl_arn != null
       error_message = "waf_web_acl_arn is required when enable_waf is true."
+    }
+
+    precondition {
+      condition     = !local.custom_domain_enabled || try(trimspace(var.acm_certificate_arn) != "", false)
+      error_message = "acm_certificate_arn is required when custom_domain is set."
     }
   }
 }

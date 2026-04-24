@@ -78,7 +78,7 @@ variable "lambda_architecture" {
 }
 
 variable "enable_snapstart" {
-  description = "Enable Lambda SnapStart. Phase 2 default is false."
+  description = "Enable Lambda SnapStart. Example defaults off for portability."
   type        = bool
   default     = false
 }
@@ -119,10 +119,46 @@ variable "price_class" {
   default     = "PriceClass_100"
 }
 
+variable "custom_domain" {
+  description = "Optional custom hostname to attach to CloudFront."
+  type        = string
+  default     = null
+}
+
+variable "dns_provider" {
+  description = "DNS provider mode for custom_domain. route53 creates DNS records; external outputs records for manual DNS."
+  type        = string
+  default     = "route53"
+  nullable    = false
+
+  validation {
+    condition     = contains(["route53", "external"], lower(var.dns_provider))
+    error_message = "dns_provider must be route53 or external."
+  }
+}
+
+variable "hosted_zone_id" {
+  description = "Route 53 hosted zone ID used when dns_provider is route53."
+  type        = string
+  default     = null
+}
+
 variable "enable_waf" {
-  description = "Enable the WAF module. Phase 2 default is false."
+  description = "Enable the CloudFront WAF module."
   type        = bool
   default     = false
+}
+
+variable "waf_rate_limit_per_5_min" {
+  description = "Maximum requests per 5-minute window per source IP before WAF blocks."
+  type        = number
+  default     = 2000
+}
+
+variable "waf_geo_allow_countries" {
+  description = "Optional ISO 3166-1 alpha-2 country allow-list. Empty means global."
+  type        = list(string)
+  default     = []
 }
 
 variable "alarm_sns_topic_arn" {

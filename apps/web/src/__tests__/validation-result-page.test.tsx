@@ -21,7 +21,7 @@ vi.mock('../utils/downloads', () => ({
   downloadTextFile: downloadTextFileMock,
 }))
 
-function buildFiveRowResponse(): ValidateResponse {
+function buildFiveRowResponse(overrides: Partial<ValidateResponse> = {}): ValidateResponse {
   const invalidIndex = 2
   const patients = Array.from({ length: 5 }, (_unused, index) => ({
     index,
@@ -62,7 +62,12 @@ function buildFiveRowResponse(): ValidateResponse {
       valid_patients: 4,
       invalid_patients: 1,
     },
+    ...overrides,
   }
+}
+
+function expandFailureDetails() {
+  fireEvent.click(screen.getByRole('button', { name: 'Show details' }))
 }
 
 describe('ValidationResultPage', () => {
@@ -93,6 +98,7 @@ describe('ValidationResultPage', () => {
       response: buildFiveRowResponse(),
     })
 
+    expandFailureDetails()
     fireEvent.change(screen.getByLabelText('Filter'), { target: { value: 'invalid' } })
 
     expect(screen.getByText('MEMBER_3')).toBeInTheDocument()
@@ -105,6 +111,7 @@ describe('ValidationResultPage', () => {
       response: buildFiveRowResponse(),
     })
 
+    expandFailureDetails()
     fireEvent.click(screen.getByRole('button', { name: 'Open issues for MEMBER_3' }))
 
     expect(screen.getByText('Patient #3')).toBeInTheDocument()
@@ -118,12 +125,36 @@ describe('ValidationResultPage', () => {
       response,
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Export Excel' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Export Excel' })[0])
 
     await waitFor(() => {
       expect(exportValidationWorkbookMock).toHaveBeenCalledTimes(1)
     })
     expect(exportValidationWorkbookMock).toHaveBeenCalledWith(response)
     expect(downloadBlobMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows a success banner and one-sentence failure summary', () => {
+    renderApp('/validate/result', {
+      filename: 'sample.270',
+      response: buildFiveRowResponse(),
+    })
+
+    expect(screen.getByText('Validation failed')).toBeInTheDocument()
+    expect(screen.getByText(/1 critical issue/)).toBeInTheDocument()
+
+    renderApp('/validate/result', {
+      filename: 'sample.270',
+      response: buildFiveRowResponse({
+        is_valid: true,
+        error_count: 0,
+        warning_count: 0,
+        issues: [],
+        patients: [],
+        summary: { total_patients: 0, valid_patients: 0, invalid_patients: 0 },
+      }),
+    })
+
+    expect(screen.getByText('All patients validated successfully')).toBeInTheDocument()
   })
 })

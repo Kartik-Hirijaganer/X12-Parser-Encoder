@@ -2,6 +2,8 @@ import { useDeferredValue, useMemo, useState } from 'react'
 
 import type { EligibilityResult, EligibilitySummary } from '../../types/api'
 import { Card } from '../ui/Card'
+import { EmptyState } from '../ui/EmptyState'
+import { SearchIcon } from '../ui/Icons'
 import { summarizePlan } from '../../utils/formatters'
 import { DashboardFilterBar, type DashboardStatusFilter } from './DashboardFilterBar'
 import { DashboardSummary } from './DashboardSummary'
@@ -43,20 +45,32 @@ export function EligibilityDashboard({
     })
   }, [deferredSearch, filter, results])
 
+  const hasNoRows = results.length === 0
+
   return (
     <div className="space-y-6">
-      <DashboardSummary summary={summary} />
+      <DashboardSummary activeFilter={filter} onFilterChange={setFilter} summary={summary} />
 
-      <Card className="space-y-4">
-        <DashboardFilterBar
-          filter={filter}
-          onExport={onExport}
-          onFilterChange={setFilter}
-          onSearchChange={setSearch}
-          search={search}
-        />
-        <DashboardTable results={filteredResults} />
-      </Card>
+      {hasNoRows ? (
+        <Card>
+          <EmptyState
+            description="The 271 response did not contain any eligibility rows. Upload another file to review results."
+            icon={<SearchIcon className="h-10 w-10" />}
+            title="No eligibility rows yet"
+          />
+        </Card>
+      ) : (
+        <Card className="space-y-4">
+          <DashboardFilterBar
+            filter={filter}
+            onExport={onExport}
+            onFilterChange={setFilter}
+            onSearchChange={setSearch}
+            search={search}
+          />
+          <DashboardTable results={filteredResults} />
+        </Card>
+      )}
     </div>
   )
 }

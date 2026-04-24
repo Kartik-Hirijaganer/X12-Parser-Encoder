@@ -17,6 +17,11 @@ provider "aws" {
   region = var.aws_region
 }
 
+provider "aws" {
+  alias  = "global"
+  region = "us-east-1"
+}
+
 data "aws_caller_identity" "current" {}
 
 locals {
@@ -91,8 +96,14 @@ module "waf" {
   count  = var.enable_waf ? 1 : 0
   source = "../../modules/waf"
 
-  name_prefix = local.name_prefix
-  tags        = local.common_tags
+  providers = {
+    aws = aws.global
+  }
+
+  name_prefix          = local.name_prefix
+  rate_limit_per_5_min = var.waf_rate_limit_per_5_min
+  geo_allow_countries  = var.waf_geo_allow_countries
+  tags                 = local.common_tags
 }
 
 module "cloudfront_distribution" {
@@ -103,9 +114,26 @@ module "cloudfront_distribution" {
   lambda_function_url_domain = module.lambda_api.function_url_domain
   origin_verify_header_value = var.origin_verify_header_value
   price_class                = var.price_class
+  custom_domain              = var.custom_domain
+  acm_certificate_arn        = module.custom_domain.certificate_arn
   enable_waf                 = var.enable_waf
   waf_web_acl_arn            = var.enable_waf ? module.waf[0].web_acl_arn : null
   tags                       = local.common_tags
+}
+
+module "custom_domain" {
+  source = "../../modules/custom_domain"
+
+  providers = {
+    aws = aws.global
+  }
+
+  domain_name                            = var.custom_domain
+  dns_provider                           = var.dns_provider
+  hosted_zone_id                         = var.hosted_zone_id
+  cloudfront_distribution_domain_name    = module.cloudfront_distribution.domain_name
+  cloudfront_distribution_hosted_zone_id = module.cloudfront_distribution.hosted_zone_id
+  tags                                   = local.common_tags
 }
 
 data "aws_iam_policy_document" "spa_oac_read" {

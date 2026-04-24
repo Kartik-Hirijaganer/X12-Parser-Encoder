@@ -1,5 +1,6 @@
 terraform {
   required_version = ">= 1.6.0"
+  # provider_pin_repo_version = "0.1.1"
 
   required_providers {
     aws = {

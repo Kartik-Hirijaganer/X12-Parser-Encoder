@@ -26,6 +26,8 @@ Provisions the Python 3.12 Lambda API, a `live` alias, a public Lambda Function 
 |---|---|
 | `function_url_domain` | Function URL domain without scheme or trailing slash. |
 | `function_arn` | Lambda function ARN. |
+| `function_name` | Lambda function name. |
+| `function_version` | Published Lambda function version routed by the live alias. |
 | `invoke_arn` | Lambda invoke ARN. |
 | `log_group_name` | Lambda log group name. |
 

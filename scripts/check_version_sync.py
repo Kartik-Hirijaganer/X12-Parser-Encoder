@@ -13,6 +13,7 @@ from versioning import require_semver
 REPO_ROOT = Path(__file__).resolve().parents[1]
 EXPECTED = (REPO_ROOT / "VERSION").read_text(encoding="utf-8").strip()
 README_FILE = REPO_ROOT / "README.md"
+PROVIDER_PIN_ANNOTATION = r'provider_pin_repo_version\s*=\s*"([^"]+)"'
 
 
 def check_text_pattern(path: Path, pattern: str) -> str | None:
@@ -50,8 +51,31 @@ def record_check(
         mismatches.append(f"{path}: expected {EXPECTED}, found {actual}")
 
 
+def record_soft_check(
+    checks: dict[str, str | None],
+    warnings: list[str],
+    *,
+    path: str,
+    actual: str | None,
+) -> None:
+    checks[path] = actual
+    if actual is None:
+        warnings.append(f"{path}: missing provider_pin_repo_version annotation")
+        return
+    try:
+        require_semver(actual, label=path)
+    except SystemExit as exc:
+        warnings.append(str(exc))
+        return
+    if actual != EXPECTED:
+        warnings.append(
+            f"{path}: expected provider_pin_repo_version {EXPECTED}, found {actual}"
+        )
+
+
 def main() -> None:
     mismatches: list[str] = []
+    warnings: list[str] = []
     try:
         require_semver(EXPECTED, label="VERSION")
     except SystemExit as exc:
@@ -132,10 +156,25 @@ def main() -> None:
         ),
     )
 
+    for versions_file in sorted(
+        (REPO_ROOT / "infra" / "terraform" / "modules").glob("*/versions.tf")
+    ):
+        record_soft_check(
+            checks,
+            warnings,
+            path=str(versions_file.relative_to(REPO_ROOT)),
+            actual=check_text_pattern(versions_file, PROVIDER_PIN_ANNOTATION),
+        )
+
     # The checks dict is kept explicit so this script fails loudly if a version
     # source is accidentally removed while refactoring release metadata.
     if not checks:
         mismatches.append("No version-bearing files were checked")
+
+    if warnings:
+        print("Version sync warnings:", file=sys.stderr)
+        for warning in warnings:
+            print(f"- {warning}", file=sys.stderr)
 
     if mismatches:
         print("Version drift detected:", file=sys.stderr)

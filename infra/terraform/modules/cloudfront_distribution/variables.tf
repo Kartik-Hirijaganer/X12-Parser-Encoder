@@ -38,15 +38,27 @@ variable "waf_web_acl_arn" {
 }
 
 variable "response_headers_policy_id" {
-  description = "Optional existing response headers policy ID. When null, this module creates the Phase 2 policy."
+  description = "Optional existing response headers policy ID. When null, this module creates the security headers policy."
+  type        = string
+  default     = null
+}
+
+variable "custom_domain" {
+  description = "Optional custom hostname to add to CloudFront aliases."
+  type        = string
+  default     = null
+}
+
+variable "acm_certificate_arn" {
+  description = "ACM certificate ARN in us-east-1 for the custom domain."
   type        = string
   default     = null
 }
 
 variable "content_security_policy" {
-  description = "Content-Security-Policy used by the Phase 2 response headers policy."
+  description = "Content-Security-Policy used by the response headers policy."
   type        = string
-  default     = "default-src 'self'; connect-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+  default     = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'"
 }
 
 variable "tags" {

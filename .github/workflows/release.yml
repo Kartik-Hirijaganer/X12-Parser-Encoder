@@ -9,6 +9,7 @@ permissions:
   contents: write
   id-token: write
   packages: write
+  pull-requests: read
 
 jobs:
   validate:
@@ -22,6 +23,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+      - name: Run release script tests
+        run: python -m unittest discover -s scripts/tests -p "test_*.py"
       - name: Check version sync
         run: python scripts/check_version_sync.py
       - name: Validate release tag
@@ -47,6 +50,22 @@ jobs:
           python -m build
       - name: Check artifacts for local-only content
         run: python scripts/check_no_proprietary_content.py packages/x12-edi-tools/dist/*
+      - name: Package Lambda artifact
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+          LAMBDA_ARCHITECTURE: ${{ vars.LAMBDA_ARCHITECTURE || 'x86_64' }}
+        run: |
+          bash scripts/package_lambda.sh
+          lambda_asset="lambda-${VERSION}-py312-${LAMBDA_ARCHITECTURE}.zip"
+          cp build/lambda.zip "${lambda_asset}"
+          sha256sum "${lambda_asset}" > "${lambda_asset}.sha256"
+      - name: Package Terraform modules
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          terraform_asset="terraform-modules-${VERSION}.tar.gz"
+          tar --exclude='*/.terraform' --exclude='*/.terraform/*' -czf "${terraform_asset}" -C infra/terraform modules/
+          sha256sum "${terraform_asset}" > "${terraform_asset}.sha256"
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
@@ -62,24 +81,44 @@ jobs:
         run: |
           repository="$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
           image="ghcr.io/${repository}"
-          echo "version=${image}:${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
-          echo "latest=${image}:latest" >> "$GITHUB_OUTPUT"
+          {
+            echo "tags<<EOF"
+            echo "${image}:${GITHUB_REF_NAME}"
+            if [ "${{ needs.validate.outputs.make_latest }}" = "true" ]; then
+              echo "${image}:latest"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
       - name: Build and push container
         uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/Dockerfile
           push: true
-          tags: |
-            ${{ steps.image.outputs.version }}
-            ${{ steps.image.outputs.latest }}
+          tags: ${{ steps.image.outputs.tags }}
       - name: Generate release notes from changelog
         run: python scripts/changelog_excerpt.py "${{ needs.validate.outputs.version }}" > release-notes.md
-      - name: Create GitHub release
+      - name: Publish drafted release notes
+        uses: release-drafter/release-drafter@v7
+        with:
+          config-name: release-drafter.yml
+          name: ${{ github.ref_name }}
+          tag: ${{ github.ref_name }}
+          version: ${{ needs.validate.outputs.version }}
+          publish: true
+          prerelease: ${{ needs.validate.outputs.prerelease }}
+          latest: ${{ needs.validate.outputs.make_latest }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Attach GitHub release assets
         uses: softprops/action-gh-release@v2
         with:
-          body_path: release-notes.md
           prerelease: ${{ needs.validate.outputs.prerelease }}
           make_latest: ${{ needs.validate.outputs.make_latest }}
+          fail_on_unmatched_files: true
           files: |
             packages/x12-edi-tools/dist/*
+            lambda-${{ needs.validate.outputs.version }}-py312-${{ vars.LAMBDA_ARCHITECTURE || 'x86_64' }}.zip
+            lambda-${{ needs.validate.outputs.version }}-py312-${{ vars.LAMBDA_ARCHITECTURE || 'x86_64' }}.zip.sha256
+            terraform-modules-${{ needs.validate.outputs.version }}.tar.gz
+            terraform-modules-${{ needs.validate.outputs.version }}.tar.gz.sha256

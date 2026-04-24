@@ -1,17 +1,49 @@
+import type { ButtonHTMLAttributes, ReactNode } from 'react'
+
 import { cn } from '../../utils/cn'
 
 type CardVariant = 'content' | 'action'
 
-export function Card({
-  children,
-  className,
-  variant = 'content',
-}: {
-  children: React.ReactNode
+type NativeButtonProps = Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  'children' | 'className' | 'type'
+>
+
+interface CardSectionProps {
+  children: ReactNode
   className?: string
   variant?: CardVariant
-}) {
-  return <section className={cn(cardClasses[variant], className)}>{children}</section>
+  as?: 'section'
+}
+
+interface CardButtonProps extends NativeButtonProps {
+  children: ReactNode
+  className?: string
+  variant?: CardVariant
+  as: 'button'
+}
+
+export function Card(props: CardSectionProps | CardButtonProps) {
+  const variant: CardVariant = props.variant ?? 'content'
+
+  if (props.as === 'button') {
+    const { as, children, className, variant: _variant, ...buttonProps } = props
+    void as
+    void _variant
+    return (
+      <button
+        className={cn(cardClasses[variant], 'text-left', className)}
+        type="button"
+        {...buttonProps}
+      >
+        {children}
+      </button>
+    )
+  }
+
+  return (
+    <section className={cn(cardClasses[variant], props.className)}>{props.children}</section>
+  )
 }
 
 const sharedCardClass =

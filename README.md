@@ -6,6 +6,19 @@
 
 Python-native tooling for X12 270/271 eligibility workflows: a reusable parsing and validation library, a FastAPI backend, and a React workbench for spreadsheet-to-X12 and 271 dashboard workflows.
 
+## Architecture At A Glance
+
+```mermaid
+flowchart LR
+  browser["Browser"] --> cloudfront["CloudFront distribution<br/>stable CloudFront URL or custom domain"]
+  cloudfront -->|default behavior| s3["Private S3 SPA bucket<br/>OAC + SigV4"]
+  cloudfront -->|/api/* + X-Origin-Verify| lambda_url["Lambda Function URL<br/>AuthType NONE"]
+  lambda_url --> lambda["Python 3.12 Lambda<br/>Mangum + FastAPI"]
+  lambda --> library["x12-edi-tools wheel<br/>parse / encode / validate"]
+  lambda --> logs["CloudWatch Logs + EMF metrics"]
+  direct["Direct Function URL request"] -. "missing origin secret: 403" .-> lambda_url
+```
+
 ## What Is X12 EDI?
 
 X12 is the transaction format used by US healthcare trading partners to exchange structured claims, eligibility, remittance, and enrollment data. In this repository, the focus is the 270 eligibility inquiry and 271 eligibility response pair used to ask a payer for coverage status and interpret the response safely.
@@ -21,17 +34,23 @@ X12 is the transaction format used by US healthcare trading partners to exchange
 | Web app | `0.1.1` |
 <!-- version-table:end -->
 
+## Releases
+
+GitHub Releases are the canonical distribution channel. A validated `v*.*.*` tag publishes the Python package, GHCR image, Lambda zip with SHA256, and Terraform modules tarball with SHA256. See [docs/runbooks/cutting-a-release.md](docs/runbooks/cutting-a-release.md) for the release checklist and rollback commands.
+
 ## Project Structure
 
+<!-- autogen:project-structure:start -->
 | Path | Purpose |
 | --- | --- |
-| `packages/x12-edi-tools` | Installable Python library for parsing, encoding, validation, payer profiles, and public types |
-| `apps/api` | FastAPI service exposing upload, generation, validation, parse, export, health, profile, and pipeline endpoints |
+| `packages/x12-edi-tools` | Framework-agnostic Python library for parsing, encoding, validation, payer profiles, and public types |
+| `apps/api` | FastAPI Lambda/container adapter exposing upload, generation, validation, parse, export, health, profile, and pipeline endpoints |
 | `apps/web` | React workbench for settings management, preview, generation, validation, templates, and eligibility dashboards |
-| `docs/architecture.md` | System-level architecture and production boundaries |
-| `docs/design-system.md` | Visual design system, frontend composition rules, storage boundary, and workflow routing |
-| `docs/ui-components.md` | Primitive catalog: props, variants, and usage for every `apps/web/src/ui/` component |
-| `metadata/` | Local-only reference content, intentionally excluded from source control and release artifacts |
+| `infra/terraform` | Terraform modules and staging/production environments for S3, CloudFront, Lambda, WAF, observability, and custom domains |
+| `docs` | Architecture, API, design, runbook, diagram, and ADR documentation |
+| `scripts` | Release, packaging, Terraform helper, Lambda pruning, and documentation regeneration scripts |
+| `.github/workflows` | CI, deploy, release, Terraform, and documentation drift workflows |
+<!-- autogen:project-structure:end -->
 
 ## Installation
 
@@ -83,20 +102,22 @@ Path("roundtrip.270").write_text(roundtripped, encoding="utf-8")
 
 ## API Reference Summary
 
+<!-- autogen:api-endpoints:start -->
 | Endpoint | Purpose |
 | --- | --- |
-| `POST /api/v1/convert` | Canonical CSV/XLSX/TXT template to normalized patient JSON |
-| `POST /api/v1/generate` | Patient JSON plus config to X12 270 document or ZIP batch |
-| `POST /api/v1/validate` | Raw X12 to SNIP and payer-profile validation results |
-| `POST /api/v1/parse` | Raw 271 to eligibility dashboard data |
-| `POST /api/v1/export/xlsx` | Eligibility dashboard data to workbook export |
-| `POST /api/v1/pipeline` | Single request convert plus generate plus validate flow |
-| `GET /api/v1/templates/{name}` | Canonical CSV and XLSX templates plus template spec |
-| `GET /api/v1/profiles` | Available payer profile packs |
-| `GET /api/v1/profiles/{name}/defaults` | Defaults surfaced by a payer profile |
-| `GET /api/v1/health` | Deep application health check |
-| `GET /healthz` | Shallow process health probe |
-| `GET /metrics` | Prometheus-formatted request and workload metrics |
+| `POST /api/v1/convert` | Convert a canonical spreadsheet or delimited file into normalized patient JSON. |
+| `POST /api/v1/export/validation/xlsx` | Export validation results as an Excel workbook. |
+| `POST /api/v1/export/xlsx` | Export parsed eligibility results as an Excel workbook. |
+| `POST /api/v1/generate` | Generate one or more X12 270 payloads from patient JSON and config. |
+| `GET /api/v1/health` | Run the deep phase-5 health check. |
+| `POST /api/v1/parse` | Parse a raw 271 file into dashboard-friendly JSON. |
+| `POST /api/v1/pipeline` | Run convert -> generate -> validate in a single request. |
+| `GET /api/v1/profiles` | List all built-in payer profiles. |
+| `GET /api/v1/profiles/{name}/defaults` | Return the default configuration values for a payer profile. |
+| `GET /api/v1/templates/{name}` | Download one canonical import template or the template specification. |
+| `POST /api/v1/validate` | Validate a raw X12 file against generic SNIP rules and payer rules. |
+| `GET /healthz` | Healthcheck |
+<!-- autogen:api-endpoints:end -->
 
 ## Web Application Usage
 
@@ -123,11 +144,13 @@ make test
 make coverage
 ```
 
-Useful Phase 8 commands:
+Useful maintenance commands:
 
 - `python scripts/check_version_sync.py`
 - `python scripts/check_no_proprietary_content.py`
 - `python scripts/bump_version.py patch`
+- `make docs-regenerate`
+- `make docs-check`
 
 ## Deployment Guide
 
@@ -140,18 +163,46 @@ docker run --rm -p 8000:8000 x12-parser-encoder
 
 ### Web + API
 
-- AWS deploys are handled by `scripts/deploy_aws.sh` and the `Deploy` GitHub Actions workflow:
-  - React frontend: S3 static website with CloudFront in front.
-  - FastAPI backend: Docker image in ECR, served by App Runner.
-- Required GitHub Actions configuration: set `AWS_ROLE_TO_ASSUME` to the IAM role ARN,
-  or set `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` for key-based AWS auth.
-- Optional GitHub Actions variables override script defaults: `AWS_REGION`, `AWS_ACCOUNT_ID`,
-  `APP_NAME`, `S3_BUCKET`, `ECR_REPOSITORY`, `APP_RUNNER_SERVICE`, and
-  `APP_RUNNER_ECR_ACCESS_ROLE`.
+- AWS deploys use the Terraform serverless stack:
+  - React frontend: private S3 bucket, served by CloudFront.
+  - FastAPI backend: Python 3.12 Lambda Function URL behind the same CloudFront distribution.
+- Local deploys require an explicit environment:
 
+```bash
+make deploy ENV=staging
+make deploy ENV=production
+```
+
+- GitHub Actions deploys use the `Deploy` workflow:
+  - pushes to `main` deploy to `staging` when deploy-affecting paths change;
+  - production is manual only through `workflow_dispatch` with `environment=production`.
+- Required GitHub Actions configuration:
+  - repository variable `AWS_ACCOUNT_ID`;
+  - optional repository variables `AWS_REGION`, `APP_NAME`, and `LAMBDA_ARCHITECTURE`;
+  - environment secret `TERRAFORM_TFVARS` for each GitHub environment (`staging`, `production`), containing the matching `infra/terraform/environments/<env>/terraform.tfvars` content.
 `Deploy` and `Release` are intentionally separate workflows. `Deploy` updates the running AWS
 application for users. `Release` runs only for `v*.*.*` tags and publishes distributable artifacts
 such as the Python package and GitHub release notes; it does not deploy the hosted AWS app.
+
+### Fork And Deploy To Your Own AWS Account
+
+1. Fork the repository and create a working branch.
+2. Run `make install`, then `make test` locally.
+3. Bootstrap Terraform state once:
+
+```bash
+bash scripts/bootstrap_tf_backend.sh
+```
+
+4. Copy the matching example tfvars file and set account-specific values:
+
+```bash
+cp infra/terraform/environments/staging/terraform.tfvars.example infra/terraform/environments/staging/terraform.tfvars
+```
+
+5. Add repository variable `AWS_ACCOUNT_ID`, optional variables `AWS_REGION`, `APP_NAME`, and `LAMBDA_ARCHITECTURE`, and one `TERRAFORM_TFVARS` environment secret per deploy environment.
+6. Deploy from your machine with `make deploy ENV=staging`, or run the `Deploy` workflow manually with `workflow_dispatch`.
+7. Read [docs/runbooks/open-source-fork.md](docs/runbooks/open-source-fork.md) for the command-forward checklist.
 
 ## PHI Handling Notes
 

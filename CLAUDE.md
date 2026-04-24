@@ -39,6 +39,8 @@ make check-version-sync                                     # CI gate: VERSION =
 make check-oss                                              # CI gate: no proprietary content leaked
 make check-hygiene                                          # CI gate: metadata/ not re-introduced
 make docs                                                   # validate docs/api/openapi.yaml, regenerate ERD if graphviz present
+make docs-regenerate                                        # write generated OpenAPI, diagrams, ERD, and marker blocks
+make docs-check                                             # verify generated docs in a temp copy and fail on drift
 ```
 
 Dev servers:
@@ -56,8 +58,8 @@ make rebuild                                                 # docker compose do
 The monorepo ships three artifacts that are versioned together through `VERSION` and `scripts/bump_version.py`:
 
 - **`packages/x12-edi-tools/`** — the framework-agnostic Python library. Publishes to PyPI as `x12-edi-tools`.
-- **`apps/api/`** — a FastAPI service (`app.main:create_app`) that wraps the library behind HTTP endpoints and is the only place that handles uploads, correlation IDs, and metrics.
-- **`apps/web/`** — the React + Vite workbench (routed SPA) that calls the API. In production the API can also serve the built SPA from `apps/web/dist` (see `_register_frontend` in `apps/api/app/main.py`).
+- **`apps/api/`** — a FastAPI service (`app.main:create_app`) that wraps the library behind HTTP endpoints and is the only place that handles uploads, correlation IDs, origin-secret checks, and metrics.
+- **`apps/web/`** — the React + Vite workbench (routed SPA) that calls the API. In Lambda production, CloudFront serves the SPA from private S3; in local/container mode the API can still serve `apps/web/dist` (see `_register_frontend` in `apps/api/app/main.py`).
 
 ### Library layout (`x12_edi_tools`)
 
@@ -108,6 +110,8 @@ Phase 0/1/7 note: 837I/837P/835 symbols (`ClaimBuildOptions`, `PartitioningStrat
 ### Documentation sources of truth
 
 Conflicts between frontend docs: `apps/web/src/styles/tokens.css` wins for concrete values, `docs/design-spec.md` wins for enforceable rules and roles, and `docs/ui-components.md` remains the primitive API appendix. `docs/architecture.md` covers system-level boundaries.
+
+Generated documentation uses marker blocks. Run `make docs-regenerate` after changing API routes, schemas, Python module imports, `VERSION`, or Terraform module docs. Run `make docs-check` before handing off changes that should not drift generated docs.
 
 ## Conventions
 

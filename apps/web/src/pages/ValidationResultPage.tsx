@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import type { PatientValidationRow, ValidationIssue } from '../types/api'
@@ -12,6 +12,7 @@ import { Badge } from '../components/ui/Badge'
 import { Banner } from '../components/ui/Banner'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
+import { useReducedMotionPreference } from '../hooks/useReducedMotionPreference'
 import { ApiError, exportValidationWorkbook } from '../services/api'
 import { downloadBlob, downloadTextFile } from '../utils/downloads'
 import { cn } from '../utils/cn'
@@ -36,18 +37,45 @@ export function ValidationResultPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const routeState = location.state as ValidationResultRouteState | null
+  const prefersReducedMotion = useReducedMotionPreference()
 
   const [activeTab, setActiveTab] = useState<TabId>('patients')
   const [filter, setFilter] = useState<ValidationStatusFilter>('all')
   const [search, setSearch] = useState('')
   const [selectedRow, setSelectedRow] = useState<PatientValidationRow | null>(null)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [showFailureDetails, setShowFailureDetails] = useState(false)
   const deferredSearch = useDeferredValue(search)
+  const exportActionsRef = useRef<HTMLDivElement | null>(null)
+
+  const focusExportAction = useCallback(() => {
+    const button = exportActionsRef.current?.querySelector<HTMLButtonElement>('button')
+    button?.click()
+  }, [])
 
   const response = routeState?.response ?? null
   const patients = useMemo(() => response?.patients ?? [], [response])
   const issues = response?.issues ?? []
   const summary = response?.summary ?? null
+  const isValid = response?.is_valid ?? false
+
+  useEffect(() => {
+    if (!response || !isValid) {
+      return
+    }
+    const node = exportActionsRef.current
+    if (!node) {
+      return
+    }
+    if (typeof node.scrollIntoView === 'function') {
+      node.scrollIntoView({
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+        block: 'center',
+      })
+    }
+    const button = node.querySelector<HTMLButtonElement>('button')
+    button?.focus({ preventScroll: true })
+  }, [response, isValid, prefersReducedMotion])
 
   const derivedSummary = useMemo(() => {
     if (summary) {
@@ -75,6 +103,15 @@ export function ValidationResultPage() {
         .some((value) => value?.toLowerCase().includes(normalizedSearch))
     })
   }, [deferredSearch, filter, patients])
+
+  const failureSummary = useMemo(() => {
+    if (!response || response.is_valid) {
+      return null
+    }
+    const errorWord = response.error_count === 1 ? 'critical issue' : 'critical issues'
+    const warningWord = response.warning_count === 1 ? 'warning' : 'warnings'
+    return `${response.error_count} ${errorWord}, ${response.warning_count} ${warningWord}.`
+  }, [response])
 
   if (!response) {
     return (
@@ -114,6 +151,37 @@ export function ValidationResultPage() {
       subtitle="Review per-patient validation results, drill into issue details, and export the workbook for downstream teams."
       title="Validation Result"
     >
+      {response.is_valid ? (
+        <Banner
+          actions={
+            <Button onClick={focusExportAction} size="sm" variant="primary">
+              Export Excel
+            </Button>
+          }
+          title="All patients validated successfully"
+          variant="success"
+        >
+          {derivedSummary.total_patients} patient{derivedSummary.total_patients === 1 ? '' : 's'} passed every
+          SNIP check. Export the workbook to share with downstream teams.
+        </Banner>
+      ) : (
+        <Banner
+          actions={
+            <Button
+              onClick={() => setShowFailureDetails((current) => !current)}
+              size="sm"
+              variant="secondary"
+            >
+              {showFailureDetails ? 'Hide details' : 'Show details'}
+            </Button>
+          }
+          title="Validation failed"
+          variant="error"
+        >
+          {failureSummary} Review the filtered rows below or export the full workbook for triage.
+        </Banner>
+      )}
+
       <Card className="flex flex-wrap items-center justify-between gap-4">
         <div className="space-y-2">
           <p className="text-sm text-[var(--color-text-secondary)]">Overall status</p>
@@ -132,41 +200,43 @@ export function ValidationResultPage() {
 
       {exportError ? <Banner variant="error">{exportError}</Banner> : null}
 
-      <Card className="space-y-5">
-        <Tabs active={activeTab} onChange={setActiveTab} />
+      {!response.is_valid && !showFailureDetails ? null : (
+        <Card className="space-y-5">
+          <Tabs active={activeTab} onChange={setActiveTab} />
 
-        {activeTab === 'patients' ? (
-          <div className="space-y-4">
-            <FilterBar
-              filter={filter}
-              onFilterChange={(value) => {
-                setFilter(value)
-                setSelectedRow(null)
-              }}
-              onSearchChange={setSearch}
-              options={FILTER_OPTIONS}
-              search={search}
-              searchPlaceholder="Search by member name or ID"
+          {activeTab === 'patients' ? (
+            <div className="space-y-4">
+              <FilterBar
+                filter={filter}
+                onFilterChange={(value) => {
+                  setFilter(value)
+                  setSelectedRow(null)
+                }}
+                onSearchChange={setSearch}
+                options={FILTER_OPTIONS}
+                search={search}
+                searchPlaceholder="Search by member name or ID"
+              />
+              <PatientValidationTable onSelect={handleSelectRow} rows={filteredPatients} />
+              {selectedRow ? (
+                <PatientIssueDrawer onClose={() => setSelectedRow(null)} row={selectedRow} />
+              ) : null}
+            </div>
+          ) : null}
+
+          {activeTab === 'issues' ? <IssuesTab issues={issues} /> : null}
+
+          {activeTab === 'summary' ? (
+            <SummaryTab
+              errorCount={response.error_count}
+              summary={derivedSummary}
+              warningCount={response.warning_count}
             />
-            <PatientValidationTable onSelect={handleSelectRow} rows={filteredPatients} />
-            {selectedRow ? (
-              <PatientIssueDrawer onClose={() => setSelectedRow(null)} row={selectedRow} />
-            ) : null}
-          </div>
-        ) : null}
+          ) : null}
+        </Card>
+      )}
 
-        {activeTab === 'issues' ? <IssuesTab issues={issues} /> : null}
-
-        {activeTab === 'summary' ? (
-          <SummaryTab
-            errorCount={response.error_count}
-            summary={derivedSummary}
-            warningCount={response.warning_count}
-          />
-        ) : null}
-      </Card>
-
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3" ref={exportActionsRef}>
         <Button onClick={() => void handleExportExcel()} variant="primary">
           Export Excel
         </Button>

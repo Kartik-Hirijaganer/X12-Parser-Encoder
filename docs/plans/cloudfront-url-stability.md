@@ -12,7 +12,7 @@
 
 ## 1. Executive Summary
 
-The current AWS deploy path can silently create a new CloudFront distribution on any run, which changes the user-facing `*.cloudfront.net` hostname, orphans the previous distribution, and breaks browser CORS against the App Runner API. The root cause is a fragile origin-string lookup paired with a timestamp-based CloudFront `CallerReference`, so any lookup miss becomes a brand-new distribution instead of a hard failure. This plan (a) fixes the defect in the shell script and workflow (Phases 2–3, the minimum viable fix), (b) migrates provisioning to **Terraform** so the infrastructure becomes declarative, reviewable, and portable for downstream open-source operators (Phase 4), and (c) then applies production-grade security controls and a stable custom domain through Terraform changes rather than ad-hoc CLI calls (Phases 5–6). CloudFormation and CDK are explicitly rejected on open-source vendor-lock-in grounds (§8). The work is sequenced in seven phases with explicit rollback per phase; Phase 2 ships first and stops the bleeding within a day.
+The current AWS deploy path can silently create a new CloudFront distribution on any run, which changes the user-facing `*.cloudfront.net` hostname, orphans the previous distribution, and breaks browser CORS against the legacy managed container service API. The root cause is a fragile origin-string lookup paired with a timestamp-based CloudFront `CallerReference`, so any lookup miss becomes a brand-new distribution instead of a hard failure. This plan (a) fixes the defect in the shell script and workflow (Phases 2–3, the minimum viable fix), (b) migrates provisioning to **Terraform** so the infrastructure becomes declarative, reviewable, and portable for downstream open-source operators (Phase 4), and (c) then applies production-grade security controls and a stable custom domain through Terraform changes rather than ad-hoc CLI calls (Phases 5–6). CloudFormation and CDK are explicitly rejected on open-source vendor-lock-in grounds (§8). The work is sequenced in seven phases with explicit rollback per phase; Phase 2 ships first and stops the bleeding within a day.
 
 ---
 
@@ -21,7 +21,7 @@ The current AWS deploy path can silently create a new CloudFront distribution on
 The deployed frontend is expected to live at a stable hostname across releases. A normal deploy should:
 
 1. Build and push the API image to ECR.
-2. Update App Runner.
+2. Update legacy managed container service.
 3. Sync the built SPA to S3.
 4. Invalidate the existing CloudFront distribution.
 
@@ -32,7 +32,7 @@ It must **not** allocate a new `*.cloudfront.net` distribution domain. In practi
 Until a custom domain ships (Phase 5), the user-facing URL **is** the CloudFront default domain (`https://<distribution-id>.cloudfront.net`). This is an explicit, current-phase product commitment, not an implementation detail:
 
 - The README publishes this URL. End-user bookmarks point at it.
-- App Runner's CORS allowlist is pinned to it. Any drift breaks browser API calls.
+- legacy managed container service's CORS allowlist is pinned to it. Any drift breaks browser API calls.
 - Any change to the distribution id is a breaking change to the product's public interface.
 
 Therefore, for the current phase, "the CloudFront distribution id does not change across deploys" is a **product requirement**, not an operational nicety. Phase 5 (custom domain) supersedes this pin by adding a stable hostname in front of the distribution, after which the raw CloudFront URL becomes implementation detail. Until then, this plan's Phase 2–3 are the load-bearing fix.
@@ -111,7 +111,7 @@ Compounding this, [Makefile:103-111](../../Makefile#L103-L111) (`deploy` target)
 
 ```yaml
 - name: Skip AWS deploy when credentials are missing
-  if: ${{ env.AWS_ROLE_TO_ASSUME == '' && (env.AWS_ACCESS_KEY_ID == '' || env.AWS_SECRET_ACCESS_KEY == '') }}
+  if: ${{ env.AWS_ROLE_TO_ASSUME == '' && (env.AWS_ACCESS_KEY_ID == '' || env.AWS_STATIC_PRIVATE_KEY == '') }}
   run: |
     echo "::notice::AWS deployment skipped because no Actions AWS credentials are configured."
 ```
@@ -132,7 +132,7 @@ A secondary cleanup: the CI skip-step should emit a **warning annotation** (not 
 | Area | Failure mode |
 |---|---|
 | End users | Printed frontend URL changes; bookmarks and shared links break. |
-| CORS | App Runner's `X12_API_CORS_ALLOWED_ORIGINS` is generated from the *current* `CLOUDFRONT_URL`; users still visiting the previous URL get CORS-blocked API calls. |
+| CORS | legacy managed container service's `X12_API_CORS_ALLOWED_ORIGINS` is generated from the *current* `CLOUDFRONT_URL`; users still visiting the previous URL get CORS-blocked API calls. |
 | Cache invalidation | Invalidation targets only the current deploy's distribution; duplicates keep serving stale assets until disabled. |
 | Cost | Orphaned distributions continue to bill for data transfer and requests. |
 | Operations | Duplicate cleanup is slow (disable → wait ~15 min → delete), destructive, and easy to get wrong. |
@@ -158,7 +158,7 @@ A secondary cleanup: the CI skip-step should emit a **warning annotation** (not 
 1. Adopting CloudFormation or CDK. Both are rejected in §8 on open-source vendor-lock-in grounds. **Terraform is the sanctioned IaC path and is a full phase of this plan (§9 Phase 4), not a future concern.**
 2. Multi-region active/active frontend. Not required for the URL-stability problem.
 3. Introducing a database or server-side state for the app itself. The `CLAUDE.md` statelessness invariant stands.
-4. **Replacing App Runner with a portable compute layer.** App Runner is AWS-proprietary, which conflicts with the OSS lock-in principle that motivates the Terraform decision. A full portable story would require moving the API to something like ECS Fargate behind an ALB, EKS, or a generic OCI-compatible runtime (Fly, Render, a self-hosted Kubernetes cluster). That is a significant architectural change — different IAM trust model, different scaling characteristics, different networking, different health-check semantics — and it is **out of scope for this plan** because this plan is specifically about making the CloudFront URL stable and the deploy idempotent. Once Terraform owns the control plane (Phase 4), the App Runner module becomes a swappable unit: a follow-up plan can replace it with `aws_ecs_service` + `aws_lb` or a non-AWS provider without touching the CloudFront, S3, or SSM modules. That portability path is the answer to the lock-in concern; it is tracked as a follow-up initiative, not deferred indefinitely.
+4. **Replacing legacy managed container service with a portable compute layer.** legacy managed container service is AWS-proprietary, which conflicts with the OSS lock-in principle that motivates the Terraform decision. A full portable story would require moving the API to something like ECS Fargate behind an ALB, EKS, or a generic OCI-compatible runtime (Fly, Render, a self-hosted Kubernetes cluster). That is a significant architectural change — different IAM trust model, different scaling characteristics, different networking, different health-check semantics — and it is **out of scope for this plan** because this plan is specifically about making the CloudFront URL stable and the deploy idempotent. Once Terraform owns the control plane (Phase 4), the legacy managed container service module becomes a swappable unit: a follow-up plan can replace it with `aws_ecs_service` + `aws_lb` or a non-AWS provider without touching the CloudFront, S3, or SSM modules. That portability path is the answer to the lock-in concern; it is tracked as a follow-up initiative, not deferred indefinitely.
 
 ---
 
@@ -183,7 +183,7 @@ Every deployment is keyed on `(APP_NAME, APP_ENV, AWS_ACCOUNT_ID, AWS_REGION)`. 
 The environment identity drives three derived names:
 
 - S3 bucket: `${APP_NAME}-${APP_ENV}-web-${AWS_ACCOUNT_ID}-${AWS_REGION}`
-- App Runner service: `${APP_NAME}-${APP_ENV}-api`
+- legacy managed container service service: `${APP_NAME}-${APP_ENV}-api`
 - SSM parameter namespace: `/${APP_NAME}/${APP_ENV}/...`
 
 `production` is the only environment whose bucket name keeps the legacy form (`${APP_NAME}-web-${AWS_ACCOUNT_ID}-${AWS_REGION}`, no `${APP_ENV}` segment) to avoid mass-renaming existing resources. All other environments include `${APP_ENV}`.
@@ -252,7 +252,7 @@ concurrency:
   cancel-in-progress: false
 ```
 
-`cancel-in-progress: false` is correct for production: an in-flight deploy must finish cleanly, not be cut off halfway through App Runner's 10-minute rollout.
+`cancel-in-progress: false` is correct for production: an in-flight deploy must finish cleanly, not be cut off halfway through legacy managed container service's 10-minute rollout.
 
 ### 7.6 Preflight contract
 
@@ -271,11 +271,11 @@ Allow create      : <true|false>
 
 `assert_aws_account` is extended to also print the *actual* vs *expected* account id on failure (currently it only exits 1).
 
-**No credential material in output.** The preflight must never print `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`, `AWS_ROLE_TO_ASSUME`, or any other secret. `set -x` is forbidden in this script. The tag-list and distribution-config files written to `${TEMP_DIR}` are cleaned up via the existing `trap` and must not be echoed to logs.
+**No credential material in output.** The preflight must never print `AWS_ACCESS_KEY_ID`, the AWS static secret key, `AWS_SESSION_TOKEN`, `AWS_ROLE_TO_ASSUME`, or any other secret. `set -x` is forbidden in this script. The tag-list and distribution-config files written to `${TEMP_DIR}` are cleaned up via the existing `trap` and must not be echoed to logs.
 
 ### 7.7 CORS stability
 
-The App Runner `X12_API_CORS_ALLOWED_ORIGINS` list must remain stable across deploys so users on older cached SPAs can still call the API. The list is composed from:
+The legacy managed container service `X12_API_CORS_ALLOWED_ORIGINS` list must remain stable across deploys so users on older cached SPAs can still call the API. The list is composed from:
 
 1. The production CloudFront domain (always).
 2. The S3 website URL (internal/debug only, behind a flag in production).
@@ -315,7 +315,7 @@ A stable public hostname is the only way to guarantee the URL never changes from
 - ACM cert in `us-east-1` (CloudFront requires `us-east-1`). Terraform: `aws_acm_certificate` with `aws.us_east_1` provider, `aws_acm_certificate_validation`, Route 53 validation records.
 - DNS: Route 53 alias record pointing at the distribution; a `var.dns_provider = "external"` branch emits the CNAME target as a Terraform output for operators using Cloudflare, Fastly DNS, or another provider.
 - Add the custom hostname to the distribution's `Aliases`.
-- Add the custom hostname to App Runner CORS (Terraform variable threaded through to the App Runner module's `RuntimeEnvironmentVariables`).
+- Add the custom hostname to legacy managed container service CORS (Terraform variable threaded through to the legacy managed container service module's `RuntimeEnvironmentVariables`).
 - Stop publishing raw CloudFront URLs as user-facing. README and any generated docs switch to the custom hostname.
 
 ### 7.11 Terraform architecture (Phase 4)
@@ -336,7 +336,7 @@ infra/
     modules/
       s3_web/                    # web assets bucket, policy, encryption, public-access-block
       ecr/                       # API image repo
-      iam/                       # App Runner ECR access role, deploy role (optional, chicken/egg — see below)
+      iam/                       # legacy managed container service ECR access role, deploy role (optional, chicken/egg — see below)
       app_runner/                # service, instance configuration, env vars
       cloudfront/                # distribution, OAC (Phase 5), response headers policy (Phase 5)
       ssm/                       # /${APP_NAME}/${APP_ENV}/cloudfront/distribution-id mirror
@@ -369,8 +369,8 @@ infra/
 | `app_env` | string | — | `production`, `staging`, etc. Required. |
 | `aws_account_id` | string | — | Asserted vs caller identity in a `check` block. |
 | `aws_region` | string | `us-east-2` | Default AWS provider region. |
-| `api_image_tag` | string | — | Current ECR image tag. Threaded into App Runner. Changes on every deploy. |
-| `extra_cors_allowed_origins` | list(string) | `[]` | Appended to the App Runner CORS allowlist. |
+| `api_image_tag` | string | — | Current ECR image tag. Threaded into legacy managed container service. Changes on every deploy. |
+| `extra_cors_allowed_origins` | list(string) | `[]` | Appended to the legacy managed container service CORS allowlist. |
 | `custom_domain` | string | `null` | Phase 6. If set, adds to distribution `Aliases`, provisions ACM cert, updates CORS. |
 | `enable_waf` | bool | `false` | Phase 5 gate. |
 | `enable_oac` | bool | `false` | Phase 5 gate for OAC migration. Defaults `false` so the initial import matches today's website-origin config exactly. |
@@ -434,7 +434,7 @@ A new workflow `.github/workflows/terraform.yml`:
 
 A weekly cron workflow `terraform plan` in each environment; non-zero diff opens a GitHub issue tagged `infra-drift`. This directly answers open question §17.3.
 
-**Portable-compute follow-on.** Because the App Runner service lives behind `modules/app_runner/`, a future plan can add `modules/app_runner_ecs/` with the same inputs and outputs, and swap the reference in `main.tf`. The CloudFront, S3, and SSM modules are unaffected. This is how Phase 4 opens the door to addressing the non-goal in §5.4 without pre-committing to it.
+**Portable-compute follow-on.** Because the legacy managed container service service lives behind `modules/app_runner/`, a future plan can add `modules/app_runner_ecs/` with the same inputs and outputs, and swap the reference in `main.tf`. The CloudFront, S3, and SSM modules are unaffected. This is how Phase 4 opens the door to addressing the non-goal in §5.4 without pre-committing to it.
 
 ---
 
@@ -565,7 +565,7 @@ Sub-steps:
 4a. **Bootstrap state backend.** Create `${APP_NAME}-tfstate-${AWS_ACCOUNT_ID}-${AWS_REGION}` S3 bucket (versioned, encrypted, private) and `${APP_NAME}-tflocks` DynamoDB table via `scripts/bootstrap_tf_backend.sh`. One-time, per account.
 4b. **Author modules** under `infra/terraform/modules/` matching the live configuration verbatim (website-origin S3, no OAC, no WAF, no custom domain — those come in Phase 5/6).
 4c. **Import existing resources** in the order in §7.11. Verify `terraform plan` shows zero changes.
-4d. **Cut over the deploy script.** Replace `ensure_s3_bucket`, `ensure_ecr_repository`, `ensure_apprunner_access_role`, `ensure_cloudfront_distribution`, and the App Runner create/update logic with a single `terraform apply -var "api_image_tag=${API_IMAGE_TAG}"` followed by reading outputs. The data-plane steps (`docker push`, `aws s3 sync`, `create-invalidation`) remain.
+4d. **Cut over the deploy script.** Replace `ensure_s3_bucket`, `ensure_ecr_repository`, `ensure_apprunner_access_role`, `ensure_cloudfront_distribution`, and the legacy managed container service create/update logic with a single `terraform apply -var "api_image_tag=${API_IMAGE_TAG}"` followed by reading outputs. The data-plane steps (`docker push`, `aws s3 sync`, `create-invalidation`) remain.
 4e. **Wire CI.** Add `.github/workflows/terraform.yml` with `fmt`/`validate`/`tflint`/`tfsec`/`plan` on PR and human-approved `apply` on push. Update `deploy.yml` to depend on a successful Terraform apply.
 4f. **Migrate state mirror.** Keep SSM `/${APP_NAME}/${APP_ENV}/cloudfront/distribution-id` as a read-through mirror written by Terraform, but operators are instructed to treat Terraform state as the source of truth.
 4g. **Drift detection.** Schedule a weekly `terraform plan` job that files a GitHub issue on non-zero diff.
@@ -627,10 +627,10 @@ Statement 2 — ECR
   ecr:PutImage
   Resource: arn:aws:ecr:${REGION}:${ACCOUNT}:repository/${APP_NAME}-${APP_ENV}-api
 
-Statement 3 — App Runner
+Statement 3 — legacy managed container service
   apprunner:CreateService, apprunner:UpdateService,
   apprunner:DescribeService, apprunner:ListServices,
-  iam:PassRole (scoped to the App Runner ECR access role)
+  iam:PassRole (scoped to the legacy managed container service ECR access role)
   Resource: arn:aws:apprunner:${REGION}:${ACCOUNT}:service/${APP_NAME}-${APP_ENV}-api/*
 
 Statement 4 — CloudFront (distribution-scoped where possible)
@@ -680,7 +680,7 @@ The OIDC trust policy on the role must pin `token.actions.githubusercontent.com`
 - `token.actions.githubusercontent.com:sub = repo:<org>/<repo>:environment:production`
 - `token.actions.githubusercontent.com:aud = sts.amazonaws.com`
 
-Access keys (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`) remain supported for operators who cannot use OIDC, but the README recommends OIDC as the default.
+Access keys (`AWS_ACCESS_KEY_ID` plus the matching static secret key) remain supported for operators who cannot use OIDC, but the README recommends OIDC as the default.
 
 ---
 
@@ -763,7 +763,7 @@ Prerequisites:
 Steps:
 
 1. `export APP_NAME=x12-parser-encoder APP_ENV=staging AWS_ACCOUNT_ID=… AWS_REGION=… CLOUDFRONT_ALLOW_CREATE=true`
-2. `bash scripts/deploy_aws.sh` — runs end-to-end, creates S3 bucket, ECR repo, App Runner role, App Runner service, and CloudFront distribution. Logs the new distribution id and the handshake command.
+2. `bash scripts/deploy_aws.sh` — runs end-to-end, creates S3 bucket, ECR repo, legacy managed container service role, legacy managed container service service, and CloudFront distribution. Logs the new distribution id and the handshake command.
 3. Run the printed `gh variable set CLOUDFRONT_DISTRIBUTION_ID --env "${APP_ENV}" --body "…"` command (requires repo push access).
 4. Unset `CLOUDFRONT_ALLOW_CREATE`. All subsequent deploys must refuse to create.
 5. Optional: configure the custom domain per §7.10.
@@ -884,14 +884,14 @@ Phase 2 ships the moment containment is verified — it stops the bleeding. Phas
 | `APP_NAME` | script / workflow | `x12-parser-encoder` | Application namespace for resource names and tags. |
 | `APP_ENV` | workflow var | `production` | Environment namespace. Distinguishes staging / forks. |
 | `AWS_ACCOUNT_ID` | workflow var | repo default | Target account. Asserted via STS. |
-| `AWS_REGION` | workflow var | `us-east-2` | Target region for S3, ECR, App Runner. CloudFront is global. |
+| `AWS_REGION` | workflow var | `us-east-2` | Target region for S3, ECR, legacy managed container service. CloudFront is global. |
 | `S3_BUCKET` | workflow var | derived (see §7.1) | Web assets bucket. Must not change between deploys for a given env. |
 | `ECR_REPOSITORY` | workflow var | `${APP_NAME}-${APP_ENV}-api` | API image repo. |
 | `APP_RUNNER_SERVICE` | workflow var | `${APP_NAME}-${APP_ENV}-api` | Service name. |
-| `APP_RUNNER_ECR_ACCESS_ROLE` | workflow var | `${APP_NAME}-apprunner-ecr-access` | IAM role App Runner uses to pull from ECR. |
+| `APP_RUNNER_ECR_ACCESS_ROLE` | workflow var | `${APP_NAME}-apprunner-ecr-access` | IAM role legacy managed container service uses to pull from ECR. |
 | `CLOUDFRONT_DISTRIBUTION_ID` | workflow var (per env) | unset | **New in Phase 2.** Canonical distribution id. Written after bootstrap. After Phase 4, this is read from Terraform output and the env var becomes a defense-in-depth mirror. |
 | `CLOUDFRONT_ALLOW_CREATE` | workflow input | `false` | **New in Phase 2.** Gate on the create path in the shell script. Becomes unused after Phase 4 (Terraform owns creation). |
-| `EXTRA_CORS_ALLOWED_ORIGINS` | workflow var | empty | Comma-separated additional origins for the App Runner CORS allowlist. |
+| `EXTRA_CORS_ALLOWED_ORIGINS` | workflow var | empty | Comma-separated additional origins for the legacy managed container service CORS allowlist. |
 | `RATE_LIMIT_ENABLED`, `REQUESTS_PER_MINUTE`, `CONCURRENT_UPLOAD_LIMIT`, `AUTH_BOUNDARY_ENABLED` | workflow var | existing defaults | API runtime env — unchanged by this plan. |
 
 ### 19.1 Terraform variables (Phase 4+)
@@ -904,7 +904,7 @@ Terraform variables are passed via `terraform.tfvars`, `-var`, or `TF_VAR_*` env
 | `TF_VAR_app_env` | workflow env | `production` | Mirrors `APP_ENV`. |
 | `TF_VAR_aws_account_id` | workflow var | repo default | Asserted vs caller identity by a `check` block. |
 | `TF_VAR_aws_region` | workflow var | `us-east-2` | |
-| `TF_VAR_api_image_tag` | derived | `main-${{ github.sha }}` | Passed on every deploy; drives App Runner service update. |
+| `TF_VAR_api_image_tag` | derived | `main-${{ github.sha }}` | Passed on every deploy; drives legacy managed container service service update. |
 | `TF_VAR_extra_cors_allowed_origins` | workflow var | `[]` | Mirrors `EXTRA_CORS_ALLOWED_ORIGINS`, parsed to a list in Terraform. |
 | `TF_VAR_custom_domain` | workflow var | `null` | Phase 6. |
 | `TF_VAR_enable_waf` | workflow var | `false` | Phase 5. |

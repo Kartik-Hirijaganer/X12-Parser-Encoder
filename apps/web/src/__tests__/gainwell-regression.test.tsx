@@ -88,27 +88,27 @@ describe('Gainwell 271 dashboard regression', () => {
     })
 
     expect(
-      within(screen.getAllByText('Active')[0].closest('section') as HTMLElement).getByText(
+      within(screen.getAllByText('Active')[0].closest('button') as HTMLElement).getByText(
         String(EXPECTED_ACTIVE),
       ),
     ).toBeInTheDocument()
     expect(
-      within(screen.getAllByText('Inactive')[0].closest('section') as HTMLElement).getByText(
+      within(screen.getAllByText('Inactive')[0].closest('button') as HTMLElement).getByText(
         String(EXPECTED_INACTIVE),
       ),
     ).toBeInTheDocument()
     expect(
-      within(screen.getAllByText('Errors')[0].closest('section') as HTMLElement).getByText(
+      within(screen.getAllByText('Errors')[0].closest('button') as HTMLElement).getByText(
         String(EXPECTED_ERROR),
       ),
     ).toBeInTheDocument()
     expect(
-      within(screen.getAllByText('Not Found')[0].closest('section') as HTMLElement).getByText(
+      within(screen.getAllByText('Not Found')[0].closest('button') as HTMLElement).getByText(
         String(EXPECTED_NOT_FOUND),
       ),
     ).toBeInTheDocument()
     expect(
-      within(screen.getAllByText('Unknown')[0].closest('section') as HTMLElement).getByText(
+      within(screen.getAllByText('Unknown')[0].closest('button') as HTMLElement).getByText(
         String(EXPECTED_UNKNOWN),
       ),
     ).toBeInTheDocument()

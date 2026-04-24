@@ -22,7 +22,7 @@ export function ActionCard({
 }) {
   return (
     <Card className="flex h-full flex-col gap-5" variant="action">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-action-50)] text-[var(--color-action-500)]">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--color-action-50)] text-[var(--color-action-500)]">
         {icon}
       </div>
       <div>

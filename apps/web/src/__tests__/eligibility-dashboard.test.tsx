@@ -14,11 +14,11 @@ describe('EligibilityDashboard', () => {
       />,
     )
 
-    expect(screen.getAllByText('Active')[0].closest('section')).toHaveTextContent('1')
-    expect(screen.getAllByText('Inactive')[0].closest('section')).toHaveTextContent('1')
-    expect(screen.getAllByText('Errors')[0].closest('section')).toHaveTextContent('1')
-    expect(screen.getAllByText('Not Found')[0].closest('section')).toHaveTextContent('1')
-    expect(screen.getAllByText('Unknown')[0].closest('section')).toHaveTextContent('1')
+    expect(screen.getAllByText('Active')[0].closest('button')).toHaveTextContent('1')
+    expect(screen.getAllByText('Inactive')[0].closest('button')).toHaveTextContent('1')
+    expect(screen.getAllByText('Errors')[0].closest('button')).toHaveTextContent('1')
+    expect(screen.getAllByText('Not Found')[0].closest('button')).toHaveTextContent('1')
+    expect(screen.getAllByText('Unknown')[0].closest('button')).toHaveTextContent('1')
   })
 
   it.each([

@@ -90,6 +90,10 @@ Shadows are tokens: `--shadow-sm`, `--shadow-md`, `--shadow-lg`, `--shadow-xl`. 
 
 Motion timings are tokens: `--duration-fast`, `--duration-normal`, `--duration-slow`, and `--ease-out`. Inline `transition:` and `animation:` declarations are not allowed. Use token-backed classes or shared motion primitives.
 
+**Route transitions** use `components/transitions/RouteTransition.tsx`, which wraps the router outlet in Framer Motion's `<AnimatePresence mode="wait">` and animates a 200 ms opacity + 6 px Y-axis fade+slide keyed on `useLocation().pathname`.
+
+**Reduced motion is mandatory.** Every Framer Motion component, keyframe animation, toast entry, modal/drawer slide, skeleton pulse, and drop-zone pulse must branch on `hooks/useReducedMotionPreference.ts`. When the user's OS preference is `prefers-reduced-motion: reduce`, transitions become instant, entrance animations are skipped, and pulses are disabled. This is accessibility, not polish — audit every `motion.*` component for it. At least one primitive test must exercise the reduced-motion branch to prove the wiring is live (see `apps/web/src/__tests__/reduced-motion.test.tsx`).
+
 ## 4. Toast Policy
 
 The old rule that banned toast notifications for important outcomes still stands for actionable failures. The amended policy is:
@@ -98,6 +102,8 @@ The old rule that banned toast notifications for important outcomes still stands
 - Banners are mandatory for errors the user must act on.
 - A 5xx or timeout may show a toast for awareness, but any retry path or corrective instruction still belongs in a banner or inline field error.
 - Toast copy must never contain raw X12, filenames, member IDs, names, or other sensitive values.
+- Feature code must call the sanctioned `toast` variants (`toast.success`, `toast.info`, `toast.warning`, `toast.error`) exported from `components/ui/Toast`. Do not import `sonner` directly — this keeps variants, styling, and copy policy enforceable.
+- Mount exactly one `<Toaster />` from `components/ui/Toast` at the application root (`App.tsx`).
 
 ## 5. Primitive Catalog
 
@@ -115,6 +121,15 @@ Shared primitives live in `apps/web/src/components/ui/`. Page and feature code m
 | `Spinner` | `Spinner.tsx` | Indeterminate loading indicators |
 | `Table` | `Table.tsx` | Tabular data, sorting, pagination, expandable rows |
 | `Icons` | `Icons.tsx` | Functional icon set using `currentColor` |
+| `Toast` | `Toast.tsx` | Transient success / info / warning / error announcements (wraps `sonner`) |
+| `Modal` | `Modal.tsx` | Centered focus-trapped dialogs with ESC/overlay dismiss (Radix Dialog) |
+| `Drawer` | `Drawer.tsx` | Side-sheet dialogs sliding in from left or right (Radix Dialog) |
+| `Tooltip` | `Tooltip.tsx` | Hover/focus descriptive tips with `--duration-slow` open delay (Radix Tooltip) |
+| `Skeleton` | `Skeleton.tsx` | Pulsing placeholder surface for content that is being loaded |
+| `ProgressBar` | `ProgressBar.tsx` | Determinate and indeterminate progress indicators |
+| `EmptyState` | `EmptyState.tsx` | Shared empty-view composition (icon + title + copy + optional CTA) |
+| `ErrorBoundary` | `ErrorBoundary.tsx` | React error boundary wrapping routes; renders an `EmptyState` fallback |
+| `ConfirmationDialog` | `ConfirmationDialog.tsx` | Opinionated confirm/cancel dialog composed over `Modal` with `destructive` flag |
 
 See `docs/ui-components.md` for prop APIs and usage snippets.
 

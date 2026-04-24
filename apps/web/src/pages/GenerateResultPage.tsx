@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import type { GenerateResultRouteState } from '../types/workflow'
@@ -8,11 +9,30 @@ import { Banner } from '../components/ui/Banner'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { Table } from '../components/ui/Table'
+import { toast } from '../components/ui/Toast'
+
+const SEGMENT_PREVIEW_COUNT = 10
 
 export function GenerateResultPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const routeState = location.state as GenerateResultRouteState | null
+  const [showFullX12, setShowFullX12] = useState(false)
+
+  const segmentPreview = useMemo(() => {
+    const content = routeState?.response.x12_content
+    if (!content) {
+      return { previewText: '', totalSegments: 0, hasMore: false }
+    }
+    const segments = content.split('~').filter((segment) => segment.length > 0)
+    const sliced = segments.slice(0, SEGMENT_PREVIEW_COUNT).join('~')
+    const previewText = sliced.length > 0 ? `${sliced}~` : ''
+    return {
+      previewText,
+      totalSegments: segments.length,
+      hasMore: segments.length > SEGMENT_PREVIEW_COUNT,
+    }
+  }, [routeState?.response.x12_content])
 
   if (!routeState) {
     return (
@@ -125,15 +145,31 @@ export function GenerateResultPage() {
 
       {response.x12_content ? (
         <Card className="space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">Raw X12 preview</h2>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">Raw X12 preview</h2>
+              <p className="mt-1 text-caption text-[var(--color-text-secondary)]">
+                {showFullX12 || !segmentPreview.hasMore
+                  ? `Showing all ${segmentPreview.totalSegments} segments`
+                  : `Showing first ${SEGMENT_PREVIEW_COUNT} of ${segmentPreview.totalSegments} segments`}
+              </p>
+            </div>
             <p className="text-caption text-[var(--color-text-secondary)]">
               ISA13 {response.control_numbers.isa13 ?? 'unknown'} • GS06 {response.control_numbers.gs06 ?? 'unknown'}
             </p>
           </div>
           <pre className="max-h-[var(--layout-x12-preview-max-height)] overflow-auto rounded-[var(--radius-lg)] bg-[linear-gradient(to_bottom,var(--color-surface-dark),var(--color-surface-dark-end))] p-5 font-mono text-sm leading-6 text-[var(--color-code-text)]">
-            {response.x12_content}
+            {showFullX12 ? response.x12_content : segmentPreview.previewText || response.x12_content}
           </pre>
+          {segmentPreview.hasMore ? (
+            <Button
+              onClick={() => setShowFullX12((current) => !current)}
+              size="sm"
+              variant="secondary"
+            >
+              {showFullX12 ? 'Collapse to first 10 segments' : 'Show full X12 content'}
+            </Button>
+          ) : null}
         </Card>
       ) : null}
 
@@ -145,11 +181,13 @@ export function GenerateResultPage() {
                 decodeBase64ToBlob(response.zip_content_base64, 'application/zip'),
                 primaryDownloadName,
               )
+              toast.success('Download started')
               return
             }
 
             if (response.x12_content) {
               downloadTextFile(response.x12_content, primaryDownloadName)
+              toast.success('Download started')
             }
           }}
           variant="primary"
@@ -165,6 +203,7 @@ export function GenerateResultPage() {
                 batchSummaryFileName,
                 'text/plain',
               )
+              toast.success('Batch summary download started')
             }
           }}
           variant="secondary"
@@ -176,6 +215,7 @@ export function GenerateResultPage() {
           onClick={async () => {
             if (response.x12_content) {
               await navigator.clipboard.writeText(response.x12_content)
+              toast.success('Copied X12 to clipboard')
             }
           }}
           variant="ghost"

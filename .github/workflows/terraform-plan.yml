@@ -1,0 +1,137 @@
+name: Terraform Plan
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      DEPLOY_ENV: staging
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-2' }}
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+      APP_NAME: ${{ vars.APP_NAME || 'x12-parser-encoder' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate plan configuration
+        env:
+          TERRAFORM_TFVARS: ${{ secrets.TERRAFORM_TFVARS }}
+        run: |
+          if [[ -z "${AWS_ACCOUNT_ID}" ]]; then
+            echo "AWS_ACCOUNT_ID repository variable is required." >&2
+            exit 1
+          fi
+          if [[ -z "${TERRAFORM_TFVARS}" ]]; then
+            echo "TERRAFORM_TFVARS staging environment secret is required." >&2
+            exit 1
+          fi
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.6"
+
+      - uses: terraform-linters/setup-tflint@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Install tfsec
+        run: |
+          go install github.com/aquasecurity/tfsec/cmd/tfsec@v1.28.14
+          echo "$(go env GOPATH)/bin" >> "${GITHUB_PATH}"
+
+      - name: Configure AWS credentials with OIDC role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/${{ env.APP_NAME }}-deploy-${{ env.DEPLOY_ENV }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Prepare Terraform inputs
+        env:
+          TERRAFORM_TFVARS: ${{ secrets.TERRAFORM_TFVARS }}
+        run: |
+          tfstate_bucket="${APP_NAME}-tfstate-${AWS_ACCOUNT_ID}-${AWS_REGION}"
+          env_dir="infra/terraform/environments/${DEPLOY_ENV}"
+
+          cat > "${env_dir}/backend.hcl" <<EOF
+          bucket         = "${tfstate_bucket}"
+          key            = "${DEPLOY_ENV}/terraform.tfstate"
+          region         = "${AWS_REGION}"
+          dynamodb_table = "${APP_NAME}-tflocks"
+          encrypt        = true
+          EOF
+
+          printf '%s\n' "${TERRAFORM_TFVARS}" > "${env_dir}/terraform.tfvars"
+
+          {
+            echo "TFSTATE_BUCKET=${tfstate_bucket}"
+            echo "TF_ENV_DIR=${env_dir}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive infra/terraform
+
+      - name: Terraform validate
+        run: |
+          terraform -chdir="${TF_ENV_DIR}" init -backend-config=backend.hcl
+          terraform -chdir="${TF_ENV_DIR}" validate
+
+      - name: TFLint
+        run: |
+          cd infra/terraform
+          tflint --init --config "${GITHUB_WORKSPACE}/infra/terraform/.tflint.hcl"
+          tflint --recursive --config "${GITHUB_WORKSPACE}/infra/terraform/.tflint.hcl"
+
+      - name: tfsec critical scan
+        run: tfsec --force-all-dirs --minimum-severity CRITICAL infra/terraform
+
+      - name: Terraform plan
+        run: |
+          plan_args=()
+          if terraform -chdir="${TF_ENV_DIR}" state list | grep -q '^module.lambda_api.aws_lambda_function.this$'; then
+            current_key="$(
+              terraform -chdir="${TF_ENV_DIR}" state show module.lambda_api.aws_lambda_function.this \
+                | awk -F' = ' '/^[[:space:]]*s3_key[[:space:]]*=/{gsub("\"", "", $2); print $2; exit}'
+            )"
+            if [[ -n "${current_key}" ]]; then
+              plan_args+=("-var" "lambda_zip_s3_bucket=${TFSTATE_BUCKET}")
+              plan_args+=("-var" "lambda_zip_s3_key=${current_key}")
+            fi
+          fi
+
+          terraform -chdir="${TF_ENV_DIR}" plan \
+            -no-color \
+            -input=false \
+            -var-file=terraform.tfvars \
+            "${plan_args[@]}" \
+            > "${RUNNER_TEMP}/terraform-plan.txt"
+
+      - name: Comment plan
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync(process.env.RUNNER_TEMP + '/terraform-plan.txt', 'utf8');
+            const body = [
+              '### Terraform plan: staging',
+              '',
+              '```text',
+              plan.slice(0, 60000),
+              plan.length > 60000 ? '\n... plan truncated for GitHub comment length ...' : '',
+              '```',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
