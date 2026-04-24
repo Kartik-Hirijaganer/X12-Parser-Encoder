@@ -2,6 +2,20 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Canonical AWS Account
+
+- The canonical AWS account for this project is `970385384114`.
+- Do not infer the deployment account from the currently active default AWS CLI profile.
+- Before any AWS bootstrap, Terraform, GitHub Actions deploy setup, or production deploy, verify the selected credentials:
+
+```bash
+aws sts get-caller-identity --query Account --output text
+```
+
+- Proceed with production deployment work only when the verified account is `970385384114`.
+- GitHub Actions deploy configuration for this project should use repository variable `AWS_ACCOUNT_ID=970385384114`.
+- The Terraform/GitHub Actions deploy path defaults to `AWS_REGION=us-east-2` unless the user explicitly changes it.
+
 ## Commands
 
 All development is driven from the repo root via `make`. The first run creates `.venv/` and installs the Python library, the API, and the web app's npm deps.
