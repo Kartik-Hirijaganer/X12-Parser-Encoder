@@ -39,8 +39,9 @@ jobs:
 
       - name: Install documentation dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e "packages/x12-edi-tools[dev]" -e "apps/api[dev]"
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/pip install -e "packages/x12-edi-tools[dev]" -e "apps/api[dev]"
 
       - name: Regenerate docs
         run: make docs-regenerate
