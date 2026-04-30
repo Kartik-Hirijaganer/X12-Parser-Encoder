@@ -1,3 +1,5 @@
+import { Button } from '../ui/Button'
+import { DownloadIcon } from '../ui/Icons'
 import { FilterBar } from './FilterBar'
 
 const FILTER_OPTIONS = [
@@ -25,15 +27,25 @@ export function DashboardFilterBar({
   search: string
 }) {
   return (
-    <FilterBar
-      actionLabel="Export Excel"
-      filter={filter}
-      onAction={onExport}
-      onFilterChange={onFilterChange}
-      onSearchChange={onSearchChange}
-      options={FILTER_OPTIONS}
-      search={search}
-      searchPlaceholder="Search member, ID, plan, reason, or trace"
-    />
+    <div className="space-y-4">
+      <div className="flex justify-stretch sm:justify-end">
+        <Button
+          className="w-full sm:w-auto"
+          leftIcon={<DownloadIcon className="h-4 w-4" />}
+          onClick={onExport}
+          variant="primary"
+        >
+          Export Excel
+        </Button>
+      </div>
+      <FilterBar
+        filter={filter}
+        onFilterChange={onFilterChange}
+        onSearchChange={onSearchChange}
+        options={FILTER_OPTIONS}
+        search={search}
+        searchPlaceholder="Search member, ID, program, payer code, category, note, reason, or trace"
+      />
+    </div>
   )
 }

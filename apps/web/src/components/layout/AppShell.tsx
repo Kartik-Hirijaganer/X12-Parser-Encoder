@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react'
 
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 
 import { APP_VERSION } from '../../utils/constants'
 import { Button } from '../ui/Button'
 import { ConfigStatusBar } from '../features/ConfigStatusBar'
+import { HomeIcon } from '../ui/Icons'
+import { Tooltip } from '../ui/Tooltip'
 
 export function AppShell({
   children,
@@ -15,6 +17,9 @@ export function AppShell({
   subtitle?: string
   title: string
 }) {
+  const location = useLocation()
+  const showHomeLink = location.pathname !== '/'
+
   return (
     <div className="min-h-screen bg-[var(--color-surface-wash)] text-[var(--color-text-primary)]">
       <header className="sticky top-0 z-20 border-b border-[var(--color-border-default)] bg-[var(--color-surface-primary)]/95 backdrop-blur">
@@ -49,14 +54,13 @@ export function AppShell({
             >
               Settings
             </NavLink>
-            <Button
-              href="/api/v1/templates/template_spec.md"
-              rel="noreferrer"
-              target="_blank"
-              variant="ghost"
-            >
-              ?
-            </Button>
+            {showHomeLink ? (
+              <Tooltip content="Home">
+                <Button aria-label="Home" href="/" size="icon" variant="ghost">
+                  <HomeIcon className="h-5 w-5" />
+                </Button>
+              </Tooltip>
+            ) : null}
           </nav>
         </div>
       </header>
@@ -80,7 +84,7 @@ export function AppShell({
 
       <footer className="border-t border-[var(--color-border-default)] bg-[var(--color-surface-primary)]">
         <div className="mx-auto flex max-w-[var(--layout-container-max)] flex-col gap-2 px-6 py-4 text-xs text-[var(--color-text-tertiary)] sm:flex-row sm:items-center sm:justify-between lg:px-10">
-          <span>Open Source eligibility workbench</span>
+          <span>Eligibility workbench</span>
           <span>v{APP_VERSION}</span>
         </div>
       </footer>

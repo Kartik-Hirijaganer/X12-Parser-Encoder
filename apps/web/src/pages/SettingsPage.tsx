@@ -6,7 +6,13 @@ import type { SubmitterConfig } from '../types/settings'
 import { useApi } from '../hooks/useApi'
 import { useSettings } from '../hooks/useSettings'
 import { fetchProfileDefaults, fetchProfiles } from '../services/api'
-import { SERVICE_TYPE_OPTIONS } from '../utils/constants'
+import {
+  formatIsaControlNumber,
+  MAX_ISA_CONTROL_NUMBER,
+  nextIsaControlNumber,
+  SERVICE_TYPE_OPTIONS,
+} from '../utils/constants'
+import { cn } from '../utils/cn'
 import { readTextFromFile } from '../utils/fileDetection'
 import { isValidNpi } from '../utils/npiValidator'
 import { downloadTextFile } from '../utils/downloads'
@@ -15,8 +21,11 @@ import { Banner } from '../components/ui/Banner'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { FileUpload } from '../components/ui/FileUpload'
-import { CheckIcon } from '../components/ui/Icons'
+import { CheckIcon, CloseIcon } from '../components/ui/Icons'
+import { Input } from '../components/ui/Input'
+import { Select } from '../components/ui/Select'
 import { toast } from '../components/ui/Toast'
+import { UnsavedChangesBar } from '../components/ui/UnsavedChangesBar'
 
 type SettingsBanner = {
   message: string
@@ -26,16 +35,26 @@ type SettingsBanner = {
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export function SettingsPage() {
-  const { importSettings, replaceSettings, settings } = useSettings()
+  const { parseSettingsJson, replaceSettings, settings } = useSettings()
   const [draft, setDraft] = useState(settings)
+  const [icnInput, setIcnInput] = useState(formatIcnInput(settings.lastIsaControlNumber))
   const [banner, setBanner] = useState<SettingsBanner | null>(null)
+  const [saveAttempted, setSaveAttempted] = useState(false)
   const profilesRequest = useApi(fetchProfiles, [])
-  const suppressNextPersistRef = useRef(false)
+  const preserveDraftOnNextSettingsSyncRef = useRef(false)
 
   useEffect(() => {
-    suppressNextPersistRef.current = true
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setDraft(settings)
+    if (preserveDraftOnNextSettingsSyncRef.current) {
+      preserveDraftOnNextSettingsSyncRef.current = false
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDraft((current) => ({
+        ...current,
+        lastIsaControlNumber: settings.lastIsaControlNumber,
+      }))
+    } else {
+      setDraft(settings)
+    }
+    setIcnInput(formatIcnInput(settings.lastIsaControlNumber))
   }, [settings])
 
   async function applyProfileDefaults(profileName: string) {
@@ -52,7 +71,6 @@ export function SettingsPage() {
           defaultServiceTypeCode: defaults.defaultServiceTypeCode,
           maxBatchSize: defaults.maxBatchSize,
         }
-        persist(next, { silent: true })
         return next
       })
     } catch (caughtError) {
@@ -73,18 +91,12 @@ export function SettingsPage() {
     }))
   }
 
-  function persist(candidate: SubmitterConfig, { silent = false }: { silent?: boolean } = {}) {
-    if (!candidate.organizationName || !candidate.providerNpi || !candidate.tradingPartnerId) {
+  function persist(candidate: SubmitterConfig) {
+    const validationErrors = validateSettingsDraft(candidate)
+    if (Object.keys(validationErrors).length > 0) {
+      setSaveAttempted(true)
       setBanner({
-        message: 'Organization name, provider NPI, and trading partner ID are required before saving.',
-        variant: 'warning',
-      })
-      return false
-    }
-
-    if (!isValidNpi(candidate.providerNpi)) {
-      setBanner({
-        message: 'Provider NPI must be a valid 10-digit NPI before saving.',
+        message: 'Fix the highlighted settings fields before saving.',
         variant: 'error',
       })
       return false
@@ -92,30 +104,18 @@ export function SettingsPage() {
 
     replaceSettings(candidate)
     setBanner(null)
-    if (!silent) {
-      toast.success('Settings saved')
-    }
+    setSaveAttempted(false)
+    toast.success('Settings saved')
     return true
-  }
-
-  function handleBlurSave() {
-    if (suppressNextPersistRef.current) {
-      suppressNextPersistRef.current = false
-      return
-    }
-    if (JSON.stringify(draft) === JSON.stringify(settings)) {
-      return
-    }
-    persist(draft)
   }
 
   async function importJson(file: File) {
     try {
       const text = await readTextFromFile(file)
-      const parsed = importSettings(text)
-      suppressNextPersistRef.current = true
+      const parsed = parseSettingsJson(text)
       setDraft(parsed)
-      toast.success('Settings imported successfully')
+      setIcnInput(formatIcnInput(parsed.lastIsaControlNumber))
+      toast.success('Settings imported to draft')
       setBanner(null)
     } catch (caughtError) {
       setBanner({
@@ -125,13 +125,57 @@ export function SettingsPage() {
     }
   }
 
-  const npiValid = draft.providerNpi.length === 0 ? null : isValidNpi(draft.providerNpi)
-  const emailValid = draft.contactEmail.length === 0 ? null : EMAIL_PATTERN.test(draft.contactEmail)
+  function handleIcnChange(event: ChangeEvent<HTMLInputElement>) {
+    const digits = event.currentTarget.value.replace(/\D/g, '').slice(0, 9)
+    setIcnInput(digits)
+    updateField('lastIsaControlNumber', parseIcnDraftValue(digits))
+  }
+
+  function handleIcnBlur() {
+    if (icnInput.length > 0) {
+      setIcnInput(icnInput.padStart(9, '0'))
+    }
+  }
+
+  function clearIcnDraft() {
+    setIcnInput('')
+    updateField('lastIsaControlNumber', null)
+  }
+
+  function saveIcn() {
+    const lastIsaControlNumber = draft.lastIsaControlNumber
+    preserveDraftOnNextSettingsSyncRef.current = true
+    replaceSettings({
+      ...settings,
+      lastIsaControlNumber,
+    })
+    setDraft((current) => ({
+      ...current,
+      lastIsaControlNumber,
+    }))
+    setIcnInput(formatIcnInput(lastIsaControlNumber))
+    setBanner(null)
+    toast.success(lastIsaControlNumber === null ? 'ICN cleared' : 'ICN saved')
+  }
+
+  function discardChanges() {
+    setDraft(settings)
+    setIcnInput(formatIcnInput(settings.lastIsaControlNumber))
+    setBanner(null)
+    setSaveAttempted(false)
+  }
+
+  const validationErrors = validateSettingsDraft(draft)
+  const visibleError = (field: keyof SubmitterConfig) =>
+    shouldShowFieldError(field, draft, saveAttempted) ? validationErrors[field] : undefined
   const profiles = profilesRequest.data?.profiles ?? [{ name: 'dc_medicaid', displayName: 'DC Medicaid', description: 'DC Medicaid eligibility profile.' }]
+  const hasUnsavedChanges = serializeSettings(draft) !== serializeSettings(settings)
+  const nextDraftIcn = nextIsaControlNumber(draft.lastIsaControlNumber)
+  const icnIsExhausted = draft.lastIsaControlNumber === MAX_ISA_CONTROL_NUMBER
 
   return (
     <AppShell
-      subtitle="Provider, payer, and envelope defaults live here. Changes auto-save when you leave a field. Settings persist locally and are used in the Generate 270 workflow."
+      subtitle="Provider, payer, envelope, and ICN defaults live here. Save changes explicitly before generating 270 files."
       title="Settings"
     >
       {banner ? (
@@ -153,168 +197,228 @@ export function SettingsPage() {
         >
           Export JSON
         </Button>
+        <Button disabled={!hasUnsavedChanges} onClick={() => persist(draft)} variant="primary">
+          Save Changes
+        </Button>
       </div>
 
-      <div className="mx-auto grid max-w-[var(--layout-settings-max)] gap-6">
+      <div className="mx-auto grid max-w-[var(--layout-settings-max)] gap-6 md:grid-cols-2">
+        <SettingsGroup
+          description="Set the last ISA13 that was submitted so the next generated 270 uses a unique control number."
+          id="icn"
+          title="Interchange Control Number"
+        >
+          {draft.lastIsaControlNumber === null ? (
+            <Banner title="ICN is required before generation." variant="warning">
+              Set the last submitted ICN before generating a 270 file for DC Medicaid.
+            </Banner>
+          ) : null}
+          {icnIsExhausted ? (
+            <Banner title="ICN range exhausted." variant="warning">
+              ISA13 999999999 cannot wrap to 000000001. Contact Gainwell or confirm a new
+              trading-partner control-number policy before generating more files.
+            </Banner>
+          ) : null}
+          <div className="grid gap-4 md:grid-cols-2">
+            <ReadOnlyField
+              label="Last submitted ICN"
+              value={draft.lastIsaControlNumber === null ? '— not set —' : formatIsaControlNumber(draft.lastIsaControlNumber)}
+            />
+            <ReadOnlyField
+              label="Next ICN to be used"
+              value={nextDraftIcn === null ? '— not set —' : formatIsaControlNumber(nextDraftIcn)}
+            />
+          </div>
+          <TextField
+            helperText="Digits only. Empty or 000000000 clears the saved ICN."
+            label="Set your last submitted ICN"
+            name="lastIsaControlNumber"
+            onBlur={handleIcnBlur}
+            onChange={handleIcnChange}
+            value={icnInput}
+          />
+          <div className="space-y-2 text-sm text-[var(--color-text-secondary)]">
+            <p>Find the last ICN in:</p>
+            <ul className="list-disc space-y-1 pl-5">
+              <li>Gainwell submission portal.</li>
+              <li>Most recent generated/downloaded 270 filename.</li>
+              <li>999 acknowledgments.</li>
+              <li>Settings JSON exported from the browser that last generated files.</li>
+            </ul>
+            <p>
+              This app is stateless. If multiple people generate files under the same trading
+              partner ID, coordinate who generates next or export/import Settings JSON after each
+              accepted batch.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={saveIcn} variant="primary">
+              Save ICN
+            </Button>
+            <Button onClick={clearIcnDraft} variant="secondary">
+              Clear
+            </Button>
+          </div>
+        </SettingsGroup>
+
         <SettingsGroup description="These values identify the provider in the 270 transaction." title="Submitter / Provider Identity">
           <TextField
-            label="Organization Name*"
+            errorText={visibleError('organizationName')}
+            label="Organization Name"
             name="organizationName"
-            onBlur={handleBlurSave}
             onChange={handleTextChange(updateField)}
-            valid={draft.organizationName.length > 0 ? true : null}
+            required
+            valid={fieldValidity(draft.organizationName, visibleError('organizationName'))}
             value={draft.organizationName}
           />
           <TextField
+            errorText={visibleError('providerNpi')}
             helperText={
-              npiValid === null
-                ? 'Enter the 10-digit provider NPI.'
-                : npiValid
-                  ? 'Valid NPI.'
-                  : 'Invalid NPI (Luhn check failed).'
+              visibleError('providerNpi') === undefined && draft.providerNpi.length > 0
+                ? 'Valid NPI.'
+                : 'Enter the 10-digit provider NPI.'
             }
-            label="Provider NPI*"
+            label="Provider NPI"
             name="providerNpi"
-            onBlur={handleBlurSave}
             onChange={(event) =>
               updateField('providerNpi', event.currentTarget.value.replace(/\D/g, '').slice(0, 10))
             }
-            valid={npiValid}
+            required
+            valid={fieldValidity(draft.providerNpi, visibleError('providerNpi'))}
             value={draft.providerNpi}
           />
           <SelectField
-            label="Provider Entity Type*"
+            label="Provider Entity Type"
             name="providerEntityType"
-            onBlur={handleBlurSave}
             onChange={(event) => updateField('providerEntityType', event.currentTarget.value as '1' | '2')}
             options={[
               { label: 'Individual (1)', value: '1' },
               { label: 'Organization (2)', value: '2' },
             ]}
+            required
             value={draft.providerEntityType}
           />
           <TextField
-            label="Trading Partner ID*"
+            errorText={visibleError('tradingPartnerId')}
+            helperText="Trading partner ID assigned by Gainwell."
+            label="Trading Partner ID"
             name="tradingPartnerId"
-            onBlur={handleBlurSave}
             onChange={handleTextChange(updateField)}
-            valid={draft.tradingPartnerId.length > 0 ? true : null}
+            required
+            valid={fieldValidity(draft.tradingPartnerId, visibleError('tradingPartnerId'))}
             value={draft.tradingPartnerId}
           />
           <TextField
             label="Taxonomy Code"
             name="providerTaxonomyCode"
-            onBlur={handleBlurSave}
             onChange={handleTextChange(updateField)}
             value={draft.providerTaxonomyCode}
           />
           <TextField
             label="Contact Name"
             name="contactName"
-            onBlur={handleBlurSave}
             onChange={handleTextChange(updateField)}
             value={draft.contactName}
           />
           <TextField
             label="Contact Phone"
             name="contactPhone"
-            onBlur={handleBlurSave}
             onChange={handleTextChange(updateField)}
             value={draft.contactPhone}
           />
           <TextField
+            errorText={visibleError('contactEmail')}
             helperText={
-              emailValid === null
-                ? 'Optional contact email.'
-                : emailValid
-                  ? 'Looks like a valid email.'
-                  : 'Enter a valid email address.'
+              visibleError('contactEmail') === undefined && draft.contactEmail.length > 0
+                ? 'Looks like a valid email.'
+                : 'Optional contact email.'
             }
             label="Contact Email"
             name="contactEmail"
-            onBlur={handleBlurSave}
             onChange={handleTextChange(updateField)}
-            valid={emailValid}
+            valid={fieldValidity(draft.contactEmail, visibleError('contactEmail'), { optional: true })}
             value={draft.contactEmail}
           />
         </SettingsGroup>
 
         <SettingsGroup description="Selecting a payer profile auto-fills the receiver defaults below." title="Payer / Receiver">
           <SelectField
-            label="Payer Profile*"
+            label="Payer Profile"
             name="payerProfile"
-            onBlur={handleBlurSave}
             onChange={(event) => void applyProfileDefaults(event.currentTarget.value)}
             options={profiles.map((profile) => ({
               label: profile.displayName,
               value: profile.name,
             }))}
+            required
             value={draft.payerProfile}
           />
           <TextField
-            label="Payer Name*"
+            errorText={visibleError('payerName')}
+            label="Payer Name"
             name="payerName"
-            onBlur={handleBlurSave}
             onChange={handleTextChange(updateField)}
-            valid={draft.payerName.length > 0 ? true : null}
+            required
+            valid={fieldValidity(draft.payerName, visibleError('payerName'))}
             value={draft.payerName}
           />
           <TextField
-            label="Payer ID*"
+            errorText={visibleError('payerId')}
+            label="Payer ID"
             name="payerId"
-            onBlur={handleBlurSave}
             onChange={handleTextChange(updateField)}
-            valid={draft.payerId.length > 0 ? true : null}
+            required
+            valid={fieldValidity(draft.payerId, visibleError('payerId'))}
             value={draft.payerId}
           />
           <TextField
-            label="Receiver ID (ISA08)*"
+            errorText={visibleError('interchangeReceiverId')}
+            label="Receiver ID (ISA08)"
             name="interchangeReceiverId"
-            onBlur={handleBlurSave}
             onChange={handleTextChange(updateField)}
-            valid={draft.interchangeReceiverId.length > 0 ? true : null}
+            required
+            valid={fieldValidity(draft.interchangeReceiverId, visibleError('interchangeReceiverId'))}
             value={draft.interchangeReceiverId}
           />
           <SelectField
-            label="Receiver Qualifier*"
+            label="Receiver Qualifier"
             name="receiverIdQualifier"
-            onBlur={handleBlurSave}
             onChange={(event) => updateField('receiverIdQualifier', event.currentTarget.value)}
             options={[
               { label: 'ZZ', value: 'ZZ' },
               { label: '30', value: '30' },
             ]}
+            required
             value={draft.receiverIdQualifier}
           />
         </SettingsGroup>
 
         <SettingsGroup description="Envelope values apply to every generated interchange." title="Envelope Defaults">
           <SelectField
-            label="Sender ID Qualifier*"
+            label="Sender ID Qualifier"
             name="senderIdQualifier"
-            onBlur={handleBlurSave}
             onChange={(event) => updateField('senderIdQualifier', event.currentTarget.value)}
             options={[
               { label: 'ZZ', value: 'ZZ' },
               { label: '30', value: '30' },
             ]}
+            required
             value={draft.senderIdQualifier}
           />
           <SelectField
-            label="Usage Indicator*"
+            label="Usage Indicator"
             name="usageIndicator"
-            onBlur={handleBlurSave}
             onChange={(event) => updateField('usageIndicator', event.currentTarget.value as 'T' | 'P')}
             options={[
               { label: 'Test (T)', value: 'T' },
               { label: 'Production (P)', value: 'P' },
             ]}
+            required
             value={draft.usageIndicator}
           />
           <SelectField
-            label="Ack Requested*"
+            label="Ack Requested"
             name="acknowledgmentRequested"
-            onBlur={handleBlurSave}
             onChange={(event) =>
               updateField('acknowledgmentRequested', event.currentTarget.value as '0' | '1')
             }
@@ -322,6 +426,7 @@ export function SettingsPage() {
               { label: 'No (0)', value: '0' },
               { label: 'Yes (1)', value: '1' },
             ]}
+            required
             value={draft.acknowledgmentRequested}
           />
           <ReadOnlyField label="X12 Version" value="005010X279A1" />
@@ -329,36 +434,43 @@ export function SettingsPage() {
 
         <SettingsGroup description="These defaults are applied automatically during row normalization and generation." title="Transaction Defaults">
           <SelectField
-            label="Service Type Code*"
+            label="Service Type Code"
             name="defaultServiceTypeCode"
-            onBlur={handleBlurSave}
             onChange={(event) => updateField('defaultServiceTypeCode', event.currentTarget.value)}
             options={SERVICE_TYPE_OPTIONS.map((option) => ({
               label: option.label,
               value: option.value,
             }))}
+            required
             value={draft.defaultServiceTypeCode}
           />
           <TextField
-            label="Default Service Date*"
+            errorText={visibleError('defaultServiceDate')}
+            helperText="Used when a spreadsheet row leaves service_date blank."
+            label="Default Service Date"
             name="defaultServiceDate"
-            onBlur={handleBlurSave}
             onChange={handleTextChange(updateField)}
-            valid={draft.defaultServiceDate.length > 0 ? true : null}
+            required
+            valid={fieldValidity(draft.defaultServiceDate, visibleError('defaultServiceDate'))}
             value={draft.defaultServiceDate}
           />
           <TextField
-            label="Max Batch Size*"
+            errorText={visibleError('maxBatchSize')}
+            label="Max Batch Size"
             name="maxBatchSize"
-            onBlur={handleBlurSave}
             onChange={(event) =>
               updateField('maxBatchSize', Number(event.currentTarget.value.replace(/\D/g, '') || '0'))
             }
-            valid={draft.maxBatchSize > 0 ? true : null}
+            required
+            valid={fieldValidity(String(draft.maxBatchSize), visibleError('maxBatchSize'))}
             value={String(draft.maxBatchSize)}
           />
         </SettingsGroup>
       </div>
+
+      {hasUnsavedChanges ? (
+        <UnsavedChangesBar onDiscard={discardChanges} onSave={() => persist(draft)} />
+      ) : null}
     </AppShell>
   )
 }
@@ -366,46 +478,60 @@ export function SettingsPage() {
 function SettingsGroup({
   children,
   description,
+  id,
   title,
 }: {
   children: ReactNode
   description: string
+  id?: string
   title: string
 }) {
   return (
-    <Card className="space-y-5">
-      <div className="space-y-2 border-b border-[var(--color-border-subtle)] pb-4">
-        <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">{title}</h2>
-        <p className="text-sm text-[var(--color-text-secondary)]">{description}</p>
-      </div>
-      <div className="grid gap-4">{children}</div>
-    </Card>
+    <div id={id}>
+      <Card className="space-y-5">
+        <div className="space-y-2 border-b border-[var(--color-border-subtle)] pb-4">
+          <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">{title}</h2>
+          <p className="text-sm text-[var(--color-text-secondary)]">{description}</p>
+        </div>
+        <div className="grid gap-4">{children}</div>
+      </Card>
+    </div>
   )
 }
 
 function TextField({
+  errorText,
   helperText,
   label,
   name,
   onBlur,
   onChange,
+  required = false,
   valid,
   value,
 }: {
+  errorText?: string
   helperText?: string
   label: string
   name: string
   onBlur?: () => void
   onChange: (event: ChangeEvent<HTMLInputElement>) => void
+  required?: boolean
   valid?: boolean | null
   value: string
 }) {
+  const helperId = errorText || helperText ? `${name}-helper` : undefined
   return (
     <label className="grid gap-2 text-sm font-medium text-[var(--color-text-primary)]">
-      {label}
+      <LabelText label={label} required={required} />
       <div className="relative">
-        <input
-          className="min-h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-surface-primary)] px-3 py-2 pr-10 text-base font-normal text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:border-[var(--color-action-500)] focus:outline-none focus:ring-[var(--focus-ring-width)] focus:ring-[var(--color-focus-ring)]"
+        <Input
+          aria-describedby={helperId}
+          aria-invalid={errorText ? true : undefined}
+          className={cn(
+            'pr-10 font-normal',
+            errorText && 'border-[var(--color-inactive-500)] focus:border-[var(--color-inactive-500)]',
+          )}
           name={name}
           onBlur={onBlur}
           onChange={onChange}
@@ -419,33 +545,61 @@ function TextField({
           >
             <CheckIcon className="h-5 w-5" />
           </span>
+        ) : valid === false ? (
+          <span
+            aria-label={`${label} has an error`}
+            className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[var(--color-inactive-500)]"
+            role="status"
+          >
+            <CloseIcon className="h-5 w-5" />
+          </span>
         ) : null}
       </div>
-      {helperText ? <span className="text-caption font-normal text-[var(--color-text-secondary)]">{helperText}</span> : null}
+      {errorText || helperText ? (
+        <span
+          className={cn(
+            'text-caption font-normal',
+            errorText ? 'text-[var(--color-inactive-500)]' : 'text-[var(--color-text-secondary)]',
+          )}
+          id={helperId}
+        >
+          {errorText ?? helperText}
+        </span>
+      ) : null}
     </label>
   )
 }
 
 function SelectField({
+  errorText,
   label,
   name,
   onBlur,
   onChange,
   options,
+  required = false,
   value,
 }: {
+  errorText?: string
   label: string
   name: string
   onBlur?: () => void
   onChange: (event: ChangeEvent<HTMLSelectElement>) => void
   options: Array<{ label: string; value: string }>
+  required?: boolean
   value: string
 }) {
+  const helperId = errorText ? `${name}-helper` : undefined
   return (
     <label className="grid gap-2 text-sm font-medium text-[var(--color-text-primary)]">
-      {label}
-      <select
-        className="min-h-11 rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-surface-primary)] px-3 py-2 text-base font-normal text-[var(--color-text-primary)] focus:border-[var(--color-action-500)] focus:outline-none focus:ring-[var(--focus-ring-width)] focus:ring-[var(--color-focus-ring)]"
+      <LabelText label={label} required={required} />
+      <Select
+        aria-describedby={helperId}
+        aria-invalid={errorText ? true : undefined}
+        className={cn(
+          'font-normal',
+          errorText && 'border-[var(--color-inactive-500)] focus:border-[var(--color-inactive-500)]',
+        )}
         name={name}
         onBlur={onBlur}
         onChange={onChange}
@@ -456,8 +610,22 @@ function SelectField({
             {option.label}
           </option>
         ))}
-      </select>
+      </Select>
+      {errorText ? (
+        <span className="text-caption font-normal text-[var(--color-inactive-500)]" id={helperId}>
+          {errorText}
+        </span>
+      ) : null}
     </label>
+  )
+}
+
+function LabelText({ label, required }: { label: string; required: boolean }) {
+  return (
+    <span>
+      {label}
+      {required ? <span className="text-[var(--color-required-asterisk)]">*</span> : null}
+    </span>
   )
 }
 
@@ -470,6 +638,106 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
       </div>
     </label>
   )
+}
+
+function formatIcnInput(value: number | null): string {
+  return value === null ? '' : formatIsaControlNumber(value)
+}
+
+function parseIcnDraftValue(value: string): number | null {
+  if (value.length === 0 || /^0+$/.test(value)) {
+    return null
+  }
+
+  return Number(value)
+}
+
+function serializeSettings(value: SubmitterConfig): string {
+  return JSON.stringify(value)
+}
+
+type SettingsValidationErrors = Partial<Record<keyof SubmitterConfig, string>>
+
+function validateSettingsDraft(value: SubmitterConfig): SettingsValidationErrors {
+  const errors: SettingsValidationErrors = {}
+
+  if (value.organizationName.trim().length === 0) {
+    errors.organizationName = 'Organization name is required.'
+  }
+
+  if (value.providerNpi.trim().length === 0) {
+    errors.providerNpi = 'Provider NPI is required.'
+  } else if (!/^\d{10}$/.test(value.providerNpi)) {
+    errors.providerNpi = 'Provider NPI must be 10 digits.'
+  } else if (!isValidNpi(value.providerNpi)) {
+    errors.providerNpi = 'Invalid NPI (Luhn check failed).'
+  }
+
+  if (value.tradingPartnerId.trim().length === 0) {
+    errors.tradingPartnerId = 'Trading partner ID is required.'
+  }
+
+  if (value.contactEmail.trim().length > 0 && !EMAIL_PATTERN.test(value.contactEmail)) {
+    errors.contactEmail = 'Enter a valid email address.'
+  }
+
+  if (value.payerName.trim().length === 0) {
+    errors.payerName = 'Payer name is required.'
+  }
+
+  if (value.payerId.trim().length === 0) {
+    errors.payerId = 'Payer ID is required.'
+  }
+
+  if (value.interchangeReceiverId.trim().length === 0) {
+    errors.interchangeReceiverId = 'Receiver ID is required.'
+  }
+
+  if (!/^\d{8}$/.test(value.defaultServiceDate)) {
+    errors.defaultServiceDate = 'Default service date must be YYYYMMDD.'
+  }
+
+  if (!Number.isInteger(value.maxBatchSize) || value.maxBatchSize <= 0) {
+    errors.maxBatchSize = 'Max batch size must be greater than zero.'
+  }
+
+  return errors
+}
+
+function shouldShowFieldError(
+  field: keyof SubmitterConfig,
+  draft: SubmitterConfig,
+  saveAttempted: boolean,
+): boolean {
+  if (saveAttempted) {
+    return true
+  }
+
+  if (field === 'providerNpi') {
+    return draft.providerNpi.length > 0
+  }
+
+  if (field === 'contactEmail') {
+    return draft.contactEmail.length > 0
+  }
+
+  return false
+}
+
+function fieldValidity(
+  value: string,
+  errorText: string | undefined,
+  options: { optional?: boolean } = {},
+): boolean | null {
+  if (errorText) {
+    return false
+  }
+
+  if (options.optional && value.trim().length === 0) {
+    return null
+  }
+
+  return value.trim().length > 0 ? true : null
 }
 
 function handleTextChange(

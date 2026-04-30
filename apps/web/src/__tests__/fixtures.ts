@@ -12,8 +12,9 @@ import { DEFAULT_SUBMITTER_CONFIG } from '../utils/constants'
 export const configuredSettings: SubmitterConfig = {
   ...DEFAULT_SUBMITTER_CONFIG,
   organizationName: 'ACME HOME HEALTH',
-  providerNpi: '1992753880',
+  providerNpi: '1234567893',
   tradingPartnerId: 'ACME123456',
+  lastIsaControlNumber: 41,
 }
 
 export const convertResponseFixture: ConvertResponse = {
@@ -86,7 +87,7 @@ export const eligibilityResultsFixture: EligibilityResult[] = [
         serviceTypeCodes: ['30', '1'],
         coverageLevelCode: null,
         insuranceTypeCode: null,
-        planCoverageDescription: 'DC MEDICAID FFS',
+        planCoverageDescription: 'DC MEDICAID FFS | 853Q | BUY-IN',
         monetaryAmount: null,
         quantity: null,
         inPlanNetworkIndicator: null,

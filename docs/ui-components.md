@@ -35,6 +35,7 @@
 | [`EmptyState`](#emptystate) | [`ui/EmptyState.tsx`](../apps/web/src/components/ui/EmptyState.tsx) | Icon + headline + copy + optional CTA for empty views. |
 | [`ErrorBoundary`](#errorboundary) | [`ui/ErrorBoundary.tsx`](../apps/web/src/components/ui/ErrorBoundary.tsx) | Route-level React error boundary with `EmptyState` fallback. |
 | [`ConfirmationDialog`](#confirmationdialog) | [`ui/ConfirmationDialog.tsx`](../apps/web/src/components/ui/ConfirmationDialog.tsx) | Opinionated confirm/cancel dialog composed over `Modal`. |
+| [`UnsavedChangesBar`](#unsavedchangesbar) | [`ui/UnsavedChangesBar.tsx`](../apps/web/src/components/ui/UnsavedChangesBar.tsx) | Sticky Save / Discard bar for explicit draft-save workflows. |
 
 ---
 
@@ -93,7 +94,7 @@ import { DownloadIcon } from '../components/ui/Icons'
 
 ### Accessibility
 
-- Focus state: 3px action-blue ring at 25% alpha (`--color-focus-ring`).
+- Focus state uses `--focus-ring-width` and `--color-focus-ring`.
 - Min touch target: 44px height (`min-h-11`).
 - Disabled state uses `disabled` attribute, not pointer-events tricks — screen readers announce correctly.
 - Icon-only buttons must pass `aria-label`.
@@ -189,8 +190,8 @@ Surface container rendered as `<section>`.
 
 | Variant | When |
 |---|---|
-| `content` *(default)* | Flat content card: 16px radius, `--shadow-sm`. |
-| `action` | Interactive action card: 16px radius, `--shadow-md`, lifts on hover (`-2px`, `--shadow-lg`). |
+| `content` *(default)* | Flat content card: `--radius-xl`, `--shadow-sm`. |
+| `action` | Interactive action card: `--radius-2xl`, `--shadow-md`, lifts on hover (`--motion-lift-md`, `--shadow-lg`). |
 
 ### Props
 
@@ -278,7 +279,7 @@ Inline page-level notification with an icon, optional title, body, optional acti
 
 | Variant | Use |
 |---|---|
-| `info` | Informational message (action-blue accent). |
+| `info` | Informational message (action-color accent). |
 | `warning` | Auto-correction applied, non-critical warning (amber accent). |
 | `error` | Validation failure, network error (inactive-red accent). |
 | `success` | Confirmation (active-green accent). |
@@ -387,7 +388,7 @@ import { FileUpload } from '../components/ui/FileUpload'
 
 **Path:** [`apps/web/src/components/ui/Spinner.tsx`](../apps/web/src/components/ui/Spinner.tsx)
 
-Indeterminate loading indicator. 20×20px action-blue ring, CSS animation.
+Indeterminate loading indicator. Uses the action token for the ring and CSS animation.
 
 ### Props
 
@@ -819,6 +820,41 @@ import { ConfirmationDialog } from '../components/ui/ConfirmationDialog'
   onConfirm={handleDelete}
 />
 ```
+
+---
+
+## UnsavedChangesBar
+
+**Path:** [`apps/web/src/components/ui/UnsavedChangesBar.tsx`](../apps/web/src/components/ui/UnsavedChangesBar.tsx)
+
+Sticky page-level Save / Discard control for explicit draft-save workflows such as Settings.
+
+### Props
+
+```ts
+interface UnsavedChangesBarProps {
+  onDiscard: () => void
+  onSave: () => void
+  className?: string
+  message?: string
+  saveDisabled?: boolean
+}
+```
+
+### Usage
+
+```tsx
+import { UnsavedChangesBar } from '../components/ui/UnsavedChangesBar'
+
+{hasUnsavedChanges ? (
+  <UnsavedChangesBar onDiscard={discardChanges} onSave={saveChanges} />
+) : null}
+```
+
+### Accessibility
+
+- Renders with `role="status"` so the sticky save state is announced when it appears.
+- Save and Discard use the shared `Button` primitive.
 
 ---
 

@@ -55,7 +55,12 @@ from x12_edi_tools.payers import get_profile
 
 from app.core.logging import get_logger
 from app.core.metrics import observe_record_count, observe_segment_count
-from app.schemas.common import ArchiveEntry, ControlNumbers, PatientRecord
+from app.schemas.common import (
+    CONTROL_NUMBER_REQUIRED_MESSAGE,
+    ArchiveEntry,
+    ControlNumbers,
+    PatientRecord,
+)
 from app.schemas.generate import GenerateResponse
 from app.services.patients import normalize_patient_rows
 
@@ -253,8 +258,10 @@ def _build_interchanges(
     interchanges: list[Interchange] = []
     trace_numbers = count(start=1)
     transaction_numbers = count(start=1)
-    isa_start = config.isa_control_number_start or 1
-    gs_start = config.gs_control_number_start or 1
+    if config.isa_control_number_start is None or config.gs_control_number_start is None:
+        raise ValueError(CONTROL_NUMBER_REQUIRED_MESSAGE)
+    isa_start = config.isa_control_number_start
+    gs_start = config.gs_control_number_start
 
     for batch_index, batch in enumerate(_chunks(patients, config.max_batch_size), start=1):
         transactions = [

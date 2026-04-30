@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from io import BytesIO
+from typing import Any
 
 from openpyxl import Workbook  # type: ignore[import-untyped]
-from openpyxl.styles import Font  # type: ignore[import-untyped]
+from openpyxl.styles import Font, PatternFill  # type: ignore[import-untyped]
 
 from app.core.logging import get_logger
 from app.core.metrics import observe_record_count
@@ -14,6 +15,9 @@ from app.schemas.export import ExportWorkbookRequest
 from app.schemas.validate import ValidateResponse, ValidationSummary
 
 logger = get_logger(__name__)
+
+ERROR_ROW_FILL_RGB = "FEF2F2"
+ERROR_ROW_FILL = PatternFill(fill_type="solid", fgColor=ERROR_ROW_FILL_RGB)
 
 
 def build_workbook_bytes(
@@ -44,13 +48,64 @@ def build_workbook_bytes(
     for cell in summary_sheet["A"][:7]:
         cell.font = Font(bold=True)
 
+    error_results = [result for result in payload.results if _is_error_row(result)]
+    if error_results:
+        errors_sheet = workbook.create_sheet("Errors")
+        errors_sheet.append(
+            [
+                "member_name",
+                "member_id",
+                "error_type",
+                "aaa_code",
+                "error_summary",
+                "recommended_action",
+                "follow_up_action_code",
+                "st_control_number",
+                "trace_number",
+            ]
+        )
+        _style_header(errors_sheet)
+        for result in error_results:
+            if result.aaa_errors:
+                for aaa_error in result.aaa_errors:
+                    errors_sheet.append(
+                        [
+                            result.member_name,
+                            result.member_id,
+                            "AAA",
+                            aaa_error.code,
+                            aaa_error.message,
+                            aaa_error.suggestion or _fallback_recommended_action(result),
+                            aaa_error.follow_up_action_code,
+                            result.st_control_number,
+                            result.trace_number,
+                        ]
+                    )
+            else:
+                errors_sheet.append(
+                    [
+                        result.member_name,
+                        result.member_id,
+                        "STATUS",
+                        "",
+                        result.status_reason or "",
+                        _fallback_recommended_action(result),
+                        "",
+                        result.st_control_number,
+                        result.trace_number,
+                    ]
+                )
+
     results_sheet = workbook.create_sheet("Eligibility Results")
     headers = [
         "member_name",
         "member_id",
         "overall_status",
         "status_reason",
-        "primary_plan_summary",
+        "program_name",
+        "payer_code",
+        "category",
+        "billing_note",
         "all_eb01_codes",
         "all_eb03_service_types",
         "benefit_entity_names",
@@ -60,18 +115,21 @@ def build_workbook_bytes(
         "primary_trn",
     ]
     results_sheet.append(headers)
-    for cell in results_sheet[1]:
-        cell.font = Font(bold=True)
+    _style_header(results_sheet)
     results_sheet.freeze_panes = "A2"
 
     for result in payload.results:
+        program_name, payer_code, category = _split_plan_description(_primary_plan_summary(result))
         results_sheet.append(
             [
                 result.member_name,
                 result.member_id,
                 result.overall_status,
                 result.status_reason,
-                _primary_plan_summary(result),
+                program_name,
+                payer_code,
+                category,
+                _billing_note(result),
                 _all_eb01_codes(result),
                 _all_eb03_service_types(result),
                 _benefit_entity_names(result),
@@ -81,6 +139,8 @@ def build_workbook_bytes(
                 result.trace_number,
             ]
         )
+        if _is_error_row(result):
+            _fill_row(results_sheet[results_sheet.max_row])
 
     issue_count = payload.parser_issue_count or len(payload.parser_issues)
     if issue_count > 0:
@@ -95,8 +155,7 @@ def build_workbook_bytes(
                 "severity",
             ]
         )
-        for cell in issues_sheet[1]:
-            cell.font = Font(bold=True)
+        _style_header(issues_sheet)
         issues_sheet.freeze_panes = "A2"
         for issue in payload.parser_issues:
             issues_sheet.append(
@@ -253,6 +312,43 @@ def _primary_plan_summary(result: EligibilityResult) -> str | None:
         if segment.plan_coverage_description:
             return segment.plan_coverage_description
     return None
+
+
+def _split_plan_description(description: str | None) -> tuple[str, str, str]:
+    if not description:
+        return ("", "", "")
+    parts = [part.strip() for part in description.split("|")]
+    if len(parts) < 3:
+        return (description, "", "")
+    return (parts[0], parts[1], parts[2])
+
+
+def _billing_note(result: EligibilityResult) -> str:
+    if result.status_reason:
+        return result.status_reason
+    if result.aaa_errors:
+        return result.aaa_errors[0].message
+    return ""
+
+
+def _is_error_row(result: EligibilityResult) -> bool:
+    return result.overall_status in {"error", "not_found"} or bool(result.aaa_errors)
+
+
+def _fallback_recommended_action(result: EligibilityResult) -> str:
+    if result.overall_status == "not_found":
+        return "Confirm the member ID and demographics before resubmitting."
+    return "Review the status reason and source 271 response before resubmitting."
+
+
+def _style_header(sheet: Any) -> None:
+    for cell in sheet[1]:
+        cell.font = Font(bold=True)
+
+
+def _fill_row(row: Any) -> None:
+    for cell in row:
+        cell.fill = ERROR_ROW_FILL
 
 
 def _all_eb01_codes(result: EligibilityResult) -> str:

@@ -7,7 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
 from pydantic import ValidationError
 
-from app.schemas.common import ApiSubmitterConfig
+from app.schemas.common import CONTROL_NUMBER_REQUIRED_MESSAGE, ApiSubmitterConfig
 from app.schemas.generate import GenerateRequest
 from app.schemas.pipeline import PipelineResponse, PipelineValidationResult
 from app.services.generator import generate_270_response
@@ -46,6 +46,7 @@ async def pipeline(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail={"message": "config is required for pipeline requests."},
             )
+        _require_control_number_starts(config_payload)
         uploaded = await read_upload_file(
             request,
             file,
@@ -146,5 +147,13 @@ async def _json_payload(request: Request) -> GenerateRequest:
     except ValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=exc.errors(),
+            detail=exc.errors(include_context=False),
         ) from exc
+
+
+def _require_control_number_starts(config: ApiSubmitterConfig) -> None:
+    if config.isa_control_number_start is None or config.gs_control_number_start is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"message": CONTROL_NUMBER_REQUIRED_MESSAGE},
+        )

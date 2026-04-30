@@ -25,6 +25,7 @@ describe('PreviewPage', () => {
   })
 
   it('shows a confirmation prompt for short member IDs before generation', () => {
+    window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(configuredSettings))
     renderWithProviders(<PreviewPage />, {
       route: '/preview',
       state: {
@@ -38,6 +39,22 @@ describe('PreviewPage', () => {
     expect(screen.getByText('Some member IDs look shorter than expected.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Continue anyway' })).toBeInTheDocument()
   })
+
+  it('blocks generation when the ICN is unset', () => {
+    renderWithProviders(<PreviewPage />, {
+      route: '/preview',
+      state: {
+        flow: 'generate',
+        filename: 'eligibility.csv',
+        response: convertResponseFixture,
+      },
+    })
+
+    expect(screen.getByText(/Next ICN:/)).toHaveTextContent('— not set —')
+    expect(screen.getByText('Cannot generate — ICN not set.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Process' })).toBeDisabled()
+  })
+
   it('records the highest generated ISA13 after a split generation response', async () => {
     window.localStorage.setItem(
       SETTINGS_STORAGE_KEY,

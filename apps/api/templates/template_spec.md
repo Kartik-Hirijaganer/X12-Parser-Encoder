@@ -14,6 +14,13 @@ Canonical columns:
 | `service_date` | Yes | Service date in `YYYYMMDD`, `YYYY-MM-DD`, or `MM/DD/YYYY` | `20260412` |
 | `service_date_end` | No | End date for range queries | `20260430` |
 
+Defaults:
+
+| Column | Default when omitted |
+| --- | --- |
+| `service_type_code` | `30` from `SubmitterConfig.default_service_type_code` |
+| `service_date` | No implicit default in the template; generation uses settings only when row value is blank |
+
 Rules:
 
 - Provide at least one of `member_id` or `ssn`.
@@ -21,4 +28,3 @@ Rules:
 - `member_id` values that look short are warned on, not auto-corrected.
 - Dates are normalized to `YYYYMMDD`.
 - Names are uppercased and surrounding whitespace is trimmed.
-- Missing `service_type_code` values are filled from `SubmitterConfig.default_service_type_code`.

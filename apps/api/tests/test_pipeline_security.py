@@ -6,6 +6,7 @@ import tempfile
 
 import pytest
 from app.core.config import settings
+from app.schemas.common import CONTROL_NUMBER_REQUIRED_MESSAGE
 from fastapi.testclient import TestClient
 
 from tests.helpers import build_xlsx_bytes
@@ -69,6 +70,56 @@ def test_pipeline_happy_path_and_invalid_rows(
     assert failure.status_code == 200
     assert failure.json()["x12Content"] is None
     assert failure.json()["errors"]
+
+
+def test_pipeline_requires_explicit_control_number_starts(
+    client: TestClient,
+    config_payload: dict[str, object],
+) -> None:
+    config_payload.pop("isaControlNumberStart")
+    config_payload.pop("gsControlNumberStart")
+    patient = {
+        "last_name": "SMITH",
+        "first_name": "JOHN",
+        "date_of_birth": "19850115",
+        "gender": "M",
+        "member_id": "12345678",
+        "service_type_code": "30",
+        "service_date": "20260412",
+    }
+    workbook = build_xlsx_bytes(
+        [
+            "last_name",
+            "first_name",
+            "date_of_birth",
+            "gender",
+            "member_id",
+            "service_type_code",
+            "service_date",
+        ],
+        [["SMITH", "JOHN", "19850115", "M", "12345678", "30", "20260412"]],
+    )
+
+    json_response = client.post(
+        "/api/v1/pipeline",
+        json={"config": config_payload, "patients": [patient]},
+    )
+    multipart_response = client.post(
+        "/api/v1/pipeline",
+        files={
+            "file": (
+                "patients.xlsx",
+                workbook,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+        data={"config": json.dumps(config_payload)},
+    )
+
+    assert json_response.status_code == 422
+    assert CONTROL_NUMBER_REQUIRED_MESSAGE in json_response.text
+    assert multipart_response.status_code == 422
+    assert CONTROL_NUMBER_REQUIRED_MESSAGE in multipart_response.text
 
 
 def test_auth_boundary_remains_and_rate_limit_is_inert(
