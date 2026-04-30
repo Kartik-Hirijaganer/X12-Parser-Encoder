@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 
@@ -8,6 +8,7 @@ import { useSettings } from '../hooks/useSettings'
 import { convertUpload, ApiError, ApiTimeoutError } from '../services/api'
 import { buildX12PreviewSummary, detectWorkflowFromFile } from '../utils/fileDetection'
 import { cn } from '../utils/cn'
+import { MAX_ISA_CONTROL_NUMBER } from '../utils/constants'
 import { ActionCard } from '../components/features/ActionCard'
 import { AppShell } from '../components/layout/AppShell'
 import { Banner } from '../components/ui/Banner'
@@ -24,13 +25,14 @@ type HomeErrorState = {
 
 export function HomePage() {
   const navigate = useNavigate()
-  const { hasRequiredSettings, settings } = useSettings()
+  const { hasRequiredSettings, hasUsableIcn, settings } = useSettings()
   const [error, setError] = useState<HomeErrorState | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [timeoutFile, setTimeoutFile] = useState<File | null>(null)
   const isDraggingWindow = useFileDropAffordance()
   const prefersReducedMotion = useReducedMotionPreference()
   const shouldPulse = isDraggingWindow && !isProcessing && !prefersReducedMotion
+  const pulseDurationSeconds = useMemo(() => readPulseDurationSeconds(), [])
 
   async function handleFile(file: File, preferredFlow?: 'generate' | 'validate' | 'parse') {
     setError(null)
@@ -48,6 +50,15 @@ export function HomePage() {
         if (!hasRequiredSettings) {
           setError({
             message: 'Configure your provider details in Settings before generating files.',
+          })
+          return
+        }
+        if (!hasUsableIcn) {
+          setError({
+            message:
+              settings.lastIsaControlNumber === MAX_ISA_CONTROL_NUMBER
+                ? 'The ICN range is exhausted at 999999999. Contact Gainwell or confirm a new trading-partner control-number policy before generating files.'
+                : 'Set the last submitted ICN in Settings before generating files.',
           })
           return
         }
@@ -136,12 +147,19 @@ export function HomePage() {
         <ActionCard
           accept=".xlsx,.csv,.tsv,.txt"
           description="Upload the canonical Excel or CSV template to create an eligibility inquiry file."
-          disabled={!hasRequiredSettings || isProcessing}
+          disabled={!hasRequiredSettings || !hasUsableIcn || isProcessing}
           helper={
             !hasRequiredSettings ? (
               <p className="flex items-center gap-2 text-caption text-[var(--color-warning-500)]">
                 <WarningIcon className="h-4 w-4" />
                 Configure your provider details in Settings first.
+              </p>
+            ) : !hasUsableIcn ? (
+              <p className="flex items-center gap-2 text-caption text-[var(--color-warning-500)]">
+                <WarningIcon className="h-4 w-4" />
+                {settings.lastIsaControlNumber === MAX_ISA_CONTROL_NUMBER
+                  ? 'ICN exhausted at 999999999.'
+                  : 'Set the last submitted ICN in Settings first.'}
               </p>
             ) : null
           }
@@ -175,7 +193,12 @@ export function HomePage() {
         transition={
           prefersReducedMotion
             ? { duration: 0 }
-            : { duration: 1, ease: 'easeInOut', repeat: shouldPulse ? Infinity : 0, repeatType: 'reverse' }
+            : {
+                duration: pulseDurationSeconds,
+                ease: 'easeInOut',
+                repeat: shouldPulse ? Infinity : 0,
+                repeatType: 'reverse',
+              }
         }
       >
         <Card className="space-y-4">
@@ -200,4 +223,27 @@ export function HomePage() {
       </motion.div>
     </AppShell>
   )
+}
+
+function readPulseDurationSeconds(): number {
+  if (typeof window === 'undefined') {
+    return 0.9
+  }
+
+  const duration = window
+    .getComputedStyle(document.documentElement)
+    .getPropertyValue('--duration-slow')
+    .trim()
+
+  if (duration.endsWith('ms')) {
+    const parsed = Number(duration.slice(0, -2))
+    return Number.isFinite(parsed) ? (parsed * 3) / 1000 : 0.9
+  }
+
+  if (duration.endsWith('s')) {
+    const parsed = Number(duration.slice(0, -1))
+    return Number.isFinite(parsed) ? parsed * 3 : 0.9
+  }
+
+  return 0.9
 }

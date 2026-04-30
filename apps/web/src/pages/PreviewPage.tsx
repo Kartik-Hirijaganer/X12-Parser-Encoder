@@ -5,7 +5,7 @@ import type { WarningMessage } from '../types/api'
 import type { PreviewRouteState } from '../types/workflow'
 import { useSettings } from '../hooks/useSettings'
 import { ApiError, ApiTimeoutError, generate270, parse271, validate270 } from '../services/api'
-import { highestIsa13, nextIsaControlNumber } from '../utils/constants'
+import { formatIsaControlNumber, highestIsa13, nextIsaControlNumber } from '../utils/constants'
 import { formatBytes, formatDate } from '../utils/formatters'
 import { AppShell } from '../components/layout/AppShell'
 import { Banner } from '../components/ui/Banner'
@@ -13,7 +13,9 @@ import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { ProgressBar } from '../components/ui/ProgressBar'
 import { Skeleton } from '../components/ui/Skeleton'
+import { Spinner } from '../components/ui/Spinner'
 import { Table } from '../components/ui/Table'
+import { Tooltip } from '../components/ui/Tooltip'
 
 export function PreviewPage() {
   const location = useLocation()
@@ -47,6 +49,10 @@ export function PreviewPage() {
     previewState.flow === 'generate'
       ? previewState.response.warnings.filter(isMemberIdWarning)
       : []
+  const nextIcn =
+    previewState.flow === 'generate'
+      ? nextIsaControlNumber(settings.lastIsaControlNumber)
+      : null
 
   async function handleProcess(forceMemberIdConfirmation = false) {
     const run = async () => {
@@ -55,9 +61,15 @@ export function PreviewPage() {
 
       try {
         if (previewState.flow === 'generate') {
+          const generationIcn = nextIsaControlNumber(settings.lastIsaControlNumber)
+          if (generationIcn === null) {
+            setError(
+              'Cannot generate — ICN not set. Each 270 file submitted to DC Medicaid must use a unique ISA13. Set the last submitted ICN in Settings before continuing.',
+            )
+            return
+          }
           setProcessingLabel(`Generating X12 file for ${previewState.response.recordCount} records...`)
-          const nextIcn = nextIsaControlNumber(settings.lastIsaControlNumber)
-          const response = await generate270(settings, previewState.response.patients, nextIcn)
+          const response = await generate270(settings, previewState.response.patients, generationIcn)
           navigate('/generate/result', {
             state: {
               filename: previewState.filename,
@@ -66,7 +78,7 @@ export function PreviewPage() {
           })
           const highestIcn = highestIsa13(response)
           if (highestIcn !== null) {
-            updateLastIcn(highestIcn.toString().padStart(9, '0'))
+            updateLastIcn(formatIsaControlNumber(highestIcn))
           }
           return
         }
@@ -115,6 +127,7 @@ export function PreviewPage() {
 
     if (
       previewState.flow === 'generate' &&
+      nextIcn !== null &&
       memberIdWarnings.length > 0 &&
       !forceMemberIdConfirmation
     ) {
@@ -134,6 +147,19 @@ export function PreviewPage() {
       ? `${rowCount} ${rowCount === 1 ? 'row' : 'rows'}`
       : `${rowCount} ${rowCount === 1 ? 'subscriber' : 'subscribers'}`
   const isProcessing = processingLabel !== null
+  const processDisabled = isProcessing || (previewState.flow === 'generate' && nextIcn === null)
+  const processButton = (
+    <Button disabled={processDisabled} onClick={() => void handleProcess(false)} variant="primary">
+      {isProcessing ? (
+        <>
+          <Spinner />
+          Processing
+        </>
+      ) : (
+        'Process'
+      )}
+    </Button>
+  )
 
   return (
     <AppShell
@@ -153,8 +179,36 @@ export function PreviewPage() {
             {' • '}
             {rowLabel}
           </p>
+          {previewState.flow === 'generate' ? (
+            <p className="flex flex-wrap items-center gap-1 text-caption text-[var(--color-text-secondary)]">
+              <span>
+                Next ICN:{' '}
+                {nextIcn === null ? '— not set —' : formatIsaControlNumber(nextIcn)}
+              </span>
+              {nextIcn !== null ? (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <Button
+                    className="!min-h-0 !px-1 !py-0"
+                    href="/settings#icn"
+                    size="sm"
+                    variant="ghost"
+                  >
+                    Edit in Settings
+                  </Button>
+                </>
+              ) : null}
+            </p>
+          ) : null}
         </div>
       </Card>
+
+      {previewState.flow === 'generate' && nextIcn === null ? (
+        <Banner title="Cannot generate — ICN not set." variant="warning">
+          Each 270 file submitted to DC Medicaid must use a unique ISA13. Set the last submitted
+          ICN in Settings before continuing.
+        </Banner>
+      ) : null}
 
       {previewState.flow === 'generate'
         ? previewState.response.corrections.map((correction, index) =>
@@ -360,9 +414,13 @@ export function PreviewPage() {
         <Button onClick={() => navigate('/')} variant="secondary">
           Cancel
         </Button>
-        <Button disabled={isProcessing} onClick={() => void handleProcess(false)} variant="primary">
-          Process
-        </Button>
+        {previewState.flow === 'generate' && nextIcn === null ? (
+          <Tooltip content="Set ICN in Settings first">
+            <span>{processButton}</span>
+          </Tooltip>
+        ) : (
+          processButton
+        )}
       </div>
     </AppShell>
   )

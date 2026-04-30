@@ -1,5 +1,6 @@
 import type { EligibilityResult } from '../../types/api'
-import { formatStatusLabel, statusVariantFromValue, summarizePlan } from '../../utils/formatters'
+import { formatStatusLabel, statusVariantFromValue } from '../../utils/formatters'
+import { planBillingNote, primaryPlanDescription, splitPlanDescription } from '../../utils/plan'
 import { Badge } from '../ui/Badge'
 import { EmptyState } from '../ui/EmptyState'
 import { SearchIcon } from '../ui/Icons'
@@ -39,10 +40,40 @@ export function DashboardTable({ results }: { results: EligibilityResult[] }) {
           sortValue: (result) => result.overallStatus,
         },
         {
-          id: 'plan',
-          header: 'Plan',
-          cell: (result) => summarizePlan(result),
-          sortValue: (result) => summarizePlan(result),
+          id: 'program',
+          header: 'Program',
+          cell: (result) => planCell(result).programName || 'Not returned',
+          sortValue: (result) => planCell(result).programName,
+        },
+        {
+          id: 'payer_code',
+          header: 'Payer Code',
+          cell: (result) => planCell(result).payerCode || 'Not returned',
+          className: 'font-mono',
+          sortValue: (result) => planCell(result).payerCode,
+        },
+        {
+          id: 'category',
+          header: 'Category',
+          cell: (result) => {
+            const category = planCell(result).category
+            if (!category) {
+              return 'Not returned'
+            }
+            return (
+              <Badge variant={category.toUpperCase() === 'BUY-IN' ? 'warning' : 'notfound'}>
+                {category}
+              </Badge>
+            )
+          },
+          sortValue: (result) => planCell(result).category,
+        },
+        {
+          id: 'notes',
+          header: 'Notes',
+          cell: (result) => planBillingNote(result) || 'Not returned',
+          className: 'min-w-64',
+          sortValue: (result) => planBillingNote(result),
         },
       ]}
       emptyMessage="No eligibility rows match the current filter."
@@ -64,4 +95,8 @@ export function DashboardTable({ results }: { results: EligibilityResult[] }) {
       rows={results}
     />
   )
+}
+
+function planCell(result: EligibilityResult) {
+  return splitPlanDescription(primaryPlanDescription(result))
 }

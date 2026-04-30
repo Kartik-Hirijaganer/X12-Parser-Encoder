@@ -45,14 +45,16 @@ export function DashboardSummary({
             aria-pressed={selected}
             as="button"
             className={cn(
-              'border p-5 shadow-none text-left transition-[background-color,border-color,transform] duration-[var(--duration-normal)] ease-[var(--ease-out)] hover:-translate-y-[var(--motion-lift-sm)]',
+              'border p-5 text-center shadow-none transition-[background-color,border-color,transform] duration-[var(--duration-normal)] ease-[var(--ease-out)] hover:-translate-y-[var(--motion-lift-sm)]',
               cardClasses[card.variant],
               selected ? 'ring-[var(--focus-ring-width)] ring-[var(--color-focus-ring)]' : '',
             )}
             key={card.key}
             onClick={() => onFilterChange(nextFilter)}
           >
-            <p className={`text-3xl font-semibold ${textClasses[card.variant]}`}>{summary[card.key]}</p>
+            <p className={`text-4xl font-semibold leading-none ${textClasses[card.variant]}`}>
+              {summary[card.key]}
+            </p>
             <p className="mt-2 text-sm font-medium text-[var(--color-text-primary)]">{card.label}</p>
           </Card>
         )

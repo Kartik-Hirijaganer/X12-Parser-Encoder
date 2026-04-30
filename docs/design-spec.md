@@ -23,9 +23,9 @@ When files disagree, use this order:
 
 ## 3. Visual Theme
 
-Eligibility Workbench is a task-driven healthcare tool for bulk Medicaid eligibility, claim, and remittance workflows. It should feel quiet, legible, and operational. The interface is light-mode-first with a white canvas, soft secondary surfaces, clear status treatment, and a restrained action color.
+Eligibility Workbench is a task-driven healthcare tool for bulk Medicaid eligibility, claim, and remittance workflows. It should feel quiet, legible, and operational. The interface is light-mode-first with a warm cream canvas, soft secondary surfaces, clear status treatment, and a restrained action color.
 
-The visual language is based on retail-grade clarity rather than enterprise density. Users should immediately understand where to upload, what is configured, what failed, and what to do next. Decorative visuals are not part of the system; icons are functional.
+The visual language uses a Mastercard-inspired warm action palette while keeping retail-grade clarity rather than enterprise density. Users should immediately understand where to upload, what is configured, what failed, and what to do next. Decorative visuals are not part of the system; icons are functional.
 
 ### Color Roles
 
@@ -41,6 +41,7 @@ Concrete values live only in `tokens.css`.
 | Warning | `--color-warning-*` | Corrections, warnings, partial matches |
 | Not found | `--color-notfound-*` | Unknown, no data, member not found |
 | Border | `--color-border-*`, `--color-divider` | Form controls, cards, table structure |
+| Required | `--color-required-asterisk` | Required form-field markers only |
 
 Status color appears only in badges, stat cards, banners, and table status cells. It is not used for navigation or decorative emphasis.
 
@@ -88,9 +89,9 @@ Radii are tokens: `--radius-sm`, `--radius-md`, `--radius-lg`, `--radius-xl`, `-
 
 Shadows are tokens: `--shadow-sm`, `--shadow-md`, `--shadow-lg`, `--shadow-xl`. Shadows are reserved for cards and floating elements, not table rows or flat content.
 
-Motion timings are tokens: `--duration-fast`, `--duration-normal`, `--duration-slow`, and `--ease-out`. Inline `transition:` and `animation:` declarations are not allowed. Use token-backed classes or shared motion primitives.
+Motion timings are tokens: `--duration-fast`, `--duration-normal`, `--duration-slow`, `--duration-route`, `--motion-fade-in`, `--motion-route-slide`, and `--ease-out`. Inline `transition:` and `animation:` declarations are not allowed. Use token-backed classes or shared motion primitives.
 
-**Route transitions** use `components/transitions/RouteTransition.tsx`, which wraps the router outlet in Framer Motion's `<AnimatePresence mode="wait">` and animates a 200 ms opacity + 6 px Y-axis fade+slide keyed on `useLocation().pathname`.
+**Route transitions** use `components/transitions/RouteTransition.tsx`, which wraps the router outlet in Framer Motion's `<AnimatePresence mode="wait">` and reads `--duration-route` plus `--motion-route-slide` for the opacity + Y-axis fade/slide keyed on `useLocation().pathname`.
 
 **Reduced motion is mandatory.** Every Framer Motion component, keyframe animation, toast entry, modal/drawer slide, skeleton pulse, and drop-zone pulse must branch on `hooks/useReducedMotionPreference.ts`. When the user's OS preference is `prefers-reduced-motion: reduce`, transitions become instant, entrance animations are skipped, and pulses are disabled. This is accessibility, not polish — audit every `motion.*` component for it. At least one primitive test must exercise the reduced-motion branch to prove the wiring is live (see `apps/web/src/__tests__/reduced-motion.test.tsx`).
 
@@ -130,6 +131,7 @@ Shared primitives live in `apps/web/src/components/ui/`. Page and feature code m
 | `EmptyState` | `EmptyState.tsx` | Shared empty-view composition (icon + title + copy + optional CTA) |
 | `ErrorBoundary` | `ErrorBoundary.tsx` | React error boundary wrapping routes; renders an `EmptyState` fallback |
 | `ConfirmationDialog` | `ConfirmationDialog.tsx` | Opinionated confirm/cancel dialog composed over `Modal` with `destructive` flag |
+| `UnsavedChangesBar` | `UnsavedChangesBar.tsx` | Sticky Save / Discard bar for explicit draft-save workflows |
 
 See `docs/ui-components.md` for prop APIs and usage snippets.
 
@@ -176,7 +178,7 @@ Status summaries use semantic status tokens. Dashboard tables use the `Table` pr
 
 ### Settings
 
-Settings stay single-column with clear group headings. The only allowed browser storage for settings is `x12_submitter_config`, and it must not contain PHI.
+Settings use a single column on mobile and a two-column card grid on medium and larger screens. Draft edits are explicit: field blur does not persist, Save Changes persists the full draft, Discard reverts to saved settings, and required markers use `--color-required-asterisk`. The only allowed browser storage for settings is `x12_submitter_config`, and it must not contain PHI.
 
 ## 7. Safety
 

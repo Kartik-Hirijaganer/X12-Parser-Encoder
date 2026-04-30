@@ -17,8 +17,9 @@ import {
 interface SettingsContextValue {
   settings: SubmitterConfig
   hasRequiredSettings: boolean
+  hasUsableIcn: boolean
   replaceSettings: (nextSettings: SubmitterConfig) => void
-  importSettings: (rawValue: string) => SubmitterConfig
+  parseSettingsJson: (rawValue: string) => SubmitterConfig
   updateLastIcn: (isa13: string) => void
 }
 
@@ -44,20 +45,17 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         }
         return fieldValue.trim().length > 0
       }),
+      hasUsableIcn:
+        settings.lastIsaControlNumber !== null &&
+        settings.lastIsaControlNumber < MAX_ISA_CONTROL_NUMBER,
       replaceSettings: (nextSettings) => setSettings(sanitizeSettings(nextSettings)),
-      importSettings: (rawValue) => {
+      parseSettingsJson: (rawValue) => {
         const parsed = JSON.parse(rawValue) as Record<string, unknown>
-        const nextSettings = sanitizeSettings(parsed)
-        setSettings(nextSettings)
-        return nextSettings
+        return sanitizeSettings(parsed)
       },
       updateLastIcn: (isa13: string) => {
-        const parsed = parseInt(isa13, 10)
-        if (
-          !Number.isInteger(parsed) ||
-          parsed < MIN_ISA_CONTROL_NUMBER ||
-          parsed > MAX_ISA_CONTROL_NUMBER
-        ) {
+        const parsed = parseIcnString(isa13)
+        if (parsed === null) {
           return
         }
         setSettings((prev) => ({ ...prev, lastIsaControlNumber: parsed }))
@@ -124,13 +122,37 @@ function sanitizeSettings(rawValue: Record<string, unknown> | SubmitterConfig): 
     maxBatchSize: Number.isFinite(Number(merged.maxBatchSize))
       ? Math.max(1, Number(merged.maxBatchSize))
       : 5000,
-    lastIsaControlNumber:
-      Number.isInteger(merged.lastIsaControlNumber) &&
-      (merged.lastIsaControlNumber as number) >= MIN_ISA_CONTROL_NUMBER &&
-      (merged.lastIsaControlNumber as number) <= MAX_ISA_CONTROL_NUMBER
-        ? (merged.lastIsaControlNumber as number)
-        : null,
+    lastIsaControlNumber: parseStoredIcnValue(merged.lastIsaControlNumber),
   }
+}
+
+function parseStoredIcnValue(value: unknown): number | null {
+  if (typeof value === 'string') {
+    return parseIcnString(value)
+  }
+
+  if (
+    Number.isInteger(value) &&
+    (value as number) >= MIN_ISA_CONTROL_NUMBER &&
+    (value as number) <= MAX_ISA_CONTROL_NUMBER
+  ) {
+    return value as number
+  }
+
+  return null
+}
+
+function parseIcnString(value: string): number | null {
+  if (!/^\d{1,9}$/.test(value)) {
+    return null
+  }
+
+  const parsed = Number(value)
+  if (parsed < MIN_ISA_CONTROL_NUMBER || parsed > MAX_ISA_CONTROL_NUMBER) {
+    return null
+  }
+
+  return parsed
 }
 
 function normalizeSnakeCase(rawValue: Record<string, unknown>): Record<string, unknown> {
@@ -154,5 +176,6 @@ function normalizeSnakeCase(rawValue: Record<string, unknown>): Record<string, u
     defaultServiceTypeCode: rawValue.default_service_type_code,
     defaultServiceDate: rawValue.default_service_date,
     maxBatchSize: rawValue.max_batch_size,
+    lastIsaControlNumber: rawValue.last_isa_control_number,
   }
 }
