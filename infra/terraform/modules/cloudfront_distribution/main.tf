@@ -7,7 +7,7 @@ locals {
   caching_disabled_policy_id              = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
   all_viewer_except_host_header_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
   effective_response_headers_policy_id    = var.response_headers_policy_id != null ? var.response_headers_policy_id : aws_cloudfront_response_headers_policy.security[0].id
-  custom_domain_enabled                   = var.custom_domain != null && trimspace(var.custom_domain) != ""
+  custom_domain_enabled                   = try(trimspace(var.custom_domain), "") != ""
 }
 
 resource "aws_cloudfront_origin_access_control" "s3" {

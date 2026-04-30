@@ -68,7 +68,7 @@ locals {
     var.spa_bucket_name,
     "${local.app_name}-spa-${var.app_env}-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
   )
-  custom_domain_enabled         = var.custom_domain != null && trimspace(var.custom_domain) != ""
+  custom_domain_enabled         = try(trimspace(var.custom_domain), "") != ""
   route53_custom_domain_enabled = local.custom_domain_enabled && lower(var.dns_provider) == "route53"
 
   lambda_zip_path = (
@@ -615,7 +615,7 @@ resource "terraform_data" "custom_domain_route53_alias_inputs" {
 
   lifecycle {
     precondition {
-      condition     = var.hosted_zone_id != null && trimspace(var.hosted_zone_id) != ""
+      condition     = try(trimspace(var.hosted_zone_id), "") != ""
       error_message = "hosted_zone_id is required when dns_provider is route53 and custom_domain is set."
     }
   }
