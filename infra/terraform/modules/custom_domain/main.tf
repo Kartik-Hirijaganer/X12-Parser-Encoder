@@ -1,5 +1,5 @@
 locals {
-  domain_enabled  = var.domain_name != null && trimspace(var.domain_name) != ""
+  domain_enabled  = try(trimspace(var.domain_name), "") != ""
   dns_provider    = lower(var.dns_provider)
   route53_enabled = local.domain_enabled && local.dns_provider == "route53"
   route53_zone_id = var.hosted_zone_id == null ? "" : trimspace(var.hosted_zone_id)
@@ -35,7 +35,7 @@ resource "terraform_data" "route53_zone_input" {
 
   lifecycle {
     precondition {
-      condition     = var.hosted_zone_id != null && trimspace(var.hosted_zone_id) != ""
+      condition     = try(trimspace(var.hosted_zone_id), "") != ""
       error_message = "hosted_zone_id is required when dns_provider is route53 and domain_name is set."
     }
   }
