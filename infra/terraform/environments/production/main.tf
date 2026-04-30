@@ -159,19 +159,29 @@ data "aws_iam_policy_document" "deploy" {
   }
 
   statement {
-    sid    = "UseTerraformState"
-    effect = "Allow"
-    actions = [
-      "s3:GetBucketLocation",
-      "s3:ListBucket",
-    ]
+    sid       = "ReadTerraformStateBucket"
+    effect    = "Allow"
+    actions   = ["s3:GetBucketLocation"]
+    resources = ["arn:aws:s3:::${local.tfstate_bucket_name}"]
+  }
+
+  statement {
+    sid       = "ListTerraformState"
+    effect    = "Allow"
+    actions   = ["s3:ListBucket"]
     resources = ["arn:aws:s3:::${local.tfstate_bucket_name}"]
 
+    # Terraform's S3 backend lists workspace prefixes during init before it
+    # reads this environment's state object.
     condition {
-      test     = "StringLike"
+      test     = "StringLikeIfExists"
       variable = "s3:prefix"
       values = [
+        "",
+        "env:/*",
+        "${var.app_env}",
         "${var.app_env}/*",
+        local.artifact_prefix,
         "${local.artifact_prefix}/*",
       ]
     }
