@@ -4,7 +4,7 @@ import type { EligibilityResult, EligibilitySummary } from '../../types/api'
 import { Card } from '../ui/Card'
 import { EmptyState } from '../ui/EmptyState'
 import { SearchIcon } from '../ui/Icons'
-import { summarizePlan } from '../../utils/formatters'
+import { planBillingNote, primaryPlanDescription, splitPlanDescription } from '../../utils/plan'
 import { DashboardFilterBar, type DashboardStatusFilter } from './DashboardFilterBar'
 import { DashboardSummary } from './DashboardSummary'
 import { DashboardTable } from './DashboardTable'
@@ -33,10 +33,18 @@ export function EligibilityDashboard({
         return true
       }
 
+      const planDescription = primaryPlanDescription(result)
+      const parsedPlan = splitPlanDescription(planDescription)
+      const billingNote = planBillingNote(result)
+
       return [
         result.memberName,
         result.memberId,
-        summarizePlan(result),
+        planDescription,
+        parsedPlan.programName,
+        parsedPlan.payerCode,
+        parsedPlan.category,
+        billingNote,
         result.statusReason,
         result.traceNumber,
       ]

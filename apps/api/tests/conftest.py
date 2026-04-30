@@ -44,6 +44,8 @@ def config_payload() -> dict[str, object]:
         "defaultServiceTypeCode": "30",
         "defaultServiceDate": "20260412",
         "maxBatchSize": 5000,
+        "isaControlNumberStart": 42,
+        "gsControlNumberStart": 42,
     }
 
 

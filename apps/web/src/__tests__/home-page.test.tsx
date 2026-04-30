@@ -22,6 +22,21 @@ describe('HomePage', () => {
     expect(screen.getByText('Configure your provider details in Settings first.')).toBeInTheDocument()
   })
 
+  it('disables generate when provider settings are complete but ICN is not set', () => {
+    window.localStorage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        ...configuredSettings,
+        lastIsaControlNumber: null,
+      }),
+    )
+
+    renderApp('/')
+
+    expect(screen.getByText('ICN not set.')).toBeInTheDocument()
+    expect(screen.getByText('Set the last submitted ICN in Settings first.')).toBeInTheDocument()
+  })
+
   it('routes a spreadsheet upload to the preview page', async () => {
     window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(configuredSettings))
     vi.stubGlobal(

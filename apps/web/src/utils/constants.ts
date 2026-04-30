@@ -56,10 +56,20 @@ function todayYyyyMmDd(): string {
 export const MAX_ISA_CONTROL_NUMBER = 999_999_999
 export const MIN_ISA_CONTROL_NUMBER = 1
 
-export function nextIsaControlNumber(last: number | null): number {
-  if (last === null || last >= MAX_ISA_CONTROL_NUMBER) return MIN_ISA_CONTROL_NUMBER
+export function nextIsaControlNumber(last: number | null): number | null {
+  if (last === null) return null
+  if (last >= MAX_ISA_CONTROL_NUMBER) return null
   return last + 1
 }
+
+export function hasUsableNextIsaControlNumber(last: number | null): boolean {
+  return nextIsaControlNumber(last) !== null
+}
+
+export function formatIsaControlNumber(value: number): string {
+  return String(value).padStart(9, '0')
+}
+
 export function highestIsa13(response: GenerateResponse): number | null {
   if (response.archiveEntries.length === 0) {
     return parseIsa13(response.controlNumbers.isa13)

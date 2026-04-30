@@ -33,15 +33,23 @@ def test_export_xlsx_returns_valid_workbook(client: TestClient) -> None:
 def test_templates_and_profiles_endpoints(client: TestClient) -> None:
     csv_template = client.get("/api/v1/templates/eligibility_template.csv")
     xlsx_template = client.get("/api/v1/templates/eligibility_template.xlsx")
+    template_spec = client.get("/api/v1/templates/template_spec.md")
     profiles = client.get("/api/v1/profiles")
     defaults = client.get("/api/v1/profiles/dc_medicaid/defaults")
     missing = client.get("/api/v1/profiles/missing/defaults")
 
     assert csv_template.status_code == 200
     assert csv_template.text.startswith("last_name,first_name")
+    assert len(csv_template.text.strip().splitlines()) == 1
     assert xlsx_template.status_code == 200
     assert xlsx_template.headers["content-type"].startswith(
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    workbook = load_workbook(BytesIO(xlsx_template.content))
+    assert workbook.active.max_row == 1
+    assert template_spec.status_code == 200
+    assert "`service_type_code` | `30` from `SubmitterConfig.default_service_type_code`" in (
+        template_spec.text
     )
     assert profiles.status_code == 200
     assert any(profile["name"] == "dc_medicaid" for profile in profiles.json()["profiles"])

@@ -5,7 +5,7 @@ import io
 import zipfile
 from datetime import datetime
 
-from app.schemas.common import PatientRecord
+from app.schemas.common import CONTROL_NUMBER_REQUIRED_MESSAGE, PatientRecord
 from app.services.generator import _build_interchanges
 from fastapi.testclient import TestClient
 from x12_edi_tools import parse
@@ -94,6 +94,34 @@ def test_generate_requires_non_empty_patients(
     response = client.post(
         "/api/v1/generate",
         json={"config": config_payload, "patients": []},
+    )
+
+    assert response.status_code == 422
+
+
+def test_generate_requires_explicit_control_number_starts(
+    client: TestClient, config_payload: dict[str, object]
+) -> None:
+    config_payload.pop("isaControlNumberStart")
+    config_payload.pop("gsControlNumberStart")
+
+    response = client.post(
+        "/api/v1/generate",
+        json={"config": config_payload, "patients": _patients(1)},
+    )
+
+    assert response.status_code == 422
+    assert CONTROL_NUMBER_REQUIRED_MESSAGE in response.text
+
+
+def test_generate_rejects_control_number_start_above_max(
+    client: TestClient, config_payload: dict[str, object]
+) -> None:
+    config_payload["isaControlNumberStart"] = 1_000_000_000
+
+    response = client.post(
+        "/api/v1/generate",
+        json={"config": config_payload, "patients": _patients(1)},
     )
 
     assert response.status_code == 422

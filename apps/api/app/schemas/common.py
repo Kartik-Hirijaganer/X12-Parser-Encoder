@@ -9,6 +9,12 @@ from x12_edi_tools.config import SubmitterConfig
 
 from app.schemas.base import ApiModel
 
+MAX_CONTROL_NUMBER = 999_999_999
+CONTROL_NUMBER_REQUIRED_MESSAGE = (
+    "ISA control number start is required. Set the last submitted ICN in Settings "
+    "so the app can send the next unique ISA13."
+)
+
 
 def _npi_is_valid(value: str) -> bool:
     if len(value) != 10 or not value.isdigit():
@@ -95,11 +101,13 @@ class ApiSubmitterConfig(ApiModel):
     isa_control_number_start: int | None = Field(
         default=None,
         ge=1,
+        le=MAX_CONTROL_NUMBER,
         validation_alias=AliasChoices("isa_control_number_start", "isaControlNumberStart"),
     )
     gs_control_number_start: int | None = Field(
         default=None,
         ge=1,
+        le=MAX_CONTROL_NUMBER,
         validation_alias=AliasChoices("gs_control_number_start", "gsControlNumberStart"),
     )
     st_control_number_start: int | None = Field(

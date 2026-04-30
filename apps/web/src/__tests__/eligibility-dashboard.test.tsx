@@ -69,6 +69,61 @@ describe('EligibilityDashboard', () => {
     expect(onExport).toHaveBeenCalledTimes(1)
   })
 
+  it('renders structured plan columns', () => {
+    render(
+      <EligibilityDashboard
+        onExport={vi.fn()}
+        results={eligibilityResultsFixture}
+        summary={eligibilitySummaryFixture}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Program' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Payer Code' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Category' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Notes' })).toBeInTheDocument()
+    expect(screen.getByText('DC MEDICAID FFS')).toBeInTheDocument()
+    expect(screen.getByText('853Q')).toBeInTheDocument()
+    expect(screen.getByText('BUY-IN')).toBeInTheDocument()
+    expect(screen.getAllByText('Coverage on file').length).toBeGreaterThan(0)
+  })
+
+  it('searches structured plan fields', () => {
+    render(
+      <EligibilityDashboard
+        onExport={vi.fn()}
+        results={eligibilityResultsFixture}
+        summary={eligibilitySummaryFixture}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText('Search'), {
+      target: { value: 'BUY-IN' },
+    })
+
+    expect(screen.getByText('SMITH, JOHN')).toBeInTheDocument()
+    expect(screen.queryByText('DOE, JANE')).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Search'), {
+      target: { value: '853Q' },
+    })
+
+    expect(screen.getByText('SMITH, JOHN')).toBeInTheDocument()
+    expect(screen.queryByText('DOE, JANE')).not.toBeInTheDocument()
+  })
+
+  it('keeps the export button reachable on narrow layouts', () => {
+    render(
+      <EligibilityDashboard
+        onExport={vi.fn()}
+        results={eligibilityResultsFixture}
+        summary={eligibilitySummaryFixture}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: /Export Excel/ })).toHaveClass('w-full', 'sm:w-auto')
+  })
+
   it('expands a row with status reason and 2120C contacts', () => {
     render(
       <EligibilityDashboard
@@ -80,7 +135,7 @@ describe('EligibilityDashboard', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Expand row' })[0])
 
-    expect(screen.getByText('Coverage on file')).toBeInTheDocument()
+    expect(screen.getAllByText('Coverage on file').length).toBeGreaterThan(0)
     expect(screen.getByText('P5 Plan Sponsor')).toBeInTheDocument()
     expect(screen.getByText('GAINWELL PLAN SPONSOR')).toBeInTheDocument()
     expect(screen.getByText('TE:8005550100')).toBeInTheDocument()
