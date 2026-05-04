@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from io import BytesIO
-from typing import Any
+from typing import Any, Protocol, TypeAlias, cast
 
 from openpyxl import Workbook  # type: ignore[import-untyped]
 from openpyxl.styles import (  # type: ignore[import-untyped]
@@ -37,6 +38,40 @@ HEADER_FILL = PatternFill(fill_type="solid", fgColor=HEADER_FILL_RGB)
 ERROR_ROW_FILL = PatternFill(fill_type="solid", fgColor=ERROR_ROW_FILL_RGB)
 SUMMARY_LABEL_FILL = PatternFill(fill_type="solid", fgColor=SUMMARY_LABEL_FILL_RGB)
 THIN_BOTTOM_BORDER = Border(bottom=Side(style="thin", color=BORDER_RGB))
+
+ExcelCell: TypeAlias = Any
+ExcelValue: TypeAlias = str | int | bool | None
+
+
+class WorkbookLike(Protocol):
+    active: object | None
+
+    def create_sheet(self, title: str) -> object: ...
+
+    def save(self, filename: BytesIO) -> None: ...
+
+
+class WorksheetLike(Protocol):
+    title: str
+    freeze_panes: str | None
+    max_row: int
+    max_column: int
+    column_dimensions: Any
+    auto_filter: Any
+
+    def append(self, iterable: Sequence[ExcelValue]) -> None: ...
+
+    def cell(self, *, row: int, column: int) -> ExcelCell: ...
+
+    def iter_rows(
+        self,
+        *,
+        min_row: int,
+        max_row: int,
+        max_col: int,
+    ) -> Iterable[tuple[ExcelCell, ...]]: ...
+
+    def __getitem__(self, key: object) -> tuple[ExcelCell, ...]: ...
 
 
 @dataclass(frozen=True)
@@ -99,6 +134,21 @@ PARSER_ISSUE_COLUMNS = [
 ]
 
 
+def _new_workbook() -> WorkbookLike:
+    return cast(WorkbookLike, Workbook())
+
+
+def _active_worksheet(workbook: WorkbookLike) -> WorksheetLike:
+    sheet = workbook.active
+    if sheet is None:
+        raise RuntimeError("openpyxl workbook has no active worksheet")
+    return cast(WorksheetLike, sheet)
+
+
+def _created_worksheet(workbook: WorkbookLike, title: str) -> WorksheetLike:
+    return cast(WorksheetLike, workbook.create_sheet(title))
+
+
 def build_workbook_bytes(
     payload: ExportWorkbookRequest,
     *,
@@ -107,10 +157,10 @@ def build_workbook_bytes(
 ) -> bytes:
     """Render parsed eligibility results into an Excel workbook."""
 
-    workbook = Workbook()
-    summary_sheet = workbook.active
+    workbook = _new_workbook()
+    summary_sheet = _active_worksheet(workbook)
     summary_sheet.title = "Summary"
-    summary_rows = [
+    summary_rows: list[tuple[str, ExcelValue]] = [
         ("Payer", payload.payer_name or ""),
         ("Total", payload.summary.total),
         ("Active", payload.summary.active),
@@ -125,7 +175,7 @@ def build_workbook_bytes(
 
     error_results = [result for result in payload.results if _is_error_row(result)]
     if error_results:
-        errors_sheet = workbook.create_sheet("Errors")
+        errors_sheet = _created_worksheet(workbook, "Errors")
         errors_sheet.append([column.header for column in ERROR_COLUMNS])
         for result in error_results:
             if result.aaa_errors:
@@ -160,7 +210,7 @@ def build_workbook_bytes(
         _style_table_header(errors_sheet, font_rgb=ERROR_TEXT_RGB)
         _apply_table_layout(errors_sheet, ERROR_COLUMNS)
 
-    results_sheet = workbook.create_sheet("Eligibility Results")
+    results_sheet = _created_worksheet(workbook, "Eligibility Results")
     results_sheet.append([column.header for column in ELIGIBILITY_RESULT_COLUMNS])
 
     for result in payload.results:
@@ -191,7 +241,7 @@ def build_workbook_bytes(
 
     issue_count = payload.parser_issue_count or len(payload.parser_issues)
     if issue_count > 0:
-        issues_sheet = workbook.create_sheet("Parser Issues")
+        issues_sheet = _created_worksheet(workbook, "Parser Issues")
         issues_sheet.append([column.header for column in PARSER_ISSUE_COLUMNS])
         for issue in payload.parser_issues:
             issues_sheet.append(
@@ -231,12 +281,12 @@ def build_validation_workbook_bytes(
 ) -> bytes:
     """Render validation results into a three-sheet Excel workbook."""
 
-    workbook = Workbook()
-    summary_sheet = workbook.active
+    workbook = _new_workbook()
+    summary_sheet = _active_worksheet(workbook)
     summary_sheet.title = "Summary"
 
     summary = payload.summary or _validation_summary_from_patients(payload)
-    summary_rows = [
+    summary_rows: list[tuple[str, ExcelValue]] = [
         ("filename", payload.filename),
         ("is_valid", payload.is_valid),
         ("error_count", payload.error_count),
@@ -250,7 +300,7 @@ def build_validation_workbook_bytes(
     for cell in summary_sheet["A"][: len(summary_rows)]:
         cell.font = Font(bold=True)
 
-    patient_sheet = workbook.create_sheet("Per-Patient")
+    patient_sheet = _created_worksheet(workbook, "Per-Patient")
     patient_headers = [
         "index",
         "transaction_control_number",
@@ -279,7 +329,7 @@ def build_validation_workbook_bytes(
             ]
         )
 
-    issues_sheet = workbook.create_sheet("Issues")
+    issues_sheet = _created_worksheet(workbook, "Issues")
     issue_headers = [
         "severity",
         "level",
@@ -395,7 +445,7 @@ def _fallback_recommended_action(result: EligibilityResult) -> str:
     return "Review the status reason and source 271 response before resubmitting."
 
 
-def _style_summary_sheet(sheet: Any, *, row_count: int) -> None:
+def _style_summary_sheet(sheet: WorksheetLike, *, row_count: int) -> None:
     sheet.column_dimensions["A"].width = 18
     sheet.column_dimensions["B"].width = 16
     for row_index in range(1, row_count + 1):
@@ -407,7 +457,7 @@ def _style_summary_sheet(sheet: Any, *, row_count: int) -> None:
         value_cell.alignment = Alignment(vertical="top")
 
 
-def _style_table_header(sheet: Any, *, font_rgb: str = HEADER_FONT_RGB) -> None:
+def _style_table_header(sheet: WorksheetLike, *, font_rgb: str = HEADER_FONT_RGB) -> None:
     for cell in sheet[1]:
         cell.font = Font(bold=True, color=font_rgb)
         cell.fill = HEADER_FILL
@@ -415,7 +465,7 @@ def _style_table_header(sheet: Any, *, font_rgb: str = HEADER_FONT_RGB) -> None:
         cell.alignment = Alignment(vertical="center")
 
 
-def _apply_table_layout(sheet: Any, column_specs: list[SheetColumn]) -> None:
+def _apply_table_layout(sheet: WorksheetLike, column_specs: list[SheetColumn]) -> None:
     for column_index, column in enumerate(column_specs, start=1):
         column_letter = get_column_letter(column_index)
         sheet.column_dimensions[column_letter].width = column.width
@@ -433,7 +483,7 @@ def _apply_table_layout(sheet: Any, column_specs: list[SheetColumn]) -> None:
                 cell.number_format = TEXT_NUMBER_FORMAT
 
 
-def _fill_row(row: Any) -> None:
+def _fill_row(row: Iterable[ExcelCell]) -> None:
     for cell in row:
         cell.fill = ERROR_ROW_FILL
 
