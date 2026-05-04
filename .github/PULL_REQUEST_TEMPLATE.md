@@ -7,7 +7,7 @@
 - [ ] `make test`
 - [ ] coverage gates run when critical paths changed
 
-## Phase 8 Checks
+## Release Hygiene
 
 - [ ] no PHI or local-only content added
 - [ ] docs updated if public behavior changed
