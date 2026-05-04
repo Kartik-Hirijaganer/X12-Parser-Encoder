@@ -2,11 +2,19 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from io import BytesIO
 from typing import Any
 
 from openpyxl import Workbook  # type: ignore[import-untyped]
-from openpyxl.styles import Font, PatternFill  # type: ignore[import-untyped]
+from openpyxl.styles import (  # type: ignore[import-untyped]
+    Alignment,
+    Border,
+    Font,
+    PatternFill,
+    Side,
+)
+from openpyxl.utils import get_column_letter  # type: ignore[import-untyped]
 
 from app.core.logging import get_logger
 from app.core.metrics import observe_record_count
@@ -16,8 +24,79 @@ from app.schemas.validate import ValidateResponse, ValidationSummary
 
 logger = get_logger(__name__)
 
+HEADER_FILL_RGB = "E8EEF7"
+HEADER_FONT_RGB = "111827"
+BORDER_RGB = "D1D5DB"
 ERROR_ROW_FILL_RGB = "FEF2F2"
+ERROR_TEXT_RGB = "991B1B"
+SUMMARY_LABEL_FILL_RGB = "F9FAFB"
+
+TEXT_NUMBER_FORMAT = "@"
+
+HEADER_FILL = PatternFill(fill_type="solid", fgColor=HEADER_FILL_RGB)
 ERROR_ROW_FILL = PatternFill(fill_type="solid", fgColor=ERROR_ROW_FILL_RGB)
+SUMMARY_LABEL_FILL = PatternFill(fill_type="solid", fgColor=SUMMARY_LABEL_FILL_RGB)
+THIN_BOTTOM_BORDER = Border(bottom=Side(style="thin", color=BORDER_RGB))
+
+
+@dataclass(frozen=True)
+class SheetColumn:
+    header: str
+    width: int
+    wrap: bool = False
+    key: str | None = None
+    text_format: bool = False
+
+
+ELIGIBILITY_RESULT_COLUMNS = [
+    SheetColumn("Member Name", 24, key="member_name"),
+    SheetColumn("Member ID", 16, key="member_id", text_format=True),
+    SheetColumn("Status", 14, key="overall_status"),
+    SheetColumn("Status Reason", 34, wrap=True, key="status_reason"),
+    SheetColumn("Program", 32, wrap=True, key="program_name"),
+    SheetColumn("Payer Code", 14, key="payer_code", text_format=True),
+    SheetColumn("Coverage Category", 18, key="category"),
+    SheetColumn("Billing Note", 30, wrap=True, key="billing_note"),
+    SheetColumn("EB01 Codes", 16, wrap=True, key="all_eb01_codes", text_format=True),
+    SheetColumn(
+        "Service Types",
+        20,
+        wrap=True,
+        key="all_eb03_service_types",
+        text_format=True,
+    ),
+    SheetColumn("Benefit Entities", 28, wrap=True, key="benefit_entity_names"),
+    SheetColumn("Contacts", 34, wrap=True, key="contact_summaries"),
+    SheetColumn("AAA Codes", 14, key="aaa_codes", text_format=True),
+    SheetColumn("ST Control #", 16, key="st_control_number", text_format=True),
+    SheetColumn("Trace #", 22, key="trace_number", text_format=True),
+]
+
+ERROR_COLUMNS = [
+    SheetColumn("Member Name", 24, key="member_name"),
+    SheetColumn("Member ID", 16, key="member_id", text_format=True),
+    SheetColumn("Error Type", 14, key="error_type"),
+    SheetColumn("AAA Code", 14, key="aaa_code", text_format=True),
+    SheetColumn("Error Summary", 34, wrap=True, key="error_summary"),
+    SheetColumn("Recommended Action", 38, wrap=True, key="recommended_action"),
+    SheetColumn("Follow-up Action", 18, key="follow_up_action_code"),
+    SheetColumn("ST Control #", 16, key="st_control_number", text_format=True),
+    SheetColumn("Trace #", 22, key="trace_number", text_format=True),
+]
+
+PARSER_ISSUE_COLUMNS = [
+    SheetColumn("Transaction #", 16, key="transaction_index"),
+    SheetColumn(
+        "Transaction Control #",
+        24,
+        key="transaction_control_number",
+        text_format=True,
+    ),
+    SheetColumn("Segment", 12, key="segment_id"),
+    SheetColumn("Location", 28, key="location"),
+    SheetColumn("Message", 48, wrap=True, key="message"),
+    SheetColumn("Severity", 12, key="severity"),
+]
 
 
 def build_workbook_bytes(
@@ -31,40 +110,23 @@ def build_workbook_bytes(
     workbook = Workbook()
     summary_sheet = workbook.active
     summary_sheet.title = "Summary"
-    summary_sheet["A1"] = "Payer"
-    summary_sheet["B1"] = payload.payer_name or ""
-    summary_sheet["A2"] = "Total"
-    summary_sheet["B2"] = payload.summary.total
-    summary_sheet["A3"] = "Active"
-    summary_sheet["B3"] = payload.summary.active
-    summary_sheet["A4"] = "Inactive"
-    summary_sheet["B4"] = payload.summary.inactive
-    summary_sheet["A5"] = "Error"
-    summary_sheet["B5"] = payload.summary.error
-    summary_sheet["A6"] = "Not Found"
-    summary_sheet["B6"] = payload.summary.not_found
-    summary_sheet["A7"] = "Unknown"
-    summary_sheet["B7"] = payload.summary.unknown
-    for cell in summary_sheet["A"][:7]:
-        cell.font = Font(bold=True)
+    summary_rows = [
+        ("Payer", payload.payer_name or ""),
+        ("Total", payload.summary.total),
+        ("Active", payload.summary.active),
+        ("Inactive", payload.summary.inactive),
+        ("Error", payload.summary.error),
+        ("Not Found", payload.summary.not_found),
+        ("Unknown", payload.summary.unknown),
+    ]
+    for row in summary_rows:
+        summary_sheet.append(row)
+    _style_summary_sheet(summary_sheet, row_count=len(summary_rows))
 
     error_results = [result for result in payload.results if _is_error_row(result)]
     if error_results:
         errors_sheet = workbook.create_sheet("Errors")
-        errors_sheet.append(
-            [
-                "member_name",
-                "member_id",
-                "error_type",
-                "aaa_code",
-                "error_summary",
-                "recommended_action",
-                "follow_up_action_code",
-                "st_control_number",
-                "trace_number",
-            ]
-        )
-        _style_header(errors_sheet)
+        errors_sheet.append([column.header for column in ERROR_COLUMNS])
         for result in error_results:
             if result.aaa_errors:
                 for aaa_error in result.aaa_errors:
@@ -95,28 +157,11 @@ def build_workbook_bytes(
                         result.trace_number,
                     ]
                 )
+        _style_table_header(errors_sheet, font_rgb=ERROR_TEXT_RGB)
+        _apply_table_layout(errors_sheet, ERROR_COLUMNS)
 
     results_sheet = workbook.create_sheet("Eligibility Results")
-    headers = [
-        "member_name",
-        "member_id",
-        "overall_status",
-        "status_reason",
-        "program_name",
-        "payer_code",
-        "category",
-        "billing_note",
-        "all_eb01_codes",
-        "all_eb03_service_types",
-        "benefit_entity_names",
-        "contact_summaries",
-        "aaa_codes",
-        "st_control_number",
-        "primary_trn",
-    ]
-    results_sheet.append(headers)
-    _style_header(results_sheet)
-    results_sheet.freeze_panes = "A2"
+    results_sheet.append([column.header for column in ELIGIBILITY_RESULT_COLUMNS])
 
     for result in payload.results:
         program_name, payer_code, category = _split_plan_description(_primary_plan_summary(result))
@@ -124,7 +169,7 @@ def build_workbook_bytes(
             [
                 result.member_name,
                 result.member_id,
-                result.overall_status,
+                _display_status(result.overall_status),
                 result.status_reason,
                 program_name,
                 payer_code,
@@ -141,22 +186,13 @@ def build_workbook_bytes(
         )
         if _is_error_row(result):
             _fill_row(results_sheet[results_sheet.max_row])
+    _style_table_header(results_sheet)
+    _apply_table_layout(results_sheet, ELIGIBILITY_RESULT_COLUMNS)
 
     issue_count = payload.parser_issue_count or len(payload.parser_issues)
     if issue_count > 0:
         issues_sheet = workbook.create_sheet("Parser Issues")
-        issues_sheet.append(
-            [
-                "transaction_index",
-                "transaction_control_number",
-                "segment_id",
-                "location",
-                "message",
-                "severity",
-            ]
-        )
-        _style_header(issues_sheet)
-        issues_sheet.freeze_panes = "A2"
+        issues_sheet.append([column.header for column in PARSER_ISSUE_COLUMNS])
         for issue in payload.parser_issues:
             issues_sheet.append(
                 [
@@ -168,6 +204,8 @@ def build_workbook_bytes(
                     issue.severity,
                 ]
             )
+        _style_table_header(issues_sheet)
+        _apply_table_layout(issues_sheet, PARSER_ISSUE_COLUMNS)
 
     output = BytesIO()
     workbook.save(output)
@@ -323,6 +361,22 @@ def _split_plan_description(description: str | None) -> tuple[str, str, str]:
     return (parts[0], parts[1], parts[2])
 
 
+def _display_status(value: str | None) -> str:
+    if value is None:
+        return ""
+    normalized = value.strip()
+    if not normalized:
+        return ""
+    status_labels = {
+        "active": "Active",
+        "inactive": "Inactive",
+        "error": "Error",
+        "not_found": "Not Found",
+        "unknown": "Unknown",
+    }
+    return status_labels.get(normalized.lower(), normalized.replace("_", " ").title())
+
+
 def _billing_note(result: EligibilityResult) -> str:
     if result.status_reason:
         return result.status_reason
@@ -341,9 +395,42 @@ def _fallback_recommended_action(result: EligibilityResult) -> str:
     return "Review the status reason and source 271 response before resubmitting."
 
 
-def _style_header(sheet: Any) -> None:
+def _style_summary_sheet(sheet: Any, *, row_count: int) -> None:
+    sheet.column_dimensions["A"].width = 18
+    sheet.column_dimensions["B"].width = 16
+    for row_index in range(1, row_count + 1):
+        label_cell = sheet.cell(row=row_index, column=1)
+        value_cell = sheet.cell(row=row_index, column=2)
+        label_cell.font = Font(bold=True, color=HEADER_FONT_RGB)
+        label_cell.fill = SUMMARY_LABEL_FILL
+        label_cell.alignment = Alignment(vertical="top")
+        value_cell.alignment = Alignment(vertical="top")
+
+
+def _style_table_header(sheet: Any, *, font_rgb: str = HEADER_FONT_RGB) -> None:
     for cell in sheet[1]:
-        cell.font = Font(bold=True)
+        cell.font = Font(bold=True, color=font_rgb)
+        cell.fill = HEADER_FILL
+        cell.border = THIN_BOTTOM_BORDER
+        cell.alignment = Alignment(vertical="center")
+
+
+def _apply_table_layout(sheet: Any, column_specs: list[SheetColumn]) -> None:
+    for column_index, column in enumerate(column_specs, start=1):
+        column_letter = get_column_letter(column_index)
+        sheet.column_dimensions[column_letter].width = column.width
+
+    sheet.freeze_panes = "A2"
+    if sheet.max_row >= 1 and sheet.max_column >= 1:
+        last_column = get_column_letter(sheet.max_column)
+        sheet.auto_filter.ref = f"A1:{last_column}{sheet.max_row}"
+
+    for row in sheet.iter_rows(min_row=2, max_row=sheet.max_row, max_col=len(column_specs)):
+        for column_index, cell in enumerate(row):
+            column = column_specs[column_index]
+            cell.alignment = Alignment(vertical="top", wrap_text=column.wrap)
+            if column.text_format:
+                cell.number_format = TEXT_NUMBER_FORMAT
 
 
 def _fill_row(row: Any) -> None:
