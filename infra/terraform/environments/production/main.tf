@@ -179,7 +179,7 @@ data "aws_iam_policy_document" "deploy" {
       values = [
         "",
         "env:/*",
-        "${var.app_env}",
+        var.app_env,
         "${var.app_env}/*",
         local.artifact_prefix,
         "${local.artifact_prefix}/*",
