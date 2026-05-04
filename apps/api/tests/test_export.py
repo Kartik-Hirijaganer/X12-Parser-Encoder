@@ -6,6 +6,45 @@ from io import BytesIO
 from fastapi.testclient import TestClient
 from openpyxl import load_workbook
 
+ELIGIBILITY_HEADERS = [
+    "Member Name",
+    "Member ID",
+    "Status",
+    "Status Reason",
+    "Program",
+    "Payer Code",
+    "Coverage Category",
+    "Billing Note",
+    "EB01 Codes",
+    "Service Types",
+    "Benefit Entities",
+    "Contacts",
+    "AAA Codes",
+    "ST Control #",
+    "Trace #",
+]
+
+ERROR_HEADERS = [
+    "Member Name",
+    "Member ID",
+    "Error Type",
+    "AAA Code",
+    "Error Summary",
+    "Recommended Action",
+    "Follow-up Action",
+    "ST Control #",
+    "Trace #",
+]
+
+PARSER_ISSUE_HEADERS = [
+    "Transaction #",
+    "Transaction Control #",
+    "Segment",
+    "Location",
+    "Message",
+    "Severity",
+]
+
 
 def test_export_xlsx_omits_parser_issues_sheet_for_clean_payload(
     client: TestClient,
@@ -16,6 +55,12 @@ def test_export_xlsx_omits_parser_issues_sheet_for_clean_payload(
     workbook = load_workbook(BytesIO(response.content))
     assert workbook.sheetnames == ["Summary", "Eligibility Results"]
     assert "Parser Issues" not in workbook.sheetnames
+    summary_sheet = workbook["Summary"]
+    assert summary_sheet.column_dimensions["A"].width == 18
+    assert summary_sheet.column_dimensions["B"].width == 16
+    assert summary_sheet["A1"].font.bold is True
+    assert summary_sheet["A1"].fill.fill_type == "solid"
+    assert summary_sheet["A1"].fill.fgColor.rgb in _rgb("F9FAFB")
 
 
 def test_export_xlsx_includes_parser_issues_sheet_when_present(
@@ -41,8 +86,13 @@ def test_export_xlsx_includes_parser_issues_sheet_when_present(
     assert workbook.sheetnames == ["Summary", "Eligibility Results", "Parser Issues"]
     assert "Parser Issues" in workbook.sheetnames
     sheet = workbook["Parser Issues"]
+    assert [cell.value for cell in sheet[1]] == PARSER_ISSUE_HEADERS
+    assert sheet.freeze_panes == "A2"
+    assert sheet.auto_filter.ref == "A1:F2"
     assert sheet["B2"].value == "0002"
+    assert sheet["B2"].number_format == "@"
     assert sheet["E2"].value == "Invalid benefit entity."
+    assert sheet["E2"].alignment.wrap_text is True
 
 
 def test_export_xlsx_adds_errors_sheet_for_not_found_even_when_error_count_is_zero(
@@ -69,6 +119,12 @@ def test_export_xlsx_adds_errors_sheet_for_not_found_even_when_error_count_is_ze
     workbook = load_workbook(BytesIO(response.content))
     assert workbook.sheetnames == ["Summary", "Errors", "Eligibility Results"]
     errors_sheet = workbook["Errors"]
+    assert [cell.value for cell in errors_sheet[1]] == ERROR_HEADERS
+    assert errors_sheet.freeze_panes == "A2"
+    assert errors_sheet.auto_filter.ref == "A1:I2"
+    assert errors_sheet["E2"].alignment.wrap_text is True
+    assert errors_sheet["F2"].alignment.wrap_text is True
+    assert errors_sheet["A2"].fill.fill_type is None
     assert errors_sheet["A2"].value == "DOE, JOHN"
     assert errors_sheet["C2"].value == "STATUS"
     assert errors_sheet["E2"].value == "Subscriber not found"
@@ -119,16 +175,7 @@ def test_export_xlsx_splits_pipe_delimited_plan_columns(client: TestClient) -> N
     assert response.status_code == 200
     workbook = load_workbook(BytesIO(response.content))
     sheet = workbook["Eligibility Results"]
-    assert [sheet.cell(row=1, column=column).value for column in range(1, 9)] == [
-        "member_name",
-        "member_id",
-        "overall_status",
-        "status_reason",
-        "program_name",
-        "payer_code",
-        "category",
-        "billing_note",
-    ]
+    assert [cell.value for cell in sheet[1]] == ELIGIBILITY_HEADERS
     assert sheet["E2"].value == "DC MEDICAID FFS"
     assert sheet["F2"].value == "853Q"
     assert sheet["G2"].value == "BUY-IN"
@@ -171,10 +218,11 @@ def test_export_xlsx_fills_error_rows_only(client: TestClient) -> None:
     assert response.status_code == 200
     workbook = load_workbook(BytesIO(response.content))
     sheet = workbook["Eligibility Results"]
-    assert sheet["A1"].fill.fill_type is None
+    assert sheet["A1"].fill.fill_type == "solid"
+    assert sheet["A1"].fill.fgColor.rgb in _rgb("E8EEF7")
     assert sheet["A2"].fill.fill_type is None
     assert sheet["A3"].fill.fill_type == "solid"
-    assert sheet["A3"].fill.fgColor.rgb in {"00FEF2F2", "FFFEF2F2"}
+    assert sheet["A3"].fill.fgColor.rgb in _rgb("FEF2F2")
 
 
 def test_export_validation_xlsx_emits_three_sheets_with_matching_rows(
@@ -190,6 +238,42 @@ def test_export_validation_xlsx_emits_three_sheets_with_matching_rows(
     assert workbook["Issues"].max_row == 2
     assert workbook["Per-Patient"]["F3"].value == "invalid"
     assert workbook["Issues"]["C2"].value == "DCM_INVALID_PAYER_NAME"
+
+
+def test_export_xlsx_applies_eligibility_table_layout_and_text_formats(
+    client: TestClient,
+) -> None:
+    payload = _export_payload()
+    result = payload["results"][0]
+    assert isinstance(result, dict)
+    result["member_id"] = "000123456"
+    result["trace_number"] = "00000000000000012345"
+    segments = result["eligibility_segments"]
+    assert isinstance(segments, list)
+    segment = segments[0]
+    assert isinstance(segment, dict)
+    segment["plan_coverage_description"] = "DC MEDICAID FFS | 853Q | BUY-IN"
+
+    response = client.post("/api/v1/export/xlsx", json=payload)
+
+    assert response.status_code == 200
+    workbook = load_workbook(BytesIO(response.content))
+    sheet = workbook["Eligibility Results"]
+    assert [cell.value for cell in sheet[1]] == ELIGIBILITY_HEADERS
+    assert sheet.freeze_panes == "A2"
+    assert sheet.auto_filter.ref == "A1:O2"
+    assert sheet.column_dimensions["D"].width == 34
+    assert sheet.column_dimensions["E"].width == 32
+    assert sheet["C2"].value == "Active"
+    assert sheet["D2"].alignment.wrap_text is True
+    assert sheet["E2"].alignment.wrap_text is True
+    assert sheet["H2"].alignment.wrap_text is True
+    for cell_ref in ("B2", "F2", "I2", "J2", "M2", "N2", "O2"):
+        assert sheet[cell_ref].number_format == "@"
+
+
+def _rgb(hex_rgb: str) -> set[str]:
+    return {hex_rgb, f"00{hex_rgb}", f"FF{hex_rgb}"}
 
 
 def _export_payload() -> dict[str, object]:
