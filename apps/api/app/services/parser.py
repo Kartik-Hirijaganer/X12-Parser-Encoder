@@ -26,6 +26,7 @@ from app.schemas.common import (
     EligibilitySummary,
 )
 from app.schemas.parse import ParseResponse, ParserIssue
+from app.services.plans import build_plan_options
 from app.services.validator import harden_x12_payload
 
 _ACTIVE_CODES = {"1", "2", "3", "4", "5"}
@@ -180,6 +181,7 @@ def _project_subscriber_loop(
         aaa_errors.extend(_map_aaa_segments(as_list(inquiry_loop.aaa_segments)))
 
     overall_status, status_reason = _overall_status(eligibility_segments, aaa_errors)
+    plan_options, default_plan_option_index = build_plan_options(eligibility_segments)
     nm1 = subscriber_loop.loop_2100c.nm1
     member_name = ", ".join(part for part in [nm1.last_name, nm1.first_name] if part)
     return EligibilityResult(
@@ -189,6 +191,8 @@ def _project_subscriber_loop(
         status_reason=status_reason,
         st_control_number=st_control_number,
         trace_number=_trace_number(subscriber_loop),
+        plan_options=plan_options,
+        default_plan_option_index=default_plan_option_index,
         eligibility_segments=eligibility_segments,
         benefit_entities=benefit_entities,
         aaa_errors=aaa_errors,

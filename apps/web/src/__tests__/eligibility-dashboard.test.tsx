@@ -88,6 +88,34 @@ describe('EligibilityDashboard', () => {
     expect(screen.getAllByText('Coverage on file').length).toBeGreaterThan(0)
   })
 
+  it('switches between agency, primary, Medicare, and all-plan columns', () => {
+    render(
+      <EligibilityDashboard
+        onExport={vi.fn()}
+        results={[multiPlanResult()]}
+        summary={{ total: 1, active: 1, inactive: 0, error: 0, notFound: 0, unknown: 0 }}
+      />,
+    )
+
+    expect(screen.getByText('DC MEDICAID FFS')).toBeInTheDocument()
+    expect(screen.getByText('853Q')).toBeInTheDocument()
+    expect(screen.queryByText('ON-FILE')).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Plan view'), {
+      target: { value: 'primary' },
+    })
+    expect(screen.getByText('MEDICARE PRIMARY')).toBeInTheDocument()
+    expect(screen.getByText('ON-FILE')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Plan view'), {
+      target: { value: 'all' },
+    })
+    expect(screen.getByText('MEDICARE PRIMARY')).toBeInTheDocument()
+    expect(screen.getByText('DC MEDICAID FFS')).toBeInTheDocument()
+    expect(screen.getByText('ON-FILE')).toBeInTheDocument()
+    expect(screen.getByText('853Q')).toBeInTheDocument()
+  })
+
   it('searches structured plan fields', () => {
     render(
       <EligibilityDashboard
@@ -142,3 +170,40 @@ describe('EligibilityDashboard', () => {
     expect(screen.getByText('EM:plans@example.test')).toBeInTheDocument()
   })
 })
+
+function multiPlanResult() {
+  return {
+    memberName: 'PLAN, SWITCH',
+    memberId: 'SUB000001',
+    overallStatus: 'active',
+    statusReason: 'Coverage on file',
+    stControlNumber: '0001',
+    traceNumber: 'TRACE000001',
+    eligibilitySegments: [
+      {
+        eligibilityCode: '1',
+        serviceTypeCode: '30',
+        serviceTypeCodes: ['30'],
+        coverageLevelCode: null,
+        insuranceTypeCode: 'MB',
+        planCoverageDescription: 'MEDICARE PRIMARY | ON-FILE | MEDICARE',
+        monetaryAmount: null,
+        quantity: null,
+        inPlanNetworkIndicator: null,
+      },
+      {
+        eligibilityCode: '1',
+        serviceTypeCode: '30',
+        serviceTypeCodes: ['30'],
+        coverageLevelCode: null,
+        insuranceTypeCode: 'MC',
+        planCoverageDescription: 'DC MEDICAID FFS | 853Q | BUY-IN',
+        monetaryAmount: null,
+        quantity: null,
+        inPlanNetworkIndicator: null,
+      },
+    ],
+    benefitEntities: [],
+    aaaErrors: [],
+  } as const
+}
