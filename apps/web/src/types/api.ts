@@ -135,6 +135,21 @@ export interface EligibilitySegment {
   inPlanNetworkIndicator: string | null
 }
 
+export type PlanView = 'agency' | 'primary' | 'medicare' | 'all'
+
+export interface PlanOption {
+  label: string
+  programName: string
+  payerCode: string
+  category: string
+  insuranceTypeCode: string | null
+  eligibilityCode: string | null
+  sourceSegmentIndex: number
+  planType: string
+  agencyPreferred: boolean
+  primaryReturned: boolean
+}
+
 export interface BenefitEntity {
   loopIdentifier: string | null
   qualifier: string | null
@@ -168,6 +183,8 @@ export interface EligibilityResult {
   statusReason: string | null
   stControlNumber: string | null
   traceNumber: string | null
+  planOptions?: PlanOption[]
+  defaultPlanOptionIndex?: number | null
   eligibilitySegments: EligibilitySegment[]
   benefitEntities: BenefitEntity[]
   aaaErrors: AAAError[]
@@ -209,6 +226,7 @@ export interface ExportWorkbookRequest {
   payerName: string | null
   summary: EligibilitySummary
   results: EligibilityResult[]
+  planView?: PlanView
   parserIssueCount: number
   parserIssues: ParserIssue[]
 }

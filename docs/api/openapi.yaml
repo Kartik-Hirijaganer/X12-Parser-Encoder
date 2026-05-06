@@ -568,6 +568,17 @@
             "title": "Benefitentities",
             "type": "array"
           },
+          "defaultPlanOptionIndex": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Defaultplanoptionindex"
+          },
           "eligibilitySegments": {
             "items": {
               "$ref": "#/components/schemas/EligibilitySegment"
@@ -593,6 +604,13 @@
           "overallStatus": {
             "title": "Overallstatus",
             "type": "string"
+          },
+          "planOptions": {
+            "items": {
+              "$ref": "#/components/schemas/PlanOption"
+            },
+            "title": "Planoptions",
+            "type": "array"
           },
           "stControlNumber": {
             "anyOf": [
@@ -808,6 +826,17 @@
               }
             ],
             "title": "Payername"
+          },
+          "planView": {
+            "default": "agency",
+            "enum": [
+              "agency",
+              "primary",
+              "medicare",
+              "all"
+            ],
+            "title": "Planview",
+            "type": "string"
           },
           "results": {
             "items": {
@@ -1414,6 +1443,77 @@
           "warningCount"
         ],
         "title": "PipelineValidationResult",
+        "type": "object"
+      },
+      "PlanOption": {
+        "additionalProperties": false,
+        "properties": {
+          "agencyPreferred": {
+            "default": false,
+            "title": "Agencypreferred",
+            "type": "boolean"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "eligibilityCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eligibilitycode"
+          },
+          "insuranceTypeCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Insurancetypecode"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "payerCode": {
+            "title": "Payercode",
+            "type": "string"
+          },
+          "planType": {
+            "default": "other",
+            "title": "Plantype",
+            "type": "string"
+          },
+          "primaryReturned": {
+            "default": false,
+            "title": "Primaryreturned",
+            "type": "boolean"
+          },
+          "programName": {
+            "title": "Programname",
+            "type": "string"
+          },
+          "sourceSegmentIndex": {
+            "title": "Sourcesegmentindex",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "label",
+          "programName",
+          "payerCode",
+          "category",
+          "sourceSegmentIndex"
+        ],
+        "title": "PlanOption",
         "type": "object"
       },
       "ProfileDefaultsResponse": {

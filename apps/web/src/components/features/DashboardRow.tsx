@@ -36,6 +36,7 @@ export function DashboardRow({ result }: { result: EligibilityResult }) {
                 <li key={`${segment.eligibilityCode}-${index}`}>
                   {segment.planCoverageDescription ?? 'Coverage returned'} • Code{' '}
                   {segment.eligibilityCode}
+                  {segment.insuranceTypeCode ? ` • EB04 ${segment.insuranceTypeCode}` : ''}
                   {formatServiceTypes(segment)}
                 </li>
               ))}

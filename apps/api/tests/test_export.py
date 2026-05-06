@@ -24,6 +24,26 @@ ELIGIBILITY_HEADERS = [
     "Trace #",
 ]
 
+ALL_PLAN_ELIGIBILITY_HEADERS = [
+    "Member Name",
+    "Member ID",
+    "Status",
+    "Status Reason",
+    "Plan View",
+    "Program",
+    "Payer Code",
+    "Coverage Category",
+    "EB04",
+    "EB01",
+    "Billing Note",
+    "Service Types",
+    "Benefit Entities",
+    "Contacts",
+    "AAA Codes",
+    "ST Control #",
+    "Trace #",
+]
+
 ERROR_HEADERS = [
     "Member Name",
     "Member ID",
@@ -182,6 +202,71 @@ def test_export_xlsx_splits_pipe_delimited_plan_columns(client: TestClient) -> N
     assert sheet["H2"].value == "Coverage on file"
 
 
+def test_export_xlsx_defaults_to_medicaid_plan_when_medicare_is_primary(
+    client: TestClient,
+) -> None:
+    payload = _export_payload()
+    result = payload["results"][0]
+    assert isinstance(result, dict)
+    result["eligibility_segments"] = _medicare_primary_medicaid_segments()
+
+    response = client.post("/api/v1/export/xlsx", json=payload)
+
+    assert response.status_code == 200
+    workbook = load_workbook(BytesIO(response.content))
+    sheet = workbook["Eligibility Results"]
+    assert sheet["E2"].value == "DC MEDICAID FFS"
+    assert sheet["F2"].value == "853Q"
+    assert sheet["G2"].value == "BUY-IN"
+
+
+def test_export_xlsx_primary_view_can_show_medicare_plan(
+    client: TestClient,
+) -> None:
+    payload = _export_payload()
+    payload["plan_view"] = "primary"
+    result = payload["results"][0]
+    assert isinstance(result, dict)
+    result["eligibility_segments"] = _medicare_primary_medicaid_segments()
+
+    response = client.post("/api/v1/export/xlsx", json=payload)
+
+    assert response.status_code == 200
+    workbook = load_workbook(BytesIO(response.content))
+    sheet = workbook["Eligibility Results"]
+    assert sheet["E2"].value == "MEDICARE PRIMARY"
+    assert sheet["F2"].value == "ON-FILE"
+    assert sheet["G2"].value == "MEDICARE"
+
+
+def test_export_xlsx_all_plans_writes_one_row_per_member_plan(
+    client: TestClient,
+) -> None:
+    payload = _export_payload()
+    payload["plan_view"] = "all"
+    result = payload["results"][0]
+    assert isinstance(result, dict)
+    result["eligibility_segments"] = _medicare_primary_medicaid_segments()
+
+    response = client.post("/api/v1/export/xlsx", json=payload)
+
+    assert response.status_code == 200
+    workbook = load_workbook(BytesIO(response.content))
+    sheet = workbook["Eligibility Results"]
+    assert [cell.value for cell in sheet[1]] == ALL_PLAN_ELIGIBILITY_HEADERS
+    assert sheet.max_row == 3
+    assert sheet["E2"].value == "Medicare"
+    assert sheet["F2"].value == "MEDICARE PRIMARY"
+    assert sheet["G2"].value == "ON-FILE"
+    assert sheet["I2"].value == "MB"
+    assert sheet["J2"].value == "1"
+    assert sheet["E3"].value == "Medicaid/Gainwell"
+    assert sheet["F3"].value == "DC MEDICAID FFS"
+    assert sheet["G3"].value == "853Q"
+    assert sheet["I3"].value == "MC"
+    assert sheet["J3"].value == "1"
+
+
 def test_export_xlsx_plain_plan_description_stays_in_program_name(
     client: TestClient,
 ) -> None:
@@ -315,6 +400,25 @@ def _export_payload() -> dict[str, object]:
             }
         ],
     }
+
+
+def _medicare_primary_medicaid_segments() -> list[dict[str, object]]:
+    return [
+        {
+            "eligibility_code": "1",
+            "service_type_code": "30",
+            "service_type_codes": ["30"],
+            "insurance_type_code": "MB",
+            "plan_coverage_description": "MEDICARE PRIMARY | ON-FILE | MEDICARE",
+        },
+        {
+            "eligibility_code": "1",
+            "service_type_code": "30",
+            "service_type_codes": ["30"],
+            "insurance_type_code": "MC",
+            "plan_coverage_description": "DC MEDICAID FFS | 853Q | BUY-IN",
+        },
+    ]
 
 
 def _validation_payload() -> dict[str, object]:
