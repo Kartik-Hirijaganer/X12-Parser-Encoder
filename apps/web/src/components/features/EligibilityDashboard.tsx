@@ -19,7 +19,7 @@ export function EligibilityDashboard({
   summary: EligibilitySummary
 }) {
   const [filter, setFilter] = useState<DashboardStatusFilter>('all')
-  const [planView, setPlanView] = useState<PlanView>('agency')
+  const [planView, setPlanView] = useState<PlanView>('all')
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
 
