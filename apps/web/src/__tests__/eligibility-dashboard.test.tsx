@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { EligibilityDashboard } from '../components/features/EligibilityDashboard'
+import type { EligibilityResult } from '../types/api'
 import { eligibilityResultsFixture, eligibilitySummaryFixture } from './fixtures'
 
 describe('EligibilityDashboard', () => {
@@ -88,7 +89,7 @@ describe('EligibilityDashboard', () => {
     expect(screen.getAllByText('Coverage on file').length).toBeGreaterThan(0)
   })
 
-  it('switches between agency, primary, Medicare, and all-plan columns', () => {
+  it('defaults to all plans and switches between agency and primary columns', () => {
     render(
       <EligibilityDashboard
         onExport={vi.fn()}
@@ -97,6 +98,15 @@ describe('EligibilityDashboard', () => {
       />,
     )
 
+    expect(screen.getByLabelText('Plan view')).toHaveValue('all')
+    expect(screen.getByText('MEDICARE PRIMARY')).toBeInTheDocument()
+    expect(screen.getByText('DC MEDICAID FFS')).toBeInTheDocument()
+    expect(screen.getByText('ON-FILE')).toBeInTheDocument()
+    expect(screen.getByText('853Q')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Plan view'), {
+      target: { value: 'agency' },
+    })
     expect(screen.getByText('DC MEDICAID FFS')).toBeInTheDocument()
     expect(screen.getByText('853Q')).toBeInTheDocument()
     expect(screen.queryByText('ON-FILE')).not.toBeInTheDocument()
@@ -106,14 +116,6 @@ describe('EligibilityDashboard', () => {
     })
     expect(screen.getByText('MEDICARE PRIMARY')).toBeInTheDocument()
     expect(screen.getByText('ON-FILE')).toBeInTheDocument()
-
-    fireEvent.change(screen.getByLabelText('Plan view'), {
-      target: { value: 'all' },
-    })
-    expect(screen.getByText('MEDICARE PRIMARY')).toBeInTheDocument()
-    expect(screen.getByText('DC MEDICAID FFS')).toBeInTheDocument()
-    expect(screen.getByText('ON-FILE')).toBeInTheDocument()
-    expect(screen.getByText('853Q')).toBeInTheDocument()
   })
 
   it('searches structured plan fields', () => {
@@ -171,7 +173,7 @@ describe('EligibilityDashboard', () => {
   })
 })
 
-function multiPlanResult() {
+function multiPlanResult(): EligibilityResult {
   return {
     memberName: 'PLAN, SWITCH',
     memberId: 'SUB000001',
@@ -205,5 +207,5 @@ function multiPlanResult() {
     ],
     benefitEntities: [],
     aaaErrors: [],
-  } as const
+  }
 }
