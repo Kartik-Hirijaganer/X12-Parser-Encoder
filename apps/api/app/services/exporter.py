@@ -19,9 +19,10 @@ from openpyxl.utils import get_column_letter  # type: ignore[import-untyped]
 
 from app.core.logging import get_logger
 from app.core.metrics import observe_record_count
-from app.schemas.common import EligibilityResult
+from app.schemas.common import EligibilityResult, PlanOption
 from app.schemas.export import ExportWorkbookRequest
 from app.schemas.validate import ValidateResponse, ValidationSummary
+from app.services.plans import PlanView, selected_plan_options, split_plan_description
 
 logger = get_logger(__name__)
 
@@ -100,6 +101,26 @@ ELIGIBILITY_RESULT_COLUMNS = [
         key="all_eb03_service_types",
         text_format=True,
     ),
+    SheetColumn("Benefit Entities", 28, wrap=True, key="benefit_entity_names"),
+    SheetColumn("Contacts", 34, wrap=True, key="contact_summaries"),
+    SheetColumn("AAA Codes", 14, key="aaa_codes", text_format=True),
+    SheetColumn("ST Control #", 16, key="st_control_number", text_format=True),
+    SheetColumn("Trace #", 22, key="trace_number", text_format=True),
+]
+
+ALL_PLAN_RESULT_COLUMNS = [
+    SheetColumn("Member Name", 24, key="member_name"),
+    SheetColumn("Member ID", 16, key="member_id", text_format=True),
+    SheetColumn("Status", 14, key="overall_status"),
+    SheetColumn("Status Reason", 34, wrap=True, key="status_reason"),
+    SheetColumn("Plan View", 22, key="plan_view"),
+    SheetColumn("Program", 32, wrap=True, key="program_name"),
+    SheetColumn("Payer Code", 14, key="payer_code", text_format=True),
+    SheetColumn("Coverage Category", 18, key="category"),
+    SheetColumn("EB04", 12, key="insurance_type_code", text_format=True),
+    SheetColumn("EB01", 12, key="eligibility_code", text_format=True),
+    SheetColumn("Billing Note", 30, wrap=True, key="billing_note"),
+    SheetColumn("Service Types", 20, wrap=True, key="all_eb03_service_types", text_format=True),
     SheetColumn("Benefit Entities", 28, wrap=True, key="benefit_entity_names"),
     SheetColumn("Contacts", 34, wrap=True, key="contact_summaries"),
     SheetColumn("AAA Codes", 14, key="aaa_codes", text_format=True),
@@ -211,33 +232,27 @@ def build_workbook_bytes(
         _apply_table_layout(errors_sheet, ERROR_COLUMNS)
 
     results_sheet = _created_worksheet(workbook, "Eligibility Results")
-    results_sheet.append([column.header for column in ELIGIBILITY_RESULT_COLUMNS])
+    result_columns = (
+        ALL_PLAN_RESULT_COLUMNS if payload.plan_view == "all" else ELIGIBILITY_RESULT_COLUMNS
+    )
+    results_sheet.append([column.header for column in result_columns])
 
     for result in payload.results:
-        program_name, payer_code, category = _split_plan_description(_primary_plan_summary(result))
-        results_sheet.append(
-            [
-                result.member_name,
-                result.member_id,
-                _display_status(result.overall_status),
-                result.status_reason,
-                program_name,
-                payer_code,
-                category,
-                _billing_note(result),
-                _all_eb01_codes(result),
-                _all_eb03_service_types(result),
-                _benefit_entity_names(result),
-                _contact_summaries(result),
-                _aaa_codes(result),
-                result.st_control_number,
-                result.trace_number,
-            ]
-        )
-        if _is_error_row(result):
-            _fill_row(results_sheet[results_sheet.max_row])
+        if payload.plan_view == "all":
+            all_options: list[PlanOption | None] = list(selected_plan_options(result, "all"))
+            if not all_options:
+                all_options = [None]
+            for plan_option in all_options:
+                _append_all_plan_result_row(results_sheet, result, plan_option)
+                if _is_error_row(result):
+                    _fill_row(results_sheet[results_sheet.max_row])
+        else:
+            selected_option = _selected_plan_option(result, payload.plan_view)
+            _append_result_row(results_sheet, result, selected_option)
+            if _is_error_row(result):
+                _fill_row(results_sheet[results_sheet.max_row])
     _style_table_header(results_sheet)
-    _apply_table_layout(results_sheet, ELIGIBILITY_RESULT_COLUMNS)
+    _apply_table_layout(results_sheet, result_columns)
 
     issue_count = payload.parser_issue_count or len(payload.parser_issues)
     if issue_count > 0:
@@ -395,20 +410,76 @@ def _validation_summary_from_patients(payload: ValidateResponse) -> ValidationSu
     )
 
 
-def _primary_plan_summary(result: EligibilityResult) -> str | None:
-    for segment in result.eligibility_segments:
-        if segment.plan_coverage_description:
-            return segment.plan_coverage_description
-    return None
+def _append_result_row(
+    sheet: WorksheetLike,
+    result: EligibilityResult,
+    option: PlanOption | None,
+) -> None:
+    sheet.append(
+        [
+            result.member_name,
+            result.member_id,
+            _display_status(result.overall_status),
+            result.status_reason,
+            option.program_name if option else "",
+            option.payer_code if option else "",
+            option.category if option else "",
+            _billing_note(result),
+            _all_eb01_codes(result),
+            _all_eb03_service_types(result),
+            _benefit_entity_names(result),
+            _contact_summaries(result),
+            _aaa_codes(result),
+            result.st_control_number,
+            result.trace_number,
+        ]
+    )
+
+
+def _append_all_plan_result_row(
+    sheet: WorksheetLike,
+    result: EligibilityResult,
+    option: PlanOption | None,
+) -> None:
+    sheet.append(
+        [
+            result.member_name,
+            result.member_id,
+            _display_status(result.overall_status),
+            result.status_reason,
+            option.label if option else "",
+            option.program_name if option else "",
+            option.payer_code if option else "",
+            option.category if option else "",
+            option.insurance_type_code if option else "",
+            option.eligibility_code if option else "",
+            _billing_note(result),
+            _all_eb03_service_types(result),
+            _benefit_entity_names(result),
+            _contact_summaries(result),
+            _aaa_codes(result),
+            result.st_control_number,
+            result.trace_number,
+        ]
+    )
+
+
+def _selected_plan_option(result: EligibilityResult, plan_view: PlanView) -> PlanOption | None:
+    options = selected_plan_options(result, plan_view)
+    return options[0] if options else None
+
+
+def _primary_plan_summary(result: EligibilityResult, plan_view: PlanView = "agency") -> str | None:
+    option = _selected_plan_option(result, plan_view)
+    if option is None:
+        return None
+    return " | ".join(
+        part for part in (option.program_name, option.payer_code, option.category) if part
+    )
 
 
 def _split_plan_description(description: str | None) -> tuple[str, str, str]:
-    if not description:
-        return ("", "", "")
-    parts = [part.strip() for part in description.split("|")]
-    if len(parts) < 3:
-        return (description, "", "")
-    return (parts[0], parts[1], parts[2])
+    return split_plan_description(description)
 
 
 def _display_status(value: str | None) -> str:

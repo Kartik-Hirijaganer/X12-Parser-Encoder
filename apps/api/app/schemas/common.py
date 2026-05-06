@@ -259,6 +259,19 @@ class AAAError(ApiModel):
     suggestion: str | None = None
 
 
+class PlanOption(ApiModel):
+    label: str
+    program_name: str
+    payer_code: str
+    category: str
+    insurance_type_code: str | None = None
+    eligibility_code: str | None = None
+    source_segment_index: int
+    plan_type: str = "other"
+    agency_preferred: bool = False
+    primary_returned: bool = False
+
+
 class EligibilitySummary(ApiModel):
     total: int
     active: int
@@ -275,6 +288,8 @@ class EligibilityResult(ApiModel):
     status_reason: str | None = None
     st_control_number: str | None = None
     trace_number: str | None = None
+    plan_options: list[PlanOption] = Field(default_factory=list)
+    default_plan_option_index: int | None = None
     eligibility_segments: list[EligibilitySegment] = Field(default_factory=list)
     benefit_entities: list[BenefitEntity] = Field(default_factory=list)
     aaa_errors: list[AAAError] = Field(default_factory=list)
