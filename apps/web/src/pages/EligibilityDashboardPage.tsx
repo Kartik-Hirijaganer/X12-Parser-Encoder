@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 
+import type { PlanView } from '../types/api'
 import type { DashboardRouteState } from '../types/workflow'
 import { exportEligibilityWorkbook, ApiError } from '../services/api'
 import { downloadBlob } from '../utils/downloads'
@@ -33,7 +34,7 @@ export function EligibilityDashboardPage() {
 
   const dashboardState = routeState
 
-  async function handleExport() {
+  async function handleExport(planView: PlanView) {
     try {
       setError(null)
       const workbook = await exportEligibilityWorkbook({
@@ -41,6 +42,7 @@ export function EligibilityDashboardPage() {
         payerName: dashboardState.response.payerName,
         summary: dashboardState.response.summary,
         results: dashboardState.response.results,
+        planView,
         parserIssueCount: dashboardState.response.parserIssueCount,
         parserIssues: dashboardState.response.parserIssues,
       })
@@ -63,7 +65,7 @@ export function EligibilityDashboardPage() {
         </Banner>
       ) : null}
       <EligibilityDashboard
-        onExport={() => void handleExport()}
+        onExport={(planView) => void handleExport(planView)}
         results={dashboardState.response.results}
         summary={dashboardState.response.summary}
       />

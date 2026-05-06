@@ -1,10 +1,10 @@
 import { useDeferredValue, useMemo, useState } from 'react'
 
-import type { EligibilityResult, EligibilitySummary } from '../../types/api'
+import type { EligibilityResult, EligibilitySummary, PlanOption, PlanView } from '../../types/api'
 import { Card } from '../ui/Card'
 import { EmptyState } from '../ui/EmptyState'
 import { SearchIcon } from '../ui/Icons'
-import { planBillingNote, primaryPlanDescription, splitPlanDescription } from '../../utils/plan'
+import { planBillingNote, planOptionsForResult, selectedPlanOptions } from '../../utils/plan'
 import { DashboardFilterBar, type DashboardStatusFilter } from './DashboardFilterBar'
 import { DashboardSummary } from './DashboardSummary'
 import { DashboardTable } from './DashboardTable'
@@ -14,11 +14,12 @@ export function EligibilityDashboard({
   results,
   summary,
 }: {
-  onExport: () => void
+  onExport: (planView: PlanView) => void
   results: EligibilityResult[]
   summary: EligibilitySummary
 }) {
   const [filter, setFilter] = useState<DashboardStatusFilter>('all')
+  const [planView, setPlanView] = useState<PlanView>('agency')
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
 
@@ -33,17 +34,15 @@ export function EligibilityDashboard({
         return true
       }
 
-      const planDescription = primaryPlanDescription(result)
-      const parsedPlan = splitPlanDescription(planDescription)
+      const selectedPlans = selectedPlanOptions(result, planView)
+      const allPlans = planOptionsForResult(result)
       const billingNote = planBillingNote(result)
 
       return [
         result.memberName,
         result.memberId,
-        planDescription,
-        parsedPlan.programName,
-        parsedPlan.payerCode,
-        parsedPlan.category,
+        ...searchablePlanFields(selectedPlans),
+        ...searchablePlanFields(allPlans),
         billingNote,
         result.statusReason,
         result.traceNumber,
@@ -51,7 +50,7 @@ export function EligibilityDashboard({
         .filter(Boolean)
         .some((value) => value?.toLowerCase().includes(normalizedSearch))
     })
-  }, [deferredSearch, filter, results])
+  }, [deferredSearch, filter, planView, results])
 
   const hasNoRows = results.length === 0
 
@@ -71,14 +70,27 @@ export function EligibilityDashboard({
         <Card className="space-y-4">
           <DashboardFilterBar
             filter={filter}
-            onExport={onExport}
+            onExport={() => onExport(planView)}
             onFilterChange={setFilter}
+            onPlanViewChange={setPlanView}
             onSearchChange={setSearch}
+            planView={planView}
             search={search}
           />
-          <DashboardTable results={filteredResults} />
+          <DashboardTable planView={planView} results={filteredResults} />
         </Card>
       )}
     </div>
   )
+}
+
+function searchablePlanFields(options: PlanOption[]): Array<string | null> {
+  return options.flatMap((option) => [
+    option.label,
+    option.programName,
+    option.payerCode,
+    option.category,
+    option.insuranceTypeCode,
+    option.eligibilityCode,
+  ])
 }
