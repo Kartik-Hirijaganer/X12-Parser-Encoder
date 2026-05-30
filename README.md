@@ -1,12 +1,95 @@
-# X12 Parser Encoder
+# Medicaid & Medicare Eligibility Automation
+
+> **Spreadsheet in, insurance answers out.** A full-stack toolkit that turns a billing team's everyday spreadsheet into validated healthcare EDI — then reads the insurer's response back as a dashboard humans can actually use.
 
 [![Coverage](docs/coverage-badge.svg)](docs/coverage.md)
 [![CI](https://github.com/Kartik-Hirijaganer/X12-Parser-Encoder/actions/workflows/ci.yml/badge.svg)](https://github.com/Kartik-Hirijaganer/X12-Parser-Encoder/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/Kartik-Hirijaganer/X12-Parser-Encoder.svg)](LICENSE)
 
-Python-native tooling for X12 270/271 eligibility workflows: a reusable parsing and validation library, a FastAPI backend, and a React workbench for spreadsheet-to-X12 and 271 dashboard workflows.
+![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-Serverless-FF9900?logo=amazonwebservices&logoColor=white)
+![Terraform](https://img.shields.io/badge/Terraform-7B42BC?logo=terraform&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 
-## Architecture At A Glance
+**[🔗 Live demo](https://d1o6w6oygv7w3m.cloudfront.net/)**  ·  **[🐍 Quick start](#-quick-start)**  ·  **[🏗️ How it works](#-how-it-works)**
+
+<p align="center">
+  <img src="docs/screenshots/demo.gif" alt="Demo: uploading an X12 271 file and getting a parsed eligibility dashboard with per-patient coverage status, payer codes, and decoded categories" width="900">
+</p>
+
+<p align="center"><sub>Drop in an X12 <strong>271</strong> response → a readable eligibility dashboard in seconds. <em>(Synthetic data.)</em></sub></p>
+
+A healthcare provider's billing team verifies, every single day, whether each patient's insurance is active before services are rendered. This project automates that loop end to end: it generates **X12 270** eligibility inquiries from a spreadsheet, validates them before they ever reach the payer, and parses the **271** responses into a dashboard that says — in plain English — who's covered, who isn't, and *why*.
+
+I built the whole thing — the Python library, the API, the web app, and the AWS infrastructure — as a side project to take a slow, error-prone manual task off my company's billing team.
+
+## 💡 Why this exists
+
+Before this tool, checking eligibility meant an analyst logging into the payer portal and typing member IDs **one at a time**. It was slow, and worse: a single fat-fingered date of birth or misspelled name would sail through quietly and turn into a **claim denial weeks later** — after the service was already delivered and the money was hard to recover.
+
+So I built something that does three things the manual process couldn't:
+
+- **Checks eligibility in bulk** — drop a whole spreadsheet, get answers for everyone at once, and catch ineligible patients *before* services are rendered.
+- **Validates before sending** — SNIP level 1–5 checks plus payer-specific rules catch malformed requests before the payer rejects them.
+- **Decodes the payer's rejection codes into plain English** — instead of a cryptic reject code, the billing team sees *"the date of birth you submitted doesn't match what DC Medicaid has on file."* Data-entry mistakes get fixed at the source instead of becoming denials.
+
+## 📈 Impact
+
+> Used by a real billing team on real claims.
+
+- **Helped lift first-pass claim acceptance to ~94%** — bulk eligibility checks meant ineligible patients were caught up front, so the team could stop or re-route services instead of billing into a denial.
+- **Cut denials caused by data mismatches** — decoding reject codes pinpointed the exact field (DOB, name, member ID) that disagreed with the payer's records, which doubled as a data-entry quality check.
+- **Turned a one-at-a-time portal task into a single upload** — minutes of manual lookups per batch became one spreadsheet drop.
+
+## ✨ What it does
+
+| | |
+|---|---|
+| 📤 **Spreadsheet → 270** | Drop a billing spreadsheet and get compliant X12 270 eligibility inquiries. Dates, names, and whitespace are auto-corrected; risky values are surfaced for confirmation rather than silently changed. |
+| ✅ **Validate before you send** | Layered SNIP 1–5 validation plus payer-profile rules (e.g. DC Medicaid) catch problems before the payer does. |
+| 📥 **271 → dashboard** | Parses the payer's 271 response into a readable eligibility dashboard — coverage status per patient, filterable and exportable to Excel. |
+| 🧩 **Decoded errors** | Translates reject / AAA / error codes into plain-language reasons and the exact mismatched field. |
+| 🔁 **Roundtrip-safe** | Parse → inspect → re-encode without corrupting control numbers or delimiters. |
+| 🔌 **Three ways to use it** | A reusable Python library, a REST API, or the web workbench — same engine underneath. |
+
+<details>
+<summary><strong>New to healthcare EDI? (30-second version)</strong></summary>
+
+<br>
+
+**X12** is the decades-old standard format US healthcare partners use to exchange claims, eligibility, and remittance data. A **270** is the question — *"is this patient covered?"* — and the **271** is the payer's answer. Both are dense, delimiter-packed text files that are painful to read by hand. This project turns the question into something you can generate from a spreadsheet, and the answer into something you can read on a screen.
+
+</details>
+
+## 📊 A closer look
+
+The parsed **271** dashboard: per-patient coverage status, payer codes, and decoded reject categories — filterable, searchable, and exportable to Excel.
+
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" alt="Eligibility Results Dashboard: parsed 271 responses showing per-patient coverage status, payer codes, and decoded reject categories" width="840">
+</p>
+
+Want to click through it yourself? Try the **[live demo](https://d1o6w6oygv7w3m.cloudfront.net/)** — synthetic data only.
+
+<!--
+  📸 Optional addition later (synthetic / masked data ONLY):
+    - docs/screenshots/preview.png — spreadsheet preview with row-level corrections/errors
+  ⚠️ Never commit a real patient name, member ID, or DOB.
+-->
+
+## 🏗️ How it works
+
+The data flow, end to end:
+
+```
+billing spreadsheet  →  X12 270 inquiry  →  payer  →  X12 271 response  →  eligibility dashboard
+                         (generated + validated)        (parsed + decoded)
+```
+
+It ships as three deliverables that share one release train — a reusable library, the API that wraps it, and the web app that consumes the API. In production it runs as a single same-origin AWS serverless stack:
 
 ```mermaid
 flowchart LR
@@ -19,74 +102,25 @@ flowchart LR
   direct["Direct Function URL request"] -. "missing origin secret: 403" .-> lambda_url
 ```
 
-## What Is X12 EDI?
+- **`packages/x12-edi-tools`** — the framework-agnostic Python library: parsing, encoding, SNIP 1–5 validation, payer profiles, and typed models.
+- **`apps/api`** — a FastAPI service that wraps the library and owns uploads, correlation IDs, origin-secret checks, and metrics.
+- **`apps/web`** — the React + Vite workbench: settings, spreadsheet preview, generation, validation, and the eligibility dashboard.
 
-X12 is the transaction format used by US healthcare trading partners to exchange structured claims, eligibility, remittance, and enrollment data. In this repository, the focus is the 270 eligibility inquiry and 271 eligibility response pair used to ask a payer for coverage status and interpret the response safely.
+More detail in [docs/architecture.md](docs/architecture.md).
 
-## Release Info
+## 🧰 Built with
 
-<!-- version-table:start -->
-| Artifact | Version |
-| --- | --- |
-| Monorepo | `1.2.0` |
-| Python package | `1.2.0` |
-| API app | `1.2.0` |
-| Web app | `1.2.0` |
-<!-- version-table:end -->
+- **Library** — Python 3.11+, Pydantic v2, fully typed (mypy `--strict`), property-based tests with Hypothesis
+- **API** — FastAPI, Mangum (Lambda ASGI), Prometheus / CloudWatch EMF metrics
+- **Web** — React, TypeScript, Vite, Tailwind v4, React Router v7
+- **Infra & CI** — AWS Lambda · CloudFront · S3 · WAF, Terraform, Docker, GitHub Actions
 
-## Releases
+## 🐍 Quick start
 
-GitHub Releases are the canonical distribution channel. A validated `v*.*.*` tag publishes the Python package, GHCR image, Lambda zip with SHA256, and Terraform modules tarball with SHA256. See [docs/runbooks/cutting-a-release.md](docs/runbooks/cutting-a-release.md) for the release checklist and rollback commands.
-
-## Project Structure
-
-<!-- autogen:project-structure:start -->
-| Path | Purpose |
-| --- | --- |
-| `packages/x12-edi-tools` | Framework-agnostic Python library for parsing, encoding, validation, payer profiles, and public types |
-| `apps/api` | FastAPI Lambda/container adapter exposing upload, generation, validation, parse, export, health, profile, and pipeline endpoints |
-| `apps/web` | React workbench for settings management, preview, generation, validation, templates, and eligibility dashboards |
-| `infra/terraform` | Terraform modules and staging/production environments for S3, CloudFront, Lambda, WAF, observability, and custom domains |
-| `docs` | Architecture, API, design, runbook, diagram, and ADR documentation |
-| `scripts` | Release, packaging, Terraform helper, Lambda pruning, and documentation regeneration scripts |
-| `.github/workflows` | CI, deploy, release, Terraform, and documentation drift workflows |
-<!-- autogen:project-structure:end -->
-
-## Installation
-
-### From Source
-
-```bash
-make install
-```
-
-This installs the local `packages/x12-edi-tools` library in editable mode along with the FastAPI app and web dependencies.
-
-To install only the local Python library from a checkout:
-
-```bash
-pip install -e "./packages/x12-edi-tools[all]"
-```
-
-### Package Name Note
-
-This repository includes its own in-tree Python package at `packages/x12-edi-tools`, imported as `x12_edi_tools` by the API app. The package name `x12-edi-tools` is also used by an unrelated third-party project on PyPI, so do not use `pip install x12-edi-tools` when setting up this repository unless the package publishing strategy has been updated.
-
-The Docker images and local `make install` target install the library from this repository path, not from PyPI.
-
-Optional local extras use the same path-based install form:
-
-```bash
-pip install -e "./packages/x12-edi-tools[excel]"
-pip install -e "./packages/x12-edi-tools[pandas]"
-pip install -e "./packages/x12-edi-tools[all]"
-```
-
-## Quick Start
+**As a Python library:**
 
 ```python
 from pathlib import Path
-
 from x12_edi_tools import encode, parse, validate
 
 raw_x12 = Path("request.270").read_text(encoding="utf-8")
@@ -100,7 +134,53 @@ roundtripped = encode(interchange)
 Path("roundtrip.270").write_text(roundtripped, encoding="utf-8")
 ```
 
-## API Reference Summary
+**As a full stack, locally:**
+
+```bash
+make install                                   # bootstrap library + API + web
+cd apps/api && uvicorn app.main:app --reload   # API on :8000
+cd apps/web && npm run dev                      # web on :5173
+```
+
+Or run the whole thing in a container:
+
+```bash
+docker build -f docker/Dockerfile -t x12-parser-encoder .
+docker run --rm -p 8000:8000 x12-parser-encoder
+```
+
+## 🔬 Engineering highlights
+
+A few things I'm proud of under the hood:
+
+- **Monorepo, three deliverables, one release train** — library, API, and web are versioned together and released through a single automated pipeline.
+- **Quality gates that actually gate** — `mypy --strict`, plus CI-enforced coverage floors (95% library / 85% API).
+- **Property-based testing** — Hypothesis fuzzes the parser ↔ encoder roundtrip so malformed-but-legal X12 doesn't slip through.
+- **HIPAA-conscious by design** — stateless, in-memory processing; no database or server-side file retention; correlation IDs and sanitized metadata in logs, never PHI.
+- **Production serverless** — same-origin CloudFront, origin-secret-gated Lambda Function URL, WAF, and observability via CloudWatch EMF metrics.
+- **Docs that can't silently rot** — architecture diagrams, API tables, and an ERD are generated and drift-checked in CI, alongside ADRs for the load-bearing decisions.
+
+## 📂 Project internals & reference
+
+<details>
+<summary><strong>Project structure</strong></summary>
+
+<!-- autogen:project-structure:start -->
+| Path | Purpose |
+| --- | --- |
+| `packages/x12-edi-tools` | Framework-agnostic Python library for parsing, encoding, validation, payer profiles, and public types |
+| `apps/api` | FastAPI Lambda/container adapter exposing upload, generation, validation, parse, export, health, profile, and pipeline endpoints |
+| `apps/web` | React workbench for settings management, preview, generation, validation, templates, and eligibility dashboards |
+| `infra/terraform` | Terraform modules and staging/production environments for S3, CloudFront, Lambda, WAF, observability, and custom domains |
+| `docs` | Architecture, API, design, runbook, diagram, and ADR documentation |
+| `scripts` | Release, packaging, Terraform helper, Lambda pruning, and documentation regeneration scripts |
+| `.github/workflows` | CI, deploy, release, Terraform, and documentation drift workflows |
+<!-- autogen:project-structure:end -->
+
+</details>
+
+<details>
+<summary><strong>API reference</strong></summary>
 
 <!-- autogen:api-endpoints:start -->
 | Endpoint | Purpose |
@@ -119,103 +199,71 @@ Path("roundtrip.270").write_text(roundtripped, encoding="utf-8")
 | `GET /healthz` | Healthcheck |
 <!-- autogen:api-endpoints:end -->
 
-## Web Application Usage
+Web app flow: configure submitter/payer defaults on **Settings**, upload a spreadsheet to preview row-level corrections before generation (or upload raw X12 for the validate/parse flows), then download generated X12, ZIP batches, or Excel exports from the result screens. Only non-PHI configuration is stored in the browser (`localStorage` key `x12_submitter_config`).
 
-1. Open the home page and choose generate, validate, or parse.
-2. Configure submitter and payer defaults on the Settings page. Only configuration lives in `localStorage`.
-3. Upload a spreadsheet to preview corrections and row-level errors before generation, or upload raw X12 for validate and parse flows.
-4. Download generated X12, ZIP batches, or Excel eligibility exports from the result screens.
+</details>
 
-## Templates
+<details>
+<summary><strong>Versions & releases</strong></summary>
 
-- `apps/api/templates/eligibility_template.csv`
-- `apps/api/templates/eligibility_template.xlsx`
-- `apps/api/templates/template_spec.md`
+<!-- version-table:start -->
+| Artifact | Version |
+| --- | --- |
+| Monorepo | `1.2.0` |
+| Python package | `1.2.0` |
+| API app | `1.2.0` |
+| Web app | `1.2.0` |
+<!-- version-table:end -->
 
-The template spec defines canonical column names, required inputs, and the normalization rules applied by the API before X12 generation.
+GitHub Releases are the canonical distribution channel. A validated `v*.*.*` tag publishes the Python package, GHCR image, Lambda zip (with SHA256), and Terraform modules tarball. See [docs/runbooks/cutting-a-release.md](docs/runbooks/cutting-a-release.md) for the release checklist and rollback commands.
 
-## Development Setup
+> **Note on the package name:** this repo ships its own in-tree `packages/x12-edi-tools` (imported as `x12_edi_tools`). The name `x12-edi-tools` is also used by an unrelated PyPI project, so install from this checkout (`pip install -e "./packages/x12-edi-tools[all]"`), not from PyPI.
 
-```bash
-make install
-make lint
-make typecheck
-make test
-make coverage
-```
+</details>
 
-Useful maintenance commands:
-
-- `python scripts/check_version_sync.py`
-- `python scripts/check_no_proprietary_content.py`
-- `python scripts/bump_version.py patch`
-- `make docs-regenerate`
-- `make docs-check`
-
-## Deployment Guide
-
-### Docker
+<details>
+<summary><strong>Development & deployment</strong></summary>
 
 ```bash
-docker build -f docker/Dockerfile -t x12-parser-encoder .
-docker run --rm -p 8000:8000 x12-parser-encoder
+make install      # bootstrap venv + library + API + web deps
+make lint         # ruff (lib & api) + eslint (web)
+make typecheck    # mypy --strict (lib & api) + tsc --noEmit (web)
+make test         # lib + api + web
+make coverage     # enforces coverage floors
 ```
 
-### Web + API
+**Deploy to your own AWS account:**
 
-- AWS deploys use the Terraform serverless stack:
-  - React frontend: private S3 bucket, served by CloudFront.
-  - FastAPI backend: Python 3.12 Lambda Function URL behind the same CloudFront distribution.
-- Local deploys require an explicit environment:
+1. Fork the repo and run `make install` then `make test`.
+2. Bootstrap Terraform state once: `bash scripts/bootstrap_tf_backend.sh`.
+3. Copy `infra/terraform/environments/staging/terraform.tfvars.example` → `terraform.tfvars` and set account-specific values.
+4. Add repository variable `AWS_ACCOUNT_ID` (plus optional `AWS_REGION`, `APP_NAME`, `LAMBDA_ARCHITECTURE`) and one `TERRAFORM_TFVARS` environment secret per environment.
+5. Deploy with `make deploy ENV=staging`, or run the `Deploy` GitHub Actions workflow.
 
-```bash
-make deploy ENV=staging
-make deploy ENV=production
-```
+`Deploy` (updates the running app) and `Release` (publishes versioned artifacts) are intentionally separate workflows. Full checklist in [docs/runbooks/open-source-fork.md](docs/runbooks/open-source-fork.md).
 
-- GitHub Actions deploys use the `Deploy` workflow:
-  - pushes to `main` deploy to `staging` when deploy-affecting paths change;
-  - production is manual only through `workflow_dispatch` with `environment=production`.
-- Required GitHub Actions configuration:
-  - repository variable `AWS_ACCOUNT_ID`;
-  - optional repository variables `AWS_REGION`, `APP_NAME`, and `LAMBDA_ARCHITECTURE`;
-  - environment secret `TERRAFORM_TFVARS` for each GitHub environment (`staging`, `production`), containing the matching `infra/terraform/environments/<env>/terraform.tfvars` content.
-`Deploy` and `Release` are intentionally separate workflows. `Deploy` updates the running AWS
-application for users. `Release` runs only for `v*.*.*` tags and publishes distributable artifacts
-such as the Python package and GitHub release notes; it does not deploy the hosted AWS app.
+</details>
 
-### Fork And Deploy To Your Own AWS Account
+<details>
+<summary><strong>PHI handling</strong></summary>
 
-1. Fork the repository and create a working branch.
-2. Run `make install`, then `make test` locally.
-3. Bootstrap Terraform state once:
-
-```bash
-bash scripts/bootstrap_tf_backend.sh
-```
-
-4. Copy the matching example tfvars file and set account-specific values:
-
-```bash
-cp infra/terraform/environments/staging/terraform.tfvars.example infra/terraform/environments/staging/terraform.tfvars
-```
-
-5. Add repository variable `AWS_ACCOUNT_ID`, optional variables `AWS_REGION`, `APP_NAME`, and `LAMBDA_ARCHITECTURE`, and one `TERRAFORM_TFVARS` environment secret per deploy environment.
-6. Deploy from your machine with `make deploy ENV=staging`, or run the `Deploy` workflow manually with `workflow_dispatch`.
-7. Read [docs/runbooks/open-source-fork.md](docs/runbooks/open-source-fork.md) for the command-forward checklist.
-
-## PHI Handling Notes
-
-- No real patient data belongs in tests, fixtures, or logs.
-- Uploaded files are processed in memory and not persisted to disk.
+- No real patient data in tests, fixtures, logs, or screenshots.
+- Uploaded files are processed in memory and never persisted to disk.
 - Structured logs carry correlation IDs, endpoint names, status codes, durations, and sanitized upload metadata only.
-- Browser storage is limited to submitter and payer configuration; workflow data stays in memory.
-- See [SECURITY.md](SECURITY.md) for the retention policy and production readiness gate.
+- Browser storage is limited to non-PHI submitter/payer configuration.
 
-## Contributing
+See [SECURITY.md](SECURITY.md) for the retention policy and production readiness gate.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for branch workflow, quality gates, documentation rules, and release expectations.
+</details>
 
-## License
+## 🤝 Contributing
 
-MIT. See [LICENSE](LICENSE).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch workflow, quality gates, documentation rules, and release expectations.
+
+## 📄 License
+
+MIT — see [LICENSE](LICENSE).
+
+---
+
+<sub>Built end to end (library · API · web · infra) as a side project to make a healthcare billing team's day a little less painful.</sub>
