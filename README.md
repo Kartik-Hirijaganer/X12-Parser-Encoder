@@ -14,7 +14,7 @@
 ![Terraform](https://img.shields.io/badge/Terraform-7B42BC?logo=terraform&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 
-**[🔗 Live demo](https://d1o6w6oygv7w3m.cloudfront.net/)**  ·  **[🐍 Quick start](#-quick-start)**  ·  **[🏗️ How it works](#-how-it-works)**
+**[Live demo](https://d1o6w6oygv7w3m.cloudfront.net/)**  ·  **[Quick start](#quick-start)**  ·  **[How it works](#how-it-works)**
 
 <p align="center">
   <img src="docs/screenshots/demo.gif" alt="Demo: uploading an X12 271 file and getting a parsed eligibility dashboard with per-patient coverage status, payer codes, and decoded categories" width="900">
@@ -26,7 +26,7 @@ A healthcare provider's billing team verifies, every single day, whether each pa
 
 I built the whole thing — the Python library, the API, the web app, and the AWS infrastructure — as a side project to take a slow, error-prone manual task off my company's billing team.
 
-## 💡 Why this exists
+## Why this exists
 
 Before this tool, checking eligibility meant an analyst logging into the payer portal and typing member IDs **one at a time**. It was slow, and worse: a single fat-fingered date of birth or misspelled name would sail through quietly and turn into a **claim denial weeks later** — after the service was already delivered and the money was hard to recover.
 
@@ -36,7 +36,7 @@ So I built something that does three things the manual process couldn't:
 - **Validates before sending** — SNIP level 1–5 checks plus payer-specific rules catch malformed requests before the payer rejects them.
 - **Decodes the payer's rejection codes into plain English** — instead of a cryptic reject code, the billing team sees *"the date of birth you submitted doesn't match what DC Medicaid has on file."* Data-entry mistakes get fixed at the source instead of becoming denials.
 
-## 📈 Impact
+## Impact
 
 > Used by a real billing team on real claims.
 
@@ -44,16 +44,16 @@ So I built something that does three things the manual process couldn't:
 - **Cut denials caused by data mismatches** — decoding reject codes pinpointed the exact field (DOB, name, member ID) that disagreed with the payer's records, which doubled as a data-entry quality check.
 - **Turned a one-at-a-time portal task into a single upload** — minutes of manual lookups per batch became one spreadsheet drop.
 
-## ✨ What it does
+## What it does
 
 | | |
 |---|---|
-| 📤 **Spreadsheet → 270** | Drop a billing spreadsheet and get compliant X12 270 eligibility inquiries. Dates, names, and whitespace are auto-corrected; risky values are surfaced for confirmation rather than silently changed. |
-| ✅ **Validate before you send** | Layered SNIP 1–5 validation plus payer-profile rules (e.g. DC Medicaid) catch problems before the payer does. |
-| 📥 **271 → dashboard** | Parses the payer's 271 response into a readable eligibility dashboard — coverage status per patient, filterable and exportable to Excel. |
-| 🧩 **Decoded errors** | Translates reject / AAA / error codes into plain-language reasons and the exact mismatched field. |
-| 🔁 **Roundtrip-safe** | Parse → inspect → re-encode without corrupting control numbers or delimiters. |
-| 🔌 **Three ways to use it** | A reusable Python library, a REST API, or the web workbench — same engine underneath. |
+| **Spreadsheet → 270** | Drop a billing spreadsheet and get compliant X12 270 eligibility inquiries. Dates, names, and whitespace are auto-corrected; risky values are surfaced for confirmation rather than silently changed. |
+| **Validate before you send** | Layered SNIP 1–5 validation plus payer-profile rules (e.g. DC Medicaid) catch problems before the payer does. |
+| **271 → dashboard** | Parses the payer's 271 response into a readable eligibility dashboard — coverage status per patient, filterable and exportable to Excel. |
+| **Decoded errors** | Translates reject / AAA / error codes into plain-language reasons and the exact mismatched field. |
+| **Roundtrip-safe** | Parse → inspect → re-encode without corrupting control numbers or delimiters. |
+| **Three ways to use it** | A reusable Python library, a REST API, or the web workbench — same engine underneath. |
 
 <details>
 <summary><strong>New to healthcare EDI? (30-second version)</strong></summary>
@@ -64,7 +64,7 @@ So I built something that does three things the manual process couldn't:
 
 </details>
 
-## 📊 A closer look
+## A closer look
 
 The parsed **271** dashboard: per-patient coverage status, payer codes, and decoded reject categories — filterable, searchable, and exportable to Excel.
 
@@ -75,12 +75,12 @@ The parsed **271** dashboard: per-patient coverage status, payer codes, and deco
 Want to click through it yourself? Try the **[live demo](https://d1o6w6oygv7w3m.cloudfront.net/)** — synthetic data only.
 
 <!--
-  📸 Optional addition later (synthetic / masked data ONLY):
+  Optional addition later (synthetic / masked data ONLY):
     - docs/screenshots/preview.png — spreadsheet preview with row-level corrections/errors
-  ⚠️ Never commit a real patient name, member ID, or DOB.
+  Never commit a real patient name, member ID, or DOB.
 -->
 
-## 🏗️ How it works
+## How it works
 
 The data flow, end to end:
 
@@ -108,14 +108,14 @@ flowchart LR
 
 More detail in [docs/architecture.md](docs/architecture.md).
 
-## 🧰 Built with
+## Built with
 
 - **Library** — Python 3.11+, Pydantic v2, fully typed (mypy `--strict`), property-based tests with Hypothesis
 - **API** — FastAPI, Mangum (Lambda ASGI), Prometheus / CloudWatch EMF metrics
 - **Web** — React, TypeScript, Vite, Tailwind v4, React Router v7
 - **Infra & CI** — AWS Lambda · CloudFront · S3 · WAF, Terraform, Docker, GitHub Actions
 
-## 🐍 Quick start
+## Quick start
 
 **As a Python library:**
 
@@ -149,7 +149,7 @@ docker build -f docker/Dockerfile -t x12-parser-encoder .
 docker run --rm -p 8000:8000 x12-parser-encoder
 ```
 
-## 🔬 Engineering highlights
+## Engineering highlights
 
 A few things I'm proud of under the hood:
 
@@ -160,7 +160,7 @@ A few things I'm proud of under the hood:
 - **Production serverless** — same-origin CloudFront, origin-secret-gated Lambda Function URL, WAF, and observability via CloudWatch EMF metrics.
 - **Docs that can't silently rot** — architecture diagrams, API tables, and an ERD are generated and drift-checked in CI, alongside ADRs for the load-bearing decisions.
 
-## 📂 Project internals & reference
+## Project internals & reference
 
 <details>
 <summary><strong>Project structure</strong></summary>
@@ -256,11 +256,11 @@ See [SECURITY.md](SECURITY.md) for the retention policy and production readiness
 
 </details>
 
-## 🤝 Contributing
+## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch workflow, quality gates, documentation rules, and release expectations.
 
-## 📄 License
+## License
 
 MIT — see [LICENSE](LICENSE).
 
