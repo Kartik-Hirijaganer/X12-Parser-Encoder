@@ -14,7 +14,7 @@ PROJECT_STRUCTURE: Mapping[str, str] = {
     "packages/x12-edi-tools": "Framework-agnostic Python library for parsing, encoding, validation, payer profiles, and public types",
     "apps/api": "FastAPI Lambda/container adapter exposing upload, generation, validation, parse, export, health, profile, and pipeline endpoints",
     "apps/web": "React workbench for settings management, preview, generation, validation, templates, and eligibility dashboards",
-    "infra/terraform": "Terraform modules and staging/production environments for S3, CloudFront, Lambda, WAF, observability, and custom domains",
+    "infra/terraform": "Terraform modules plus production and local example roots for S3, CloudFront, Lambda, WAF, observability, and custom domains",
     "docs": "Architecture, API, design, runbook, diagram, and ADR documentation",
     "scripts": "Release, packaging, Terraform helper, Lambda pruning, and documentation regeneration scripts",
     ".github/workflows": "CI, deploy, release, Terraform, and documentation drift workflows",

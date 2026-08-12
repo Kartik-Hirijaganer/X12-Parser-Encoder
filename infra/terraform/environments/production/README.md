@@ -11,10 +11,10 @@ cp ../../backend.hcl.example backend.hcl
 
 Set `backend.hcl` key to `production/terraform.tfstate`, replace the state bucket placeholders, and replace `origin_verify_header_value` in `terraform.tfvars`.
 
-Production deploys are manual only through the GitHub `Deploy` workflow with `environment=production`, or locally with:
+Production deploys are manual only through the protected GitHub `Deploy` workflow, or locally with an explicit AWS profile:
 
 ```bash
-make deploy ENV=production
+make deploy AWS_PROFILE=<explicit-profile>
 ```
 
 Production defaults:
@@ -22,6 +22,7 @@ Production defaults:
 - `enable_snapstart = true`
 - `reserved_concurrency = 50`
 - `enable_waf = true`
+- `LAMBDA_VERSION_KEEP_COUNT = 1` in deployment automation
 - WAF rate limit: 2,000 requests per 5 minutes per source IP
 - No WAF geo filter unless `waf_geo_allow_countries` is set
 

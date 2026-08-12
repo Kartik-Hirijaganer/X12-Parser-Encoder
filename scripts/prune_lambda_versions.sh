@@ -8,7 +8,7 @@ Usage: scripts/prune_lambda_versions.sh <function-name>
 Keeps the newest published Lambda versions and deletes older unaliased versions.
 
 Environment:
-  LAMBDA_VERSION_KEEP_COUNT  Number of published versions to keep. Defaults to 3.
+  LAMBDA_VERSION_KEEP_COUNT  Number of published versions to keep. Defaults to 1.
   AWS_REGION                 AWS region passed to the AWS CLI when set.
   AWS                        AWS CLI binary. Defaults to aws.
 USAGE
@@ -26,25 +26,27 @@ if [[ -z "$function_name" ]]; then
 fi
 
 aws_cli="${AWS:-aws}"
-keep_count="${LAMBDA_VERSION_KEEP_COUNT:-3}"
+keep_count="${LAMBDA_VERSION_KEEP_COUNT:-1}"
 
 if ! [[ "$keep_count" =~ ^[0-9]+$ ]] || [[ "$keep_count" -lt 1 ]]; then
   echo "LAMBDA_VERSION_KEEP_COUNT must be a positive integer." >&2
   exit 2
 fi
 
-region_args=()
-if [[ -n "${AWS_REGION:-}" ]]; then
-  region_args=(--region "$AWS_REGION")
-fi
+call_aws() {
+  if [[ -n "${AWS_REGION:-}" ]]; then
+    "$aws_cli" "$@" --region "$AWS_REGION"
+  else
+    "$aws_cli" "$@"
+  fi
+}
 
 published_versions=()
 while IFS= read -r version; do
   published_versions+=("$version")
 done < <(
-  "$aws_cli" lambda list-versions-by-function \
+  call_aws lambda list-versions-by-function \
     --function-name "$function_name" \
-    "${region_args[@]}" \
     --query 'Versions[?Version!=`$LATEST`].Version' \
     --output text |
     tr '\t' '\n' |
@@ -61,9 +63,8 @@ aliased_versions=()
 while IFS= read -r version; do
   aliased_versions+=("$version")
 done < <(
-  "$aws_cli" lambda list-aliases \
+  call_aws lambda list-aliases \
     --function-name "$function_name" \
-    "${region_args[@]}" \
     --query 'Aliases[].FunctionVersion' \
     --output text |
     tr '\t' '\n' |
@@ -93,10 +94,9 @@ for version in "${published_versions[@]}"; do
   fi
 
   echo "Deleting Lambda version $version for $function_name."
-  "$aws_cli" lambda delete-function \
+  call_aws lambda delete-function \
     --function-name "$function_name" \
-    --qualifier "$version" \
-    "${region_args[@]}"
+    --qualifier "$version"
   deleted_count=$((deleted_count + 1))
 done
 

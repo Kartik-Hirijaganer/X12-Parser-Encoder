@@ -145,6 +145,9 @@ jobs:
           cd environments/example
           terraform init -backend=false
           terraform validate
+      - name: Lambda version pruning safety test
+        run: bash scripts/tests/test_prune_lambda_versions.sh
+        working-directory: .
       - name: TFLint
         run: |
           tflint --init --config "$GITHUB_WORKSPACE/infra/terraform/.tflint.hcl"

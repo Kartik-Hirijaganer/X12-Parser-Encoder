@@ -171,7 +171,7 @@ A few things I'm proud of under the hood:
 | `packages/x12-edi-tools` | Framework-agnostic Python library for parsing, encoding, validation, payer profiles, and public types |
 | `apps/api` | FastAPI Lambda/container adapter exposing upload, generation, validation, parse, export, health, profile, and pipeline endpoints |
 | `apps/web` | React workbench for settings management, preview, generation, validation, templates, and eligibility dashboards |
-| `infra/terraform` | Terraform modules and staging/production environments for S3, CloudFront, Lambda, WAF, observability, and custom domains |
+| `infra/terraform` | Terraform modules plus production and local example roots for S3, CloudFront, Lambda, WAF, observability, and custom domains |
 | `docs` | Architecture, API, design, runbook, diagram, and ADR documentation |
 | `scripts` | Release, packaging, Terraform helper, Lambda pruning, and documentation regeneration scripts |
 | `.github/workflows` | CI, deploy, release, Terraform, and documentation drift workflows |
@@ -236,9 +236,11 @@ make coverage     # enforces coverage floors
 
 1. Fork the repo and run `make install` then `make test`.
 2. Bootstrap Terraform state once: `bash scripts/bootstrap_tf_backend.sh`.
-3. Copy `infra/terraform/environments/staging/terraform.tfvars.example` → `terraform.tfvars` and set account-specific values.
-4. Add repository variable `AWS_ACCOUNT_ID` (plus optional `AWS_REGION`, `APP_NAME`, `LAMBDA_ARCHITECTURE`) and one `TERRAFORM_TFVARS` environment secret per environment.
-5. Deploy with `make deploy ENV=staging`, or run the `Deploy` GitHub Actions workflow.
+3. Copy `infra/terraform/environments/production/terraform.tfvars.example` → `terraform.tfvars` and set account-specific values.
+4. Add repository variables `AWS_ACCOUNT_ID=970385384114` and `LAMBDA_VERSION_KEEP_COUNT=1` (plus optional `AWS_REGION`, `APP_NAME`, `LAMBDA_ARCHITECTURE`) and the protected `production` environment secret `TERRAFORM_TFVARS`.
+5. Deploy manually with `make deploy AWS_PROFILE=<explicit-profile>` or dispatch the protected `Deploy` GitHub Actions workflow.
+
+Only production is deployed. Local development and fork validation use `infra/terraform/environments/example`; they do not require a persistent AWS development environment.
 
 `Deploy` (updates the running app) and `Release` (publishes versioned artifacts) are intentionally separate workflows. Full checklist in [docs/runbooks/open-source-fork.md](docs/runbooks/open-source-fork.md).
 
