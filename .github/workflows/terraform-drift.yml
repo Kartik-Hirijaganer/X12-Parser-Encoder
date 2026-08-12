@@ -13,15 +13,9 @@ permissions:
 jobs:
   drift:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        environment:
-          - staging
-          - production
-    environment: ${{ matrix.environment }}
+    environment: production
     env:
-      DEPLOY_ENV: ${{ matrix.environment }}
+      DEPLOY_ENV: production
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-2' }}
       AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
       APP_NAME: ${{ vars.APP_NAME || 'x12-parser-encoder' }}
@@ -32,8 +26,8 @@ jobs:
         env:
           TERRAFORM_TFVARS: ${{ secrets.TERRAFORM_TFVARS }}
         run: |
-          if [[ -z "${AWS_ACCOUNT_ID}" ]]; then
-            echo "AWS_ACCOUNT_ID repository variable is required." >&2
+          if [[ "${AWS_ACCOUNT_ID}" != "970385384114" ]]; then
+            echo "AWS_ACCOUNT_ID must be the canonical account 970385384114." >&2
             exit 1
           fi
           if [[ -z "${TERRAFORM_TFVARS}" ]]; then
@@ -50,6 +44,14 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/${{ env.APP_NAME }}-deploy-${{ env.DEPLOY_ENV }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify canonical AWS account
+        run: |
+          account_id="$(aws sts get-caller-identity --query Account --output text)"
+          test "${account_id}" = "970385384114" || {
+            echo "Refusing drift check in AWS account ${account_id}." >&2
+            exit 1
+          }
 
       - name: Prepare Terraform inputs
         env:
@@ -112,7 +114,7 @@ jobs:
         if: ${{ steps.plan.outputs.exit_code == '2' }}
         uses: actions/github-script@v7
         env:
-          DEPLOY_ENV: ${{ matrix.environment }}
+          DEPLOY_ENV: production
         with:
           script: |
             const fs = require('fs');

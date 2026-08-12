@@ -14,11 +14,11 @@ make test
 bash scripts/bootstrap_tf_backend.sh
 ```
 
-## Configure Staging
+## Configure Production
 
 ```bash
-cp infra/terraform/environments/staging/terraform.tfvars.example infra/terraform/environments/staging/terraform.tfvars
-${EDITOR:-vi} infra/terraform/environments/staging/terraform.tfvars
+cp infra/terraform/environments/production/terraform.tfvars.example infra/terraform/environments/production/terraform.tfvars
+${EDITOR:-vi} infra/terraform/environments/production/terraform.tfvars
 ```
 
 Set app name, region, alerting, WAF, and origin-secret values for your account. Keep real PHI out of tfvars files committed to Git.
@@ -26,21 +26,22 @@ Set app name, region, alerting, WAF, and origin-secret values for your account. 
 ## Deploy
 
 ```bash
-make deploy ENV=staging
+make deploy AWS_PROFILE=<explicit-profile>
 ```
 
 For GitHub Actions, add:
 
-- Repository variable `AWS_ACCOUNT_ID`.
+- Repository variable `AWS_ACCOUNT_ID=970385384114`.
+- Repository variable `LAMBDA_VERSION_KEEP_COUNT=1`.
 - Optional repository variables `AWS_REGION`, `APP_NAME`, `LAMBDA_ARCHITECTURE`.
-- Environment secret `TERRAFORM_TFVARS` for each deploy environment.
+- Protected `production` environment secret `TERRAFORM_TFVARS`.
 
 Run the `Deploy` workflow with `workflow_dispatch` for production.
 
 ## Verify
 
 ```bash
-cd infra/terraform/environments/staging
+cd infra/terraform/environments/production
 export BASE_URL="$(terraform output -raw cloudfront_url)"
 curl -fsS "${BASE_URL}/api/v1/health"
 ```

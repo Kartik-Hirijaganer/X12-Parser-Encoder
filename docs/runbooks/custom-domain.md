@@ -8,7 +8,7 @@ Use this when mapping an operator-owned hostname to the existing CloudFront dist
 
 - The Route 53 hosted zone already exists in the AWS account.
 - The hostname is dedicated to this app, for example `x12.example.com`.
-- You have decided whether this is `staging` or `production`.
+- The production Terraform backend and explicit AWS profile are configured.
 
 ## Configure Terraform
 

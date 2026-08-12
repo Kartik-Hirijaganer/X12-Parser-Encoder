@@ -2,7 +2,7 @@ app_env    = "production"
 aws_region = "us-east-2"
 
 github_repository           = "Kartik-Hirijaganer/X12-Parser-Encoder"
-manage_github_oidc_provider = false
+manage_github_oidc_provider = true
 
 lambda_zip_path      = "../example/placeholder-lambda.zip"
 lambda_architecture  = "x86_64"

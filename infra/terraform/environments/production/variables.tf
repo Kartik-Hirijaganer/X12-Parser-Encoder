@@ -29,7 +29,7 @@ variable "github_oidc_provider_arn" {
 }
 
 variable "manage_github_oidc_provider" {
-  description = "Create the account-level GitHub Actions OIDC provider from this environment state."
+  description = "Create and retain the account-level GitHub Actions OIDC provider in the production state."
   type        = bool
   default     = false
 }
