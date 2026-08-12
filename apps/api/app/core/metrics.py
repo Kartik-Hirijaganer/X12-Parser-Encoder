@@ -104,6 +104,13 @@ PARSER_ACCOUNTING_MISMATCH_TOTAL.labels(path="/api/v1/parse")
 def metric_path_for_request(request: Request) -> str:
     """Return a low-cardinality route label for a request."""
 
+    fastapi_scope = request.scope.get("fastapi")
+    if isinstance(fastapi_scope, Mapping):
+        effective_route = fastapi_scope.get("effective_route_context")
+        effective_path = getattr(effective_route, "path_format", None)
+        if isinstance(effective_path, str) and effective_path:
+            return effective_path
+
     route = request.scope.get("route")
     route_path = getattr(route, "path", None)
     if isinstance(route_path, str) and route_path:

@@ -35,7 +35,7 @@ flowchart LR
   app --> route_GET__api_v1_profiles
   app --> route_GET__api_v1_profiles_name_defaults
   subgraph group_root["root"]
-    route_GET__healthz["GET /healthz<br/>healthcheck"]
+    route_GET__healthz["GET /healthz<br/>Healthcheck"]
   end
   app --> route_GET__healthz
   subgraph group_templates["templates"]
