@@ -130,6 +130,8 @@ jobs:
         with:
           terraform_version: "1.6.6"
       - uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: v0.64.0
       - uses: actions/setup-go@v5
         with:
           go-version: "1.23"
