@@ -1,11 +1,12 @@
 PYTHON ?= python3
 DOCKER_COMPOSE ?= docker compose
 AWS_REGION ?= us-east-2
-AWS_ACCOUNT_ID ?= $(shell aws sts get-caller-identity --query Account --output text 2>/dev/null || echo 306980977180)
+AWS_ACCOUNT_ID ?= 970385384114
+AWS_PROFILE ?=
 APP_NAME ?= x12-parser-encoder
-ENV ?=
+ENV ?= production
 LAMBDA_ARCHITECTURE ?= x86_64
-LAMBDA_VERSION_KEEP_COUNT ?= 3
+LAMBDA_VERSION_KEEP_COUNT ?= 1
 LAMBDA_ZIP_S3_KEY ?=
 TERRAFORM ?= terraform
 AWS ?= aws
@@ -25,7 +26,7 @@ TFSTATE_BUCKET ?= $(APP_NAME)-tfstate-$(AWS_ACCOUNT_ID)-$(AWS_REGION)
 GIT_SHA := $(shell git rev-parse HEAD 2>/dev/null || echo local)
 LAMBDA_ARTIFACT_KEY ?= lambda-artifacts/$(ENV)/$(GIT_SHA).zip
 
-.PHONY: install lint typecheck format test test-lib test-api test-web coverage-lib coverage-api coverage-web coverage build-lib check-version-sync check-oss check-hygiene design-lint docs docs-regenerate docs-check rebuild require-env lambda-package lambda-prune-versions terraform-plan terraform-apply deploy deploy-invalidate clean
+.PHONY: install lint typecheck format test test-lib test-api test-web coverage-lib coverage-api coverage-web coverage build-lib check-version-sync check-oss check-hygiene design-lint docs docs-regenerate docs-check rebuild require-env verify-aws-account lambda-package lambda-prune-versions terraform-plan terraform-apply deploy deploy-invalidate clean
 
 $(VENV_PYTHON):
 	$(PYTHON) -m venv $(VENV_DIR)
@@ -142,48 +143,59 @@ rebuild:
 	@printf "\nApplication is running.\nWeb UI: %s\nAPI: %s\n\n" "$(WEB_UI_URL)" "$(API_URL)"
 
 require-env:
-	@if [ "$(ENV)" != "staging" ] && [ "$(ENV)" != "production" ]; then \
-		echo "ENV must be set to staging or production."; \
+	@if [ "$(ENV)" != "production" ]; then \
+		echo "ENV must be production; deployed non-production environments are retired."; \
+		exit 1; \
+	fi
+
+verify-aws-account:
+	@if [ -z "$(AWS_PROFILE)" ]; then \
+		echo "AWS_PROFILE is required; the default AWS CLI profile is never used." >&2; \
+		exit 1; \
+	fi
+	@account_id="$$(AWS_PROFILE="$(AWS_PROFILE)" $(AWS) sts get-caller-identity --query Account --output text)"; \
+	if [ "$$account_id" != "970385384114" ]; then \
+		echo "Refusing AWS operation in account $$account_id; expected 970385384114." >&2; \
 		exit 1; \
 	fi
 
 lambda-package:
 	LAMBDA_ARCHITECTURE="$(LAMBDA_ARCHITECTURE)" bash scripts/package_lambda.sh
 
-lambda-prune-versions: require-env
-	FUNCTION_NAME="$$($(TERRAFORM) -chdir="$(TF_DIR)/environments/$(ENV)" output -raw lambda_function_name)" && \
-	AWS="$(AWS)" AWS_REGION="$(AWS_REGION)" LAMBDA_VERSION_KEEP_COUNT="$(LAMBDA_VERSION_KEEP_COUNT)" \
+lambda-prune-versions: require-env verify-aws-account
+	FUNCTION_NAME="$$(AWS_PROFILE="$(AWS_PROFILE)" $(TERRAFORM) -chdir="$(TF_DIR)/environments/$(ENV)" output -raw lambda_function_name)" && \
+	AWS_PROFILE="$(AWS_PROFILE)" AWS="$(AWS)" AWS_REGION="$(AWS_REGION)" LAMBDA_VERSION_KEEP_COUNT="$(LAMBDA_VERSION_KEEP_COUNT)" \
 		bash scripts/prune_lambda_versions.sh "$${FUNCTION_NAME}"
 
-terraform-plan: require-env lambda-package
-	$(AWS) s3 cp build/lambda.zip "s3://$(TFSTATE_BUCKET)/$(LAMBDA_ARTIFACT_KEY)"
-	$(TERRAFORM) -chdir="$(TF_DIR)/environments/$(ENV)" init -backend-config=backend.hcl
-	$(TERRAFORM) -chdir="$(TF_DIR)/environments/$(ENV)" plan \
+terraform-plan: require-env verify-aws-account lambda-package
+	AWS_PROFILE="$(AWS_PROFILE)" $(AWS) s3 cp build/lambda.zip "s3://$(TFSTATE_BUCKET)/$(LAMBDA_ARTIFACT_KEY)"
+	AWS_PROFILE="$(AWS_PROFILE)" $(TERRAFORM) -chdir="$(TF_DIR)/environments/$(ENV)" init -backend-config=backend.hcl
+	AWS_PROFILE="$(AWS_PROFILE)" $(TERRAFORM) -chdir="$(TF_DIR)/environments/$(ENV)" plan \
 		-var "lambda_zip_s3_bucket=$(TFSTATE_BUCKET)" \
 		-var "lambda_zip_s3_key=$(LAMBDA_ARTIFACT_KEY)" \
 		-var-file=terraform.tfvars
 
-terraform-apply: require-env lambda-package
-	$(AWS) s3 cp build/lambda.zip "s3://$(TFSTATE_BUCKET)/$(LAMBDA_ARTIFACT_KEY)"
-	$(TERRAFORM) -chdir="$(TF_DIR)/environments/$(ENV)" init -backend-config=backend.hcl
-	$(TERRAFORM) -chdir="$(TF_DIR)/environments/$(ENV)" apply -auto-approve \
+terraform-apply: require-env verify-aws-account lambda-package
+	AWS_PROFILE="$(AWS_PROFILE)" $(AWS) s3 cp build/lambda.zip "s3://$(TFSTATE_BUCKET)/$(LAMBDA_ARTIFACT_KEY)"
+	AWS_PROFILE="$(AWS_PROFILE)" $(TERRAFORM) -chdir="$(TF_DIR)/environments/$(ENV)" init -backend-config=backend.hcl
+	AWS_PROFILE="$(AWS_PROFILE)" $(TERRAFORM) -chdir="$(TF_DIR)/environments/$(ENV)" apply -auto-approve \
 		-var "lambda_zip_s3_bucket=$(TFSTATE_BUCKET)" \
 		-var "lambda_zip_s3_key=$(LAMBDA_ARTIFACT_KEY)" \
 		-var-file=terraform.tfvars
-	$(MAKE) lambda-prune-versions ENV="$(ENV)" AWS_REGION="$(AWS_REGION)" LAMBDA_VERSION_KEEP_COUNT="$(LAMBDA_VERSION_KEEP_COUNT)"
+	$(MAKE) lambda-prune-versions ENV="$(ENV)" AWS_PROFILE="$(AWS_PROFILE)" AWS_REGION="$(AWS_REGION)" LAMBDA_VERSION_KEEP_COUNT="$(LAMBDA_VERSION_KEEP_COUNT)"
 
-deploy: require-env
+deploy: require-env verify-aws-account
 	@echo "make deploy now deploys via Lambda+CloudFront. ENV=$(ENV). Ctrl-C to abort."
 	@sleep 3
 	cd $(WEB_DIR) && npm run build
-	$(MAKE) terraform-apply ENV="$(ENV)" LAMBDA_ARCHITECTURE="$(LAMBDA_ARCHITECTURE)" AWS_ACCOUNT_ID="$(AWS_ACCOUNT_ID)" AWS_REGION="$(AWS_REGION)" APP_NAME="$(APP_NAME)"
-	SPA_BUCKET="$$($(TERRAFORM) -chdir="$(TF_DIR)/environments/$(ENV)" output -raw spa_bucket_name)" && \
-	$(AWS) s3 sync "$(WEB_DIR)/dist/" "s3://$${SPA_BUCKET}/" --delete
-	$(MAKE) deploy-invalidate ENV="$(ENV)"
+	$(MAKE) terraform-apply ENV="$(ENV)" AWS_PROFILE="$(AWS_PROFILE)" LAMBDA_ARCHITECTURE="$(LAMBDA_ARCHITECTURE)" AWS_ACCOUNT_ID="$(AWS_ACCOUNT_ID)" AWS_REGION="$(AWS_REGION)" APP_NAME="$(APP_NAME)"
+	SPA_BUCKET="$$(AWS_PROFILE="$(AWS_PROFILE)" $(TERRAFORM) -chdir="$(TF_DIR)/environments/$(ENV)" output -raw spa_bucket_name)" && \
+	AWS_PROFILE="$(AWS_PROFILE)" $(AWS) s3 sync "$(WEB_DIR)/dist/" "s3://$${SPA_BUCKET}/" --delete
+	$(MAKE) deploy-invalidate ENV="$(ENV)" AWS_PROFILE="$(AWS_PROFILE)"
 
-deploy-invalidate: require-env
-	DISTRIBUTION_ID="$$($(TERRAFORM) -chdir="$(TF_DIR)/environments/$(ENV)" output -raw cloudfront_distribution_id)" && \
-	$(AWS) cloudfront create-invalidation --distribution-id "$${DISTRIBUTION_ID}" --paths "/*"
+deploy-invalidate: require-env verify-aws-account
+	DISTRIBUTION_ID="$$(AWS_PROFILE="$(AWS_PROFILE)" $(TERRAFORM) -chdir="$(TF_DIR)/environments/$(ENV)" output -raw cloudfront_distribution_id)" && \
+	AWS_PROFILE="$(AWS_PROFILE)" $(AWS) cloudfront create-invalidation --distribution-id "$${DISTRIBUTION_ID}" --paths "/*"
 
 clean:
 	rm -rf $(VENV_DIR)

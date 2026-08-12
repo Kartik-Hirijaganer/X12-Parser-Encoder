@@ -11,9 +11,9 @@ permissions:
 jobs:
   plan:
     runs-on: ubuntu-latest
-    environment: staging
+    environment: production
     env:
-      DEPLOY_ENV: staging
+      DEPLOY_ENV: production
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-2' }}
       AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
       APP_NAME: ${{ vars.APP_NAME || 'x12-parser-encoder' }}
@@ -26,11 +26,11 @@ jobs:
           TERRAFORM_TFVARS: ${{ secrets.TERRAFORM_TFVARS }}
         run: |
           missing=()
-          if [[ -z "${AWS_ACCOUNT_ID}" ]]; then
-            missing+=("AWS_ACCOUNT_ID repository variable")
+          if [[ "${AWS_ACCOUNT_ID}" != "970385384114" ]]; then
+            missing+=("AWS_ACCOUNT_ID=970385384114 repository variable")
           fi
           if [[ -z "${TERRAFORM_TFVARS}" ]]; then
-            missing+=("TERRAFORM_TFVARS staging environment secret")
+            missing+=("TERRAFORM_TFVARS production environment secret")
           fi
 
           if (( ${#missing[@]} > 0 )); then
@@ -53,8 +53,14 @@ jobs:
         with:
           terraform_version: "1.6.6"
 
+      - name: Terraform fmt
+        if: steps.plan-config.outputs.configured == 'true'
+        run: terraform fmt -check -recursive infra/terraform
+
       - uses: terraform-linters/setup-tflint@v4
         if: steps.plan-config.outputs.configured == 'true'
+        with:
+          tflint_version: v0.64.0
 
       - uses: actions/setup-go@v5
         if: steps.plan-config.outputs.configured == 'true'
@@ -73,6 +79,15 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/${{ env.APP_NAME }}-deploy-${{ env.DEPLOY_ENV }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify canonical AWS account
+        if: steps.plan-config.outputs.configured == 'true'
+        run: |
+          account_id="$(aws sts get-caller-identity --query Account --output text)"
+          test "${account_id}" = "970385384114" || {
+            echo "Refusing plan in AWS account ${account_id}." >&2
+            exit 1
+          }
 
       - name: Prepare Terraform inputs
         if: steps.plan-config.outputs.configured == 'true'
@@ -96,10 +111,6 @@ jobs:
             echo "TFSTATE_BUCKET=${tfstate_bucket}"
             echo "TF_ENV_DIR=${env_dir}"
           } >> "${GITHUB_ENV}"
-
-      - name: Terraform fmt
-        if: steps.plan-config.outputs.configured == 'true'
-        run: terraform fmt -check -recursive infra/terraform
 
       - name: Terraform validate
         if: steps.plan-config.outputs.configured == 'true'
@@ -148,7 +159,7 @@ jobs:
             const fs = require('fs');
             const plan = fs.readFileSync(process.env.RUNNER_TEMP + '/terraform-plan.txt', 'utf8');
             const body = [
-              '### Terraform plan: staging',
+              '### Terraform plan: production',
               '',
               '```text',
               plan.slice(0, 60000),

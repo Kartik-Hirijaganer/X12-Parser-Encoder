@@ -130,6 +130,8 @@ jobs:
         with:
           terraform_version: "1.6.6"
       - uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: v0.64.0
       - uses: actions/setup-go@v5
         with:
           go-version: "1.23"
@@ -145,6 +147,9 @@ jobs:
           cd environments/example
           terraform init -backend=false
           terraform validate
+      - name: Lambda version pruning safety test
+        run: bash scripts/tests/test_prune_lambda_versions.sh
+        working-directory: .
       - name: TFLint
         run: |
           tflint --init --config "$GITHUB_WORKSPACE/infra/terraform/.tflint.hcl"

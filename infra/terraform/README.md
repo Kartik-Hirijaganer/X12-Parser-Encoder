@@ -1,6 +1,6 @@
 # Terraform Infrastructure
 
-This tree provisions the serverless foundation: a private S3 SPA bucket, a Lambda API with a public Function URL, one CloudFront distribution, optional custom-domain support, CloudFront WAF, CloudWatch observability, and per-environment GitHub OIDC deploy roles.
+This tree provisions the production serverless foundation: a private S3 SPA bucket, a Lambda API with a public Function URL, one CloudFront distribution, optional custom-domain support, CloudFront WAF, CloudWatch observability, and a GitHub OIDC deploy role.
 
 ## Bootstrap State
 
@@ -39,32 +39,29 @@ terraform plan -var-file=terraform.tfvars
 
 The checked-in `placeholder-lambda.zip` is intentionally not deployable. It exists only to let Terraform calculate a local zip hash during Phase 2 planning.
 
-## Staging and Production
+## Production
 
-`environments/staging` and `environments/production` are the Phase 3 deploy roots used by `make deploy` and GitHub Actions.
+`environments/production` is the only deployed root used by `make deploy` and GitHub Actions. `environments/example` remains local-only for validation and fork operators.
 
 For local use:
 
 ```bash
-cd infra/terraform/environments/staging
+cd infra/terraform/environments/production
 cp terraform.tfvars.example terraform.tfvars
 cp ../../backend.hcl.example backend.hcl
 # Replace bucket/account/key placeholders and origin_verify_header_value.
 terraform init -backend-config=backend.hcl
 ```
 
-For GitHub Actions, create protected environments named `staging` and `production`. Each environment needs a `TERRAFORM_TFVARS` secret containing the full contents of that environment's `terraform.tfvars`. The workflow writes `backend.hcl` at runtime from `AWS_ACCOUNT_ID`, `AWS_REGION`, and `APP_NAME`.
+For GitHub Actions, create a protected environment named `production` with a `TERRAFORM_TFVARS` secret containing the full contents of `production/terraform.tfvars`. Set repository variables `AWS_ACCOUNT_ID=970385384114` and `LAMBDA_VERSION_KEEP_COUNT=1`. The workflow writes `backend.hcl` at runtime from `AWS_ACCOUNT_ID`, `AWS_REGION`, and `APP_NAME`.
 
 The deploy role names are:
 
 ```text
-x12-parser-encoder-deploy-staging
 x12-parser-encoder-deploy-production
 ```
 
-`staging/terraform.tfvars.example` defaults `manage_github_oidc_provider = true` so the first staging bootstrap can create the account-level GitHub OIDC provider. `production` defaults it to `false` and reuses the provider ARN.
-
-Phase 4 production defaults enable WAF, set Lambda reserved concurrency to `50`, and enable SnapStart for the default `us-east-2` Python 3.12 deployment. Staging keeps WAF and SnapStart disabled by default and reserved concurrency at `10`.
+Production owns the account-level GitHub OIDC provider and deploy role through its Terraform state. Production defaults enable WAF, set Lambda reserved concurrency to `50`, and enable SnapStart for the default `us-east-2` Python 3.12 deployment.
 
 ## Custom Domain
 
@@ -88,8 +85,8 @@ Root state keys must use:
 key = "<APP_ENV>/terraform.tfstate"
 ```
 
-For example:
+For production:
 
 ```hcl
-key = "staging/terraform.tfstate"
+key = "production/terraform.tfstate"
 ```

@@ -3,11 +3,28 @@ from __future__ import annotations
 import json
 import logging
 import re
+from types import SimpleNamespace
 
 import pytest
+from app.core.metrics import metric_path_for_request
+from fastapi import Request
 from fastapi.testclient import TestClient
 
 from tests.helpers import build_xlsx_bytes, fixture_text
+
+
+def test_metric_path_uses_effective_fastapi_route_template() -> None:
+    request = Request(
+        {
+            "type": "http",
+            "fastapi": {
+                "effective_route_context": SimpleNamespace(path_format="/api/v1/templates/{name}")
+            },
+            "route": SimpleNamespace(path="/templates/{name}"),
+        }
+    )
+
+    assert metric_path_for_request(request) == "/api/v1/templates/{name}"
 
 
 def test_metrics_endpoint_exposes_prometheus_series(client: TestClient) -> None:
