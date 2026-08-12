@@ -1,46 +1,27 @@
 name: Deploy
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "apps/**"
-      - "packages/**"
-      - "infra/terraform/**"
-      - "scripts/package_lambda.sh"
-      - "scripts/prune_lambda_versions.sh"
-      - "VERSION"
-      - ".github/workflows/deploy.yml"
   workflow_dispatch:
-    inputs:
-      environment:
-        description: "Environment to deploy"
-        required: true
-        type: choice
-        options:
-          - staging
-          - production
 
 permissions:
   contents: read
   id-token: write
 
 concurrency:
-  group: deploy-${{ inputs.environment || 'staging' }}
+  group: deploy-production
   cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
+    environment: production
     env:
-      DEPLOY_ENV: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
+      DEPLOY_ENV: production
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-2' }}
       AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
       APP_NAME: ${{ vars.APP_NAME || 'x12-parser-encoder' }}
       LAMBDA_ARCHITECTURE: ${{ vars.LAMBDA_ARCHITECTURE || 'x86_64' }}
-      LAMBDA_VERSION_KEEP_COUNT: ${{ vars.LAMBDA_VERSION_KEEP_COUNT || '3' }}
+      LAMBDA_VERSION_KEEP_COUNT: ${{ vars.LAMBDA_VERSION_KEEP_COUNT || '1' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -48,8 +29,8 @@ jobs:
         env:
           TERRAFORM_TFVARS: ${{ secrets.TERRAFORM_TFVARS }}
         run: |
-          if [[ -z "${AWS_ACCOUNT_ID}" ]]; then
-            echo "AWS_ACCOUNT_ID repository variable is required." >&2
+          if [[ "${AWS_ACCOUNT_ID}" != "970385384114" ]]; then
+            echo "AWS_ACCOUNT_ID must be the canonical account 970385384114." >&2
             exit 1
           fi
           if [[ -z "${TERRAFORM_TFVARS}" ]]; then
@@ -72,6 +53,14 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/${{ env.APP_NAME }}-deploy-${{ env.DEPLOY_ENV }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify canonical AWS account
+        run: |
+          account_id="$(aws sts get-caller-identity --query Account --output text)"
+          test "${account_id}" = "970385384114" || {
+            echo "Refusing deployment to AWS account ${account_id}." >&2
+            exit 1
+          }
 
       - name: Build web
         run: |
